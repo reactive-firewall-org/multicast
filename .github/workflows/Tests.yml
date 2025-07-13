@@ -1,20 +1,20 @@
 ---
 name: CI-TESTS
+description: "Continuous Integration for post-MATs additional testing, and validation."
+run-name: Extended Testing
 # Continuous Integration workflow for post-MATs additional testing, and validating of the project.
 #
 # Jobs included:
 # - COVERAGE: Generates coverage reports on multiple OS and Python versions
+# - DOCTESTS: Generates coverage reports on multiple OS and Python versions via doctests
 # - STYLE: Checks code style and linting compliance
 # - INTEGRATION: Performs integration tests on different platforms
-# - EXTRAS-FOR-SETUP: Tests legacy setup scripts
 # - EXTRAS-FOR-PIP: Validates package dependencies and pip installations
 # - DOCS: Builds and lints documentation
 # - TOX: Executes tests across Python environments using Tox
 #
 # Required Secrets:
 # - CODECOV_TOKEN: For uploading coverage reports to Codecov
-# - CODECLIMATE_TOKEN: For integration with Code Climate
-# - CC_TEST_REPORTER_ID: For Code Climate test reporting
 
 on:
   workflow_run:
@@ -25,6 +25,22 @@ on:
 # Declare default permissions as none.
 permissions: {}
 
+env:
+  # Define Locals at top level
+  LANG: "en_US.utf-8"
+  LC_CTYPE: "en_US.utf-8"
+  # Define Python versions at the top level -- Expected format: X.Y (e.g., 3.13)
+  PYTHON_DEFAULT: "${{ vars.PYTHON_DEFAULT }}"
+  PYTHON_OLD_MIN: "${{ vars.PYTHON_OLD_MIN }}"  # For Oldest Python versions
+  PYTHON_EXPERIMENTAL: "${{ vars.PYTHON_EXPERIMENTAL }}"  # For future Python versions
+  # Define Repository Values
+  CI_PROJECT_PATH: "${{ github.repository }}"
+  COVERAGE_RCFILE: ./.coveragerc
+  # Define Summary Icons
+  PASS_ICON: ":ballot_box_with_check:"
+  UPLOAD_ICON: ":arrow_up:"
+  FAIL_ICON: ":x:"
+  SKIP_ICON: ":black_square_button:"
 
 jobs:
   check_mats:
@@ -37,7 +53,28 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
-      mats_environment: ${{ steps.get_env.outputs.environment }}
+      trigger_id: ${{ steps.get_trigger_id.outputs.trigger_id }}
+      build_id: ${{ steps.load_build_info.outputs.build_id }}
+      build_url: ${{ steps.load_build_info.outputs.build_url }}
+      build_ref: ${{ steps.load_build_info.outputs.build_ref }}
+      build_ref_name: ${{ steps.load_build_info.outputs.build_ref_name }}
+      build_sha: ${{ steps.load_build_info.outputs.build_sha }}
+      build_artifact_filename: ${{ steps.load_build_info.outputs.build_artifact_filename }}
+      build_artifact_url: ${{ steps.load_build_info.outputs.build_artifact_url }}
+      build_artifact_id: ${{ steps.load_build_info.outputs.build_artifact_id }}
+      build_artifact_digest: ${{ steps.load_build_info.outputs.build_artifact_digest }}
+      build_pr_number: ${{ steps.load_build_info.outputs.build_pr_number }}
+      build_environment: ${{ steps.load_build_info.outputs.build_environment }}
+      mats_environment: ${{ steps.load_build_info.outputs.mats_environment }}
+      mats_id: ${{ steps.load_build_info.outputs.mats_id }}
+      mats_url: ${{ steps.load_build_info.outputs.mats_url }}
+      mats_ref: ${{ steps.load_build_info.outputs.mats_ref }}
+      mats_ref_name: ${{ steps.load_build_info.outputs.mats_ref_name }}
+      mats_sha: ${{ steps.load_build_info.outputs.mats_sha }}
+      mats_success: ${{ steps.load_build_info.outputs.mats_success }}
+      tests_id: ${{ steps.output_run_id.outputs.tests_id }}
+      tests_url: ${{ steps.output_run_id.outputs.tests_url }}
+      check_id: ${{ steps.output_tests_check_id.outputs.check-id }}
     steps:
       - id: check
         run: |
@@ -46,15 +83,57 @@ jobs:
           else
             echo "should_run=false" >> "$GITHUB_OUTPUT"
           fi
-      - id: get_env
+      - id: get_trigger_id
+        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
         run: |
-          ENV_VALUE=$(gh api "${{ github.event.workflow_run.artifacts_url }}" --jq '.environment')
-          if [[ -n "$ENV_VALUE" ]]; then
-            echo "environment=$ENV_VALUE" >> "$GITHUB_OUTPUT"
+          ID_VALUE=$(gh api "${{ github.event.workflow_run.url }}" --jq '.id')
+          if [[ -n "$ID_VALUE" ]]; then
+            echo "trigger_id=$ID_VALUE" >> "$GITHUB_OUTPUT"
           else
-            echo "environment=Experimenting" >> "$GITHUB_OUTPUT"  # Default fallback
+            echo "trigger_id=null" >> "$GITHUB_OUTPUT"  # Default fallback
           fi
-
+      - name: "Fetch MATs Info"
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: "multicast-info.txt"
+          pattern: multicast-info-*
+          repository: reactive-firewall-org/multicast
+          merge-multiple: true
+          github-token: ${{ env.GH_TOKEN }}
+          run-id: ${{ steps.get_trigger_id.outputs.trigger_id }}
+      - name: "move into place"
+        id: load_build_info
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
+        run: |
+          mv -vf "multicast-info.txt/multicast-info.txt" ./"multicast-info-tmp.txt" ;
+          wait ;
+          rmdir -v ./"multicast-info.txt"
+          mv -vf ./"multicast-info-tmp.txt" ./"multicast-info.txt"
+          cat <"multicast-info.txt" >> "$GITHUB_OUTPUT"
+      - id: output_run_id
+        shell: bash
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        run: |
+          printf "tests_url=%s\n" 'https://github.com/reactive-firewall-org/multicast/actions/runs/${{ github.run_id }}' >> "$GITHUB_OUTPUT"
+          printf "tests_id=%s\n" ${{ github.run_id }} >> "$GITHUB_OUTPUT"
+      - name: checkout repository actions for check
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          ref: ${{ steps.load_build_info.outputs.build_sha }}
+          sparse-checkout: '.github/actions/check-control'
+      - name: "Queue Tests GitHub Check"
+        id: output_tests_check_id
+        uses: ./.github/actions/check-control
+        with:
+          name: "CI-TESTs"
+          title: "Extended Testing"
+          status: 'in_progress'
+          summary: 'Extended Testing is _Starting_'
+          sha: ${{ steps.load_build_info.outputs.build_sha }}
+          workflow-run-id: ${{ steps.output_run_id.outputs.tests_id }}
+          details-url: ${{ steps.output_run_id.outputs.tests_url }}
 
   COVERAGE:
     permissions:
@@ -73,98 +152,255 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["${{ vars.PYTHON_OLD_MIN }}", "${{ vars.PYTHON_OLD_EXTRA }}", "${{ vars.PYTHON_DEFAULT }}", "${{ vars.PYTHON_EXPERIMENTAL }}"]
+        use-pytest: ["", "1"]  # un/set to dis/enable
     env:
       OS: ${{ matrix.os }}
       PYTHON_VERSION: ${{ matrix.python-version }}
-      LANG: "en_US.utf-8"
-      COVERAGE_RCFILE: ./.coveragerc
+      TESTS_USE_PYTEST: ${{ matrix.use-pytest }}
       COV_CORE_SOURCE: ./
       COV_CORE_CONFIG: ./.coveragerc
       COV_CORE_DATAFILE: ./coverage.xml
+      CI_BRANCH: ${{ needs.check_mats.outputs.mats_ref_name }}
+      CI_COMMIT_SHA: ${{ needs.check_mats.outputs.mats_sha }}
+      BRANCH_NAME: ${{ needs.check_mats.outputs.mats_ref_name }}
+      VCS_BRANCH_NAME: ${{ needs.check_mats.outputs.build_ref_name }}
+      VCS_COMMIT_ID: ${{ needs.check_mats.outputs.build_sha }}
+    outputs:
+      coverage_outcome: ${{ steps.coverage_outcome.outcome }}
+      coverage_test_outcome: ${{ steps.coverage_tests.outcome }}
+      coverage_upload_unitests_outcome: ${{ steps.coverage-unittests-codecov-upload.outcome }}
+      coverage_upload_codecov_outcome: ${{ steps.coverage-project-codecov-upload.outcome }}
+      coverage_upload_deepsource_outcome: ${{ steps.upload-test-tools.outputs.coverage_upload_deepsource_outcome }}
+      coverage_upload_artifact_outcome: ${{ steps.upload-test-tools.outputs.coverage_upload_artifact_outcome }}
+      coverage_artifact_url: ${{ steps.upload-test-tools.outputs.coverage_artifact_url }}
+      coverage_artifact_id: ${{ steps.upload-test-tools.outputs.coverage_artifact_id }}
+      coverage_artifact_digest: ${{ steps.upload-test-tools.outputs.coverage_artifact_digest }}
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+    - name: pre-checkout repository for actions
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       with:
+        persist-credentials: false
+        ref: ${{ needs.check_mats.outputs.build_sha }}
+        sparse-checkout: '.github/actions/checkout-and-rebuild'
+    - name: Checkout repository for Tests with ${{ matrix.python-version }}
+      id: fetch-build
+      uses: ./.github/actions/checkout-and-rebuild
+      with:
+        sha: ${{ needs.check_mats.outputs.build_sha }}
+        build-run-id: ${{ needs.check_mats.outputs.build_id }}
         python-version: ${{ matrix.python-version }}
-    - name: Fix braindead windows ${{ matrix.python-version }} on ${{ matrix.os }}
-      uses: ./.github/actions/upgrade-windows-pip
+        path: ${{ github.workspace }}
     - name: Install dependencies for python ${{ matrix.python-version }} on ${{ matrix.os }}
-      run: make -f Makefile test-reqs || true
-    - name: Install code-climate tools for ${{ matrix.python-version }} on ${{ matrix.os }}
-      if: ${{ !cancelled() && runner.os == 'Linux' }}
-      shell: bash
-      env:
-        CODECLIMATE_REPO_TOKEN: ${{ secrets.CODECLIMATE_TOKEN }}
-        CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
-      run: |
-        curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter || true ;
-        chmod +x ./cc-test-reporter 2>/dev/null || true ;
-        ./cc-test-reporter before-build || true ;
-    - name: Install deepsource tools for ${{ matrix.python-version }} on ${{ matrix.os }}
-      if: ${{ !cancelled() && runner.os == 'Linux' }}
-      shell: bash
-      env:
-        DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
-      run: |
-        (curl https://deepsource.io/cli | sh) || true ;
+      id: install-coverage-deps
+      if: ${{ success() }}
+      uses: ./.github/actions/setup-py-reqs
+      with:
+        sha: ${{ needs.check_mats.outputs.build_sha }}
+        python-version: ${{ matrix.python-version }}
+    - name: Install coverage tools for ${{ matrix.python-version }} on ${{ matrix.os }}
+      id: fetch-test-tools
+      if: ${{ !cancelled() && runner.os != 'Windows' }}
+      uses: ./.github/actions/fetch-test-reporter
+      with:
+        token: ${{ github.server_url == 'https://github.com' && github.token || '' }}
+        deepsource-dsn: ${{ github.server_url == 'https://github.com' && secrets.DEEPSOURCE_DSN || '' }}
+        coveralls-token: ${{ github.server_url == 'https://github.com' && secrets.COVERALLS_REPO_TOKEN || '' }}
     - name: Pre-Clean
-      id: clean
+      id: clean-before-coverage
+      if: ${{ !cancelled() }}
       run: make -j1 -f Makefile clean || true ;
     - name: Generate Test Coverage for py${{ matrix.python-version }} on ${{ matrix.os }}
-      env:
-        TESTS_USE_PYTEST: 1
-      run: make -f Makefile test >> "$GITHUB_STEP_SUMMARY" ;
+      id: coverage_tests
+      shell: bash
+      run: |
+        make -f Makefile test || exit 1
     - name: Upload Python ${{ matrix.python-version }} test coverage to Codecov
-      uses: codecov/codecov-action@ad3126e916f78f00edff4ed0317cf185271ccc2d # v5.4.2
+      id: coverage-unittests-codecov-upload
+      uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        job_code: ${{ github.run_id }}-${{ github.run_number }}
+        job_code: ${{ needs.check_mats.outputs.build_id }}-${{ github.run_number }}
+        override_commit: ${{ needs.check_mats.outputs.build_sha }}
+        override_branch: ${{ needs.check_mats.outputs.build_ref_name }}
+        override_build: ${{ needs.check_mats.outputs.build_id }}
+        override_build_url: ${{ needs.check_mats.outputs.build_url }}
         files: ./coverage.xml,./test-reports/coverage.xml
         directory: .
-        env_vars: OS,PYTHON_VERSION
+        env_vars: PYTHON_VERSION
         flags: unittests
         name: multicast-github-${{ matrix.os }}-${{ matrix.python-version }}
         verbose: true
         fail_ci_if_error: false
     - name: Upload Python ${{ matrix.python-version }} second flag coverage to Codecov
-      uses: codecov/codecov-action@ad3126e916f78f00edff4ed0317cf185271ccc2d # v5.4.2
+      id: coverage-project-codecov-upload
+      uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        job_code: ${{ github.run_id }}-${{ github.run_number }}
-        files: ./coverage.xml,./test-reports/coverage.xml
+        job_code: ${{ needs.check_mats.outputs.build_id }}-${{ github.run_number }}
+        override_commit: ${{ needs.check_mats.outputs.build_sha }}
+        override_branch: ${{ needs.check_mats.outputs.build_ref_name }}
+        override_build: ${{ needs.check_mats.outputs.build_id }}
+        override_build_url: ${{ needs.check_mats.outputs.build_url }}
+        override_pr: ${{ needs.check_mats.outputs.build_pr_number }}
+        files: ./coverage.xml,./test-reports/coverage.xml,./test-reports/coverage_*.xml
         directory: .
         env_vars: OS,PYTHON_VERSION
         flags: multicast
         name: multicast-github-${{ matrix.os }}-${{ matrix.python-version }}-merge
         verbose: true
         fail_ci_if_error: false
-    - name: Upload Python ${{ matrix.python-version }} Artifact
+    - id: upload-test-tools
+      if: ${{ !cancelled() }}
+      uses: ./.github/actions/test-reporter-upload
+      with:
+        tests-outcome: ${{ steps.coverage_tests.outcome }}
+        os: ${{ runner.os }}
+        python-version: ${{ matrix.python-version }}
+        job_code: ${{ needs.check_mats.outputs.tests_id }}
+        deepsource-dsn: ${{ github.server_url == 'https://github.com' && secrets.DEEPSOURCE_DSN || '' }}
+        coveralls-token: ${{ github.server_url == 'https://github.com' && secrets.COVERALLS_REPO_TOKEN || '' }}
+        codecov-token: ${{ github.server_url == 'https://github.com' && secrets.CODECOV_TOKEN || '' }}
+    - name: Finalize coverage tools for ${{ matrix.python-version }} on ${{ matrix.os }}
+      id: purge-test-tools
+      if: ${{ !cancelled() && runner.os != 'Windows' }}
+      uses: ./.github/actions/purge-test-reporter
+      with:
+        token: ${{ github.server_url == 'https://github.com' && github.token || '' }}
+        deepsource-dsn: ${{ github.server_url == 'https://github.com' && secrets.DEEPSOURCE_DSN || '' }}
+        coveralls-token: ${{ github.server_url == 'https://github.com' && secrets.COVERALLS_REPO_TOKEN || '' }}
+    - name: "Generate Summary Filename"
+      id: output_coverage_step_summary
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        if [[ ${{ runner.os }} != 'Windows' ]] ; then
+          printf "coverage-artifact-name=%s\n" multicast-coverage-${VCS_COMMIT_ID}-part-$(uuidgen) >> "$GITHUB_OUTPUT"
+        else
+          printf "coverage-artifact-name=%s" multicast-coverage-${VCS_COMMIT_ID}-part- >> "$GITHUB_OUTPUT"
+          printf "%04x%04x-%04x-%04x-%04x-%04x%04x%04x\n" $RANDOM $RANDOM $RANDOM $(($RANDOM & 0x0fff | 0x4000)) $(($RANDOM & 0x3fff | 0x8000)) $RANDOM $RANDOM $RANDOM >> "$GITHUB_OUTPUT"
+        fi
+        printf "%s\n" "COV_STEP_SUMMARY=Coverage-Summary-Artifact-${{ runner.os }}-${PYTHON_VERSION}.txt" >> "$GITHUB_ENV"
+    - name: "Evaluate Coverage Tests"
+      id: coverage_outcome
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        if [[ "${{ steps.coverage_tests.outcome }}" == "success" ]] ; then
+          THE_RESULT="success"
+        else
+          THE_RESULT="failure"
+        fi
+        if [[ "${{ steps.coverage-unittests-codecov-upload.outcome }}" == "success" && "${THE_RESULT}" == "success" ]] ; then
+          THE_RESULT="success"
+        else
+          THE_RESULT="failure"
+        fi
+        if [[ "${{ steps.coverage-project-codecov-upload.outcome }}" == "success" && "${THE_RESULT}" == "success" ]] ; then
+          THE_RESULT="success"
+        else
+          THE_RESULT="failure"
+        fi
+        for CHECK_VALUE in "${{ steps.upload-test-tools.outputs.coverage_upload_deepsource_outcome }}" "${{ steps.coverage-reports-upload.outcome }}" ; do
+          if [[ "${CHECK_VALUE}" != "failure" && "${THE_RESULT}" == "success" ]] ; then
+            THE_RESULT="success"
+          else
+            THE_RESULT="failure"
+          fi
+        done ;
+        if [[ "${THE_RESULT}" == "success" ]] ; then
+          exit 0
+        else
+          exit 1
+        fi
+    - name: "Summarize Coverage Testing"
+      id: coverage_report
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        BUILD_LINK="[${VCS_COMMIT_ID}](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
+        if [[ "${{ steps.coverage_outcome.outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${PASS_ICON} Codebase Coverage Testing succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for ${BUILD_LINK}" > "$COV_STEP_SUMMARY"
+          printf "%s\n" " ${PASS_ICON} Codebase Coverage Testing succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for \`${VCS_COMMIT_ID}\`" >> "$GITHUB_STEP_SUMMARY"
+        else
+          printf "%s\n" "  * ${FAIL_ICON} ~Codebase Coverage Testing succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for \`${VCS_COMMIT_ID}\`~" > "$COV_STEP_SUMMARY"
+          printf "%s\n" " ${FAIL_ICON} ~Codebase Coverage Testing succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\`~" >> "$GITHUB_STEP_SUMMARY"
+        fi
+        printf "\n%s\n\n" "<details><summary>Coverage Details</summary>" >> "$COV_STEP_SUMMARY"
+        if [[ "${{ steps.coverage_tests.outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${PASS_ICON} Codebase coverage was collected from testing" >> "$COV_STEP_SUMMARY"
+        else
+          printf "%s\n" "  * ${FAIL_ICON} Codebase coverage was **not** collected from testing" >> "$COV_STEP_SUMMARY"
+        fi
+        if [[ "${{ steps.coverage-project-codecov-upload.outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${UPLOAD_ICON} Uploading multicast project coverage report to CodeCov succeeded" >> "$COV_STEP_SUMMARY"
+        else
+          if [[ "${{ steps.coverage-project-codecov-upload.outcome }}" == "failed" ]] ; then
+            printf "%s\n" "  * :no_entry: Uploading multicast project coverage report to CodeCov failed" >> "$COV_STEP_SUMMARY"
+          else
+            printf "%s\n" "  * ${SKIP_ICON} Uploading multicast project coverage report to CodeCov was skipped" >> "$COV_STEP_SUMMARY"
+          fi
+        fi
+        if [[ "${{ steps.coverage-unittests-codecov-upload.outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${UPLOAD_ICON} Uploading unit-tests coverage report to CodeCov succeeded" >> "$COV_STEP_SUMMARY"
+        else
+          if [[ "${{ steps.coverage-unittests-codecov-upload.outcome }}" == "failed" ]] ; then
+            printf "%s\n" "  * :no_entry: Uploading unit-tests coverage report to CodeCov failed" >> "$COV_STEP_SUMMARY"
+          else
+            printf "%s\n" "  * ${SKIP_ICON} Uploading unit-tests coverage report to CodeCov was skipped" >> "$COV_STEP_SUMMARY"
+          fi
+        fi
+        if [[ "${{ steps.upload-test-tools.outputs.coverage_upload_deepsource_outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${UPLOAD_ICON} Uploading unit-tests coverage report to deepsource succeeded" >> "$COV_STEP_SUMMARY"
+        else
+          if [[ "${{ steps.upload-test-tools.outputs.coverage_upload_deepsource_outcome }}" == "failed" ]] ; then
+            printf "%s\n" "  * :no_entry: Uploading unit-tests coverage report to deepsource failed" >> "$COV_STEP_SUMMARY"
+          else
+            printf "%s\n" "  * ${SKIP_ICON} Uploading unit-tests coverage report to deepsource was skipped" >> "$COV_STEP_SUMMARY"
+          fi
+        fi
+        if [[ "${{ steps.coverage-reports-upload.outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${PASS_ICON} Uploading [unit-tests coverage report artifact](${{ steps.coverage-reports-upload.outputs.artifact-url }}) succeeded" >> "$COV_STEP_SUMMARY"
+        else
+          printf "%s\n" "  * ${FAIL_ICON} Uploading unit-tests coverage report artifact failed" >> "$COV_STEP_SUMMARY"
+        fi
+        printf "\n%s\n" "</details>" >> "$COV_STEP_SUMMARY"
+    - name: "Collect and Enumerate Generated Files"
+      id: output_summary_files
+      if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+      env:
+        COV_MATCH_PATTERN: "Coverage-Summary-Artifact-*.txt"
+        SCRIPT_NAME: ".github/actions/run-coverage-tests/action.yml"
+      shell: bash
+      run: |
+        FILES=$(git ls-files -o --exclude-standard -- ${{ env.COV_MATCH_PATTERN }} )
+        if [ -z "$FILES" ]; then
+          printf "::warning file=%s:: %s\n" "${SCRIPT_NAME}" "No summary files found."
+          printf "%s\n" "files=" >> "$GITHUB_OUTPUT"
+          exit 1
+        else
+          printf "%s\n" "Test coverage summary files found:"
+          printf "%s\n" "$FILES"
+          mkdir COVERAGE || :
+          printf "%s\n" "$FILES" | xargs -I{} cp -f "{}" "COVERAGE/{}" || :
+          # Replace line breaks with spaces for GitHub Action Output
+          FILES="${FILES//$'\n'/ }"
+          printf "%s\n" "files=$FILES" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+    - name: "Upload Coverage Summary"
+      id: upload
+      if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
-        name: Test-Report-${{ matrix.os }}-${{ matrix.python-version }}
-        path: ./test-reports/
-        if-no-files-found: ignore
-    - name: code-climate for ${{ matrix.python-version }} on ${{ matrix.os }}
-      if: ${{ !cancelled() && runner.os == 'Linux' }}
-      shell: bash
-      env:
-        CODECLIMATE_REPO_TOKEN: ${{ secrets.CODECLIMATE_TOKEN }}
-        CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
-      run: |
-        ./cc-test-reporter after-build --exit-code 0 || true ;
-    - name: deepsource for ${{ matrix.python-version }} on ${{ matrix.os }}
-      if: ${{ !cancelled() && runner.os == 'Linux' }}
-      shell: bash
-      env:
-        DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
-      run: |
-        ./bin/deepsource report --analyzer test-coverage --key python --value-file ./coverage.xml 2>/dev/null || true ;
+        path: COVERAGE
+        name: ${{ steps.output_coverage_step_summary.outputs.coverage-artifact-name }}
+        if-no-files-found: error
+        compression-level: 9
+        overwrite: true
     - name: Post-Clean
-      id: post
+      id: post-coverage-clean
       run: make -j1 -f Makefile clean || true ;
-      if: ${{ always() }}
-
+      if: ${{ !cancelled() }}
 
   DOCTESTS:
     permissions:
@@ -186,47 +422,64 @@ jobs:
     env:
       OS: ${{ matrix.os }}
       PYTHON_VERSION: ${{ matrix.python-version }}
-      LANG: "en_US.utf-8"
-      COVERAGE_RCFILE: ./.coveragerc
       COV_CORE_SOURCE: ./
       COV_CORE_CONFIG: ./.coveragerc
+      COV_CORE_DATAFILE: ./coverage.xml
+      CI_BRANCH: ${{ needs.check_mats.outputs.mats_ref_name }}
+      CI_COMMIT_SHA: ${{ needs.check_mats.outputs.mats_sha }}
+      BRANCH_NAME: ${{ needs.check_mats.outputs.mats_ref_name }}
+      VCS_BRANCH_NAME: ${{ needs.check_mats.outputs.build_ref_name }}
+      VCS_COMMIT_ID: ${{ needs.check_mats.outputs.build_sha }}
+    outputs:
+      doctests_outcome: ${{ steps.doctests_outcome.outcome }}
+      doctests_test_outcome: ${{ steps.doctests-main.outcome }}
+      doctests_artifact_url: ${{ steps.doctests-reports-upload.outputs.artifact-url }}
+      doctests_artifact_id: ${{ steps.doctests-reports-upload.outputs.artifact-id }}
+      doctests_artifact_digest: ${{ steps.doctests-reports-upload.outputs.artifact-digest }}
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+    - name: pre-checkout repository for actions
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       with:
+        persist-credentials: false
+        ref: ${{ needs.check_mats.outputs.build_sha }}
+        sparse-checkout: '.github/actions/checkout-and-rebuild'
+    - name: Checkout repository for Tests with ${{ matrix.python-version }}
+      id: fetch-build
+      uses: ./.github/actions/checkout-and-rebuild
+      with:
+        sha: ${{ needs.check_mats.outputs.build_sha }}
+        build-run-id: ${{ needs.check_mats.outputs.build_id }}
         python-version: ${{ matrix.python-version }}
-    - name: Fix braindead windows ${{ matrix.python-version }} on ${{ matrix.os }}
-      uses: ./.github/actions/upgrade-windows-pip
+        path: ${{ github.workspace }}
     - name: Install dependencies for python ${{ matrix.python-version }} on ${{ matrix.os }}
-      run: make -f Makefile test-reqs || true ;
-    - name: Install code-climate tools for ${{ matrix.python-version }} on ${{ matrix.os }}
-      if: ${{ !cancelled() && runner.os == 'Linux' }}
-      shell: bash
-      env:
-        CODECLIMATE_REPO_TOKEN: ${{ secrets.CODECLIMATE_TOKEN }}
-        CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
-      run: |
-        curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter || true ;
-        chmod +x ./cc-test-reporter 2>/dev/null || true ;
-        ./cc-test-reporter before-build || true ;
-    - name: Install deepsource tools for ${{ matrix.python-version }} on ${{ matrix.os }}
-      if: ${{ !cancelled() && runner.os == 'Linux' }}
-      shell: bash
-      env:
-        DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
-      run: |
-        (curl https://deepsource.io/cli | sh) || true ;
-    - name: Pre-Clean
-      id: clean
-      run: make -j1 -f Makefile clean || true ;
+      id: install-doctests-deps
+      if: ${{ success() }}
+      uses: ./.github/actions/setup-py-reqs
+      with:
+        sha: ${{ needs.check_mats.outputs.build_sha }}
+        python-version: ${{ matrix.python-version }}
+    - name: Install coverage tools for ${{ matrix.python-version }} on ${{ matrix.os }}
+      id: fetch-test-tools
+      if: ${{ !cancelled() && runner.os != 'Windows' }}
+      uses: ./.github/actions/fetch-test-reporter
+      with:
+        token: ${{ github.server_url == 'https://github.com' && github.token || '' }}
+        deepsource-dsn: ${{ github.server_url == 'https://github.com' && secrets.DEEPSOURCE_DSN || '' }}
+        coveralls-token: ${{ github.server_url == 'https://github.com' && secrets.COVERALLS_REPO_TOKEN || '' }}
     - name: Generate Doctest Coverage for py${{ matrix.python-version }} on ${{ matrix.os }}
+      id: doctests-main
       run: make -f Makefile test-mat-doctests ;
     - name: Upload Python ${{ matrix.python-version }} doctest coverage to Codecov
-      uses: codecov/codecov-action@ad3126e916f78f00edff4ed0317cf185271ccc2d # v5.4.2
+      id: doctests-codecov-upload
+      uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        job_code: ${{ github.run_id }}-${{ github.run_number }}
+        job_code: ${{ needs.check_mats.outputs.build_id }}-${{ github.run_number }}
+        override_commit: ${{ needs.check_mats.outputs.build_sha }}
+        override_branch: ${{ needs.check_mats.outputs.build_ref_name }}
+        override_build: ${{ needs.check_mats.outputs.build_id }}
+        override_build_url: ${{ needs.check_mats.outputs.build_url }}
+        override_pr: ${{ needs.check_mats.outputs.build_pr_number }}
         files: ./test-reports/coverage_doctests.xml
         directory: .
         env_vars: OS,PYTHON_VERSION
@@ -235,31 +488,255 @@ jobs:
         verbose: true
         fail_ci_if_error: false
     - name: Upload Python ${{ matrix.python-version }} Artifact
+      id: doctests-reports-upload
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: DocTest-Report-${{ matrix.os }}-${{ matrix.python-version }}
         path: ./test-reports/
         if-no-files-found: ignore
-    - name: code-climate for ${{ matrix.python-version }} on ${{ matrix.os }}
-      if: ${{ !cancelled() && runner.os == 'Linux' }}
+    - id: upload-test-tools
+      if: ${{ !cancelled() }}
+      uses: ./.github/actions/test-reporter-upload
+      with:
+        tests-outcome: ${{ steps.doctests-main.outcome }}
+        os: ${{ runner.os }}
+        python-version: ${{ matrix.python-version }}
+        job_code: ${{ needs.check_mats.outputs.tests_id }}
+        deepsource-dsn: ${{ github.server_url == 'https://github.com' && secrets.DEEPSOURCE_DSN || '' }}
+        coveralls-token: ${{ github.server_url == 'https://github.com' && secrets.COVERALLS_REPO_TOKEN || '' }}
+        codecov-token: ${{ github.server_url == 'https://github.com' && secrets.CODECOV_TOKEN || '' }}
+    - name: Finalize coverage tools for ${{ matrix.python-version }} on ${{ matrix.os }}
+      id: purge-doctest-test-tools
+      if: ${{ !cancelled() && runner.os != 'Windows' }}
+      uses: ./.github/actions/purge-test-reporter
+      with:
+        token: ${{ github.server_url == 'https://github.com' && github.token || '' }}
+        deepsource-dsn: ${{ github.server_url == 'https://github.com' && secrets.DEEPSOURCE_DSN || '' }}
+        coveralls-token: ${{ github.server_url == 'https://github.com' && secrets.COVERALLS_REPO_TOKEN || '' }}
+    - name: "Generate Summary Filename"
+      id: output_doctests_step_summary
+      if: ${{ !cancelled() }}
       shell: bash
-      env:
-        CODECLIMATE_REPO_TOKEN: ${{ secrets.CODECLIMATE_TOKEN }}
-        CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
       run: |
-        ./cc-test-reporter after-build --exit-code 0 || true ;
-    - name: deepsource for ${{ matrix.python-version }} on ${{ matrix.os }}
-      if: ${{ !cancelled() && runner.os == 'Linux' }}
+        if [[ ${{ runner.os }} != 'Windows' ]] ; then
+          printf "doctests-artifact-name=%s\n" multicast-coverage-${VCS_COMMIT_ID}-part-$(uuidgen) >> "$GITHUB_OUTPUT"
+        else
+          printf "doctests-artifact-name=%s" multicast-coverage-${VCS_COMMIT_ID}-part- >> "$GITHUB_OUTPUT"
+          printf "%04x%04x-%04x-%04x-%04x-%04x%04x%04x\n" $RANDOM $RANDOM $RANDOM $(($RANDOM & 0x0fff | 0x4000)) $(($RANDOM & 0x3fff | 0x8000)) $RANDOM $RANDOM $RANDOM >> "$GITHUB_OUTPUT"
+        fi
+        printf "%s\n" "DOC_STEP_SUMMARY=Doctests-Summary-Artifact-${{ runner.os }}-${PYTHON_VERSION}.txt" >> "$GITHUB_ENV"
+    - name: "Evaluate Doc-Tests"
+      id: doctests_outcome
+      if: ${{ !cancelled() }}
       shell: bash
-      env:
-        DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
       run: |
-        ./bin/deepsource report --analyzer test-coverage --key python --value-file ./coverage.xml 2>/dev/null || true ;
-    - name: Post-Clean
-      id: post
-      run: make -j1 -f Makefile clean || true ;
+        if [[ "${{ steps.doctests-main.outcome }}" == "success" ]] ; then
+          THE_RESULT="success"
+        else
+          THE_RESULT="failure"
+        fi
+        if [[ "${{ steps.doctests-codecov-upload.outcome }}" == "success" && "${THE_RESULT}" == "success" ]] ; then
+          THE_RESULT="success"
+        else
+          THE_RESULT="failure"
+        fi
+        for CHECK_VALUE in "${{ steps.upload-test-tools.outputs.coverage_upload_deepsource_outcome }}" "${{ steps.doctests-reports-upload.outcome }}" ; do
+          if [[ "${CHECK_VALUE}" != "failure" && "${THE_RESULT}" == "success" ]] ; then
+            THE_RESULT="success"
+          else
+            THE_RESULT="failure"
+          fi
+        done ;
+        if [[ "${THE_RESULT}" == "success" ]] ; then
+          exit 0
+        else
+          exit 1
+        fi
+    - name: "Summarize Doc-Tests"
+      id: coverage_report
       if: ${{ always() }}
+      shell: bash
+      run: |
+        BUILD_LINK="[${VCS_COMMIT_ID}](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
+        if [[ "${{ steps.doctests_outcome.outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${PASS_ICON} Doctests succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for ${BUILD_LINK}" > "$DOC_STEP_SUMMARY"
+          printf "%s\n" " ${PASS_ICON} Doctests succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for \`${VCS_COMMIT_ID}\`" >> "$GITHUB_STEP_SUMMARY"
+        else
+          printf "%s\n" "  * ${FAIL_ICON} ~Doctests succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for \`${VCS_COMMIT_ID}\`~" > "$DOC_STEP_SUMMARY"
+          printf "%s\n" " ${FAIL_ICON} ~Doctests succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\`~" >> "$GITHUB_STEP_SUMMARY"
+        fi
+        printf "\n%s\n\n" "<details><summary>Doctests Details</summary>" >> "$DOC_STEP_SUMMARY"
+        if [[ "${{ steps.doctests-main.outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${PASS_ICON} Doctests succeeded" >> "$DOC_STEP_SUMMARY"
+        else
+          printf "%s\n" "  * ${FAIL_ICON} Doctests failed" >> "$DOC_STEP_SUMMARY"
+        fi
+        if [[ "${{ steps.doctests-codecov-upload.outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${UPLOAD_ICON} Uploading Doctests coverage report to CodeCov succeeded" >> "$DOC_STEP_SUMMARY"
+        else
+          if [[ "${{ steps.doctests-codecov-upload.outcome }}" == "failed" ]] ; then
+            printf "%s\n" "  * :no_entry: Uploading Doctests coverage report to CodeCov failed" >> "$DOC_STEP_SUMMARY"
+          else
+            printf "%s\n" "  * ${SKIP_ICON} Uploading Doctests coverage report to CodeCov was skipped" >> "$DOC_STEP_SUMMARY"
+          fi
+        fi
+        if [[ "${{ steps.upload-test-tools.outputs.coverage_upload_deepsource_outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${UPLOAD_ICON} Uploading Doctests coverage report to deepsource succeeded" >> "$DOC_STEP_SUMMARY"
+        else
+          if [[ "${{ steps.upload-test-tools.outputs.coverage_upload_deepsource_outcome }}" == "failed" ]] ; then
+            printf "%s\n" "  * :no_entry: Uploading Doctests coverage report to deepsource failed" >> "$DOC_STEP_SUMMARY"
+          else
+            printf "%s\n" "  * ${SKIP_ICON} Uploading Doctests coverage report to deepsource was skipped" >> "$DOC_STEP_SUMMARY"
+          fi
+        fi
+        if [[ "${{ steps.doctests-reports-upload.outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${PASS_ICON} Uploading [Doctests coverage report artifact](${{ steps.doctests-reports-upload.outputs.artifact-url }}) succeeded" >> "$DOC_STEP_SUMMARY"
+        else
+          printf "%s\n" "  * ${FAIL_ICON} Uploading Doctests coverage report artifact failed" >> "$DOC_STEP_SUMMARY"
+        fi
+        printf "\n%s\n\n" "</details>" >> "$DOC_STEP_SUMMARY"
+    - name: "Collect and Enumerate Generated Files"
+      id: output_summary_files
+      if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+      env:
+        DOCTEST_MATCH_PATTERN: "Doctests-Summary-Artifact-*.txt"
+        SCRIPT_NAME: ".github/actions/run-doctests-tests/action.yml"
+      shell: bash
+      run: |
+        FILES=$(git ls-files -o --exclude-standard -- ${{ env.DOCTEST_MATCH_PATTERN }} )
+        if [ -z "$FILES" ]; then
+          printf "::warning file=%s:: %s\n" "${SCRIPT_NAME}" "No summary files found."
+          printf "%s\n" "files=" >> "$GITHUB_OUTPUT"
+          exit 1
+        else
+          printf "%s\n" "Test Doctests summary files found:"
+          printf "%s\n" "$FILES"
+          mkdir COVERAGE || :
+          printf "%s\n" "$FILES" | xargs -I{} cp -f "{}" "COVERAGE/{}" || :
+          # Replace line breaks with spaces for GitHub Action Output
+          FILES="${FILES//$'\n'/ }"
+          printf "%s\n" "files=$FILES" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+    - name: "Upload Doctests Summary"
+      id: upload
+      if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        path: COVERAGE
+        name: ${{ steps.output_doctests_step_summary.outputs.doctests-artifact-name }}
+        if-no-files-found: error
+        compression-level: 9
+        overwrite: true
+    - name: Post-Clean
+      id: post-doctest-clean
+      run: make -j1 -f Makefile clean || true ;
+      if: ${{ !cancelled() }}
 
+  COVERAGE_SUMMARY:
+    permissions:
+      actions: read
+      pull-requests: read
+    needs: [check_mats, COVERAGE, DOCTESTS]
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') && (needs.COVERAGE.outputs.coverage_outcome != 'cancelled') }}
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: ${{ github.workspace }}/COVERAGE
+          pattern: multicast-coverage-${{ needs.check_mats.outputs.build_sha }}-part-*
+          merge-multiple: true
+      - id: report_status
+        env:
+          BUILD_SHA: ${{ needs.check_mats.outputs.build_sha }}
+          COV_COMMENT_BODY: '${{ github.workspace }}/COVERAGE-Summary-Artifact.txt'
+        run: |
+          if [[ "${{ needs.COVERAGE.outputs.coverage_outcome }}" == "success" ]]; then
+            printf "%s\n" "# :open_umbrella: Code Coverage Summary" > "${COV_COMMENT_BODY}"
+            printf "%s\n" "coverage_success=true" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "tests_summary=Coverage Tests Passed" >> "$GITHUB_OUTPUT"
+          else
+            printf "%s\n\n" "# Known flaws." > "${COV_COMMENT_BODY}"
+            printf "%s\n" "> [!WARNING]" >> "${COV_COMMENT_BODY}"
+            printf "%s\n\n" "> This commit has known flaws. Each commit is subject to minimal acceptance testing, and then select commits are subject to extra testing to evaluate release candidates; This commit has been deemed _not ready_ for release." >> "${COV_COMMENT_BODY}"
+            printf "%s\n" "coverage_success=false" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "tests_summary=Coverage Tests Unsuccessful" >> "$GITHUB_OUTPUT"
+          fi
+          for OS_TAG in "Linux" "macOS" "Windows" ; do
+            for TYPE_TAG in "Coverage" "Doctests" ; do
+              printf "\n" >> "${COV_COMMENT_BODY}"
+              cat <./COVERAGE/"${TYPE_TAG}-Summary-Artifact-${OS_TAG}-${{ vars.PYTHON_OLD_MIN }}.txt" >> "${COV_COMMENT_BODY}" || :
+              printf "\n" >> "${COV_COMMENT_BODY}"
+              cat <./COVERAGE/"${TYPE_TAG}-Summary-Artifact-${OS_TAG}-${{ vars.PYTHON_OLD_EXTRA }}.txt" >> "${COV_COMMENT_BODY}" || :
+              printf "\n" >> "${COV_COMMENT_BODY}"
+              cat <./COVERAGE/"${TYPE_TAG}-Summary-Artifact-${OS_TAG}-${{ vars.PYTHON_DEFAULT }}.txt" >> "${COV_COMMENT_BODY}" || :
+              printf "\n" >> "${COV_COMMENT_BODY}"
+              cat <./COVERAGE/"${TYPE_TAG}-Summary-Artifact-${OS_TAG}-${{ vars.PYTHON_EXPERIMENTAL }}.txt" >> "${COV_COMMENT_BODY}" || :
+              printf "\n" >> "${COV_COMMENT_BODY}"
+            done ;
+          done ;
+          cat <"${COV_COMMENT_BODY}" >> "$GITHUB_STEP_SUMMARY"
+          { printf "%s\n" 'tests_text<<EOF'; cat <"${COV_COMMENT_BODY}"; printf "%s\n" 'EOF'; } >> "$GITHUB_OUTPUT"
+      - name: "Upload COVERAGE summary"
+        id: upload-coverage-summary
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          path: ./COVERAGE-Summary-Artifact.txt
+          name: COVERAGE-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
+          if-no-files-found: error
+          compression-level: 3
+          retention-days: 2
+          overwrite: true
+      - name: checkout repository actions for check
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          ref: ${{ needs.check_mats.outputs.build_sha }}
+          sparse-checkout: '.github/actions/check-control'
+
+  COVERAGE_REPORT:
+    permissions:
+      actions: read
+      contents: write
+    needs: [check_mats, COVERAGE_SUMMARY]
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() }}
+    steps:
+      - name: "Download Status Summary Artifact"
+        id: download-coverage-summary
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: COVERAGE-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
+          github-token: ${{ github.token }}
+      - name: "COVERAGE commit comment"
+        id: coverage-commit-comment
+        if: ${{ success() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: peter-evans/commit-comment@5a6f8285b8f2e8376e41fe1b563db48e6cf78c09 # v3.0.0
+        with:
+          sha: ${{ needs.check_mats.outputs.build_sha }}
+          token: ${{ github.token }}
+          body-path: '${{ steps.download-coverage-summary.outputs.download-path }}/COVERAGE-Summary-Artifact.txt'
+
+  COVERALLS_SIGNAL_DONE:
+    permissions:
+      actions: read
+      contents: read
+    needs: [check_mats, COVERAGE, DOCTESTS]
+    if: ${{ always() && (needs.check_mats.outputs.should_run == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Signal Coveralls Finished
+      uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
+      with:
+        build-number: ${{ needs.check_mats.outputs.tests_id }}
+        parallel-finished: true
+        git-branch: ${{ needs.check_mats.outputs.build_ref_name }}
+        git-commit: ${{ needs.check_mats.outputs.build_sha }}
+        allow-empty: true
+        fail-on-error: false
 
   STYLE:
     permissions:
@@ -276,35 +753,48 @@ jobs:
     defaults:
       run:
         shell: bash
-    timeout-minutes: 10
-
+    timeout-minutes: 2
     env:
       PYTHON_VERSION: "${{ vars.PYTHON_DEFAULT }}"
       LANG: "en_US.utf-8"
-
+      CI_BRANCH: ${{ needs.check_mats.outputs.mats_ref_name }}
+      CI_COMMIT_SHA: ${{ needs.check_mats.outputs.mats_sha }}
+      BRANCH_NAME: ${{ needs.check_mats.outputs.mats_ref_name }}
+      VCS_BRANCH_NAME: ${{ needs.check_mats.outputs.build_ref_name }}
+      VCS_COMMIT_ID: ${{ needs.check_mats.outputs.build_sha }}
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-    - name: Set up Python
-      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+    - name: pre-checkout repository for actions
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       with:
+        persist-credentials: false
+        ref: ${{ needs.check_mats.outputs.build_sha }}
+        sparse-checkout: '.github/actions/checkout-and-rebuild'
+    - name: "Checkout repository for Style with ${{ vars.PYTHON_DEFAULT }}"
+      id: fetch-build
+      uses: ./.github/actions/checkout-and-rebuild
+      with:
+        sha: ${{ needs.check_mats.outputs.build_sha }}
+        build-run-id: ${{ needs.check_mats.outputs.build_id }}
+        path: ${{ github.workspace }}
         python-version: "${{ vars.PYTHON_DEFAULT }}"
-    - name: Install dependencies for python Linters
-      run: |
-        pip install --upgrade "pip>=24.3.1" "setuptools>=75.0" "wheel>=0.44" "build>=1.2.2";
-        pip install --upgrade -r ./requirements.txt ;
-        pip install --upgrade -r ./tests/requirements.txt || true ;
-        pip install --upgrade -r ./docs/requirements.txt || true ;
+    - name: Install dependencies for style
+      id: install-deps
+      if: ${{ success() }}
+      uses: ./.github/actions/setup-py-reqs
+      with:
+        sha: ${{ needs.check_mats.outputs.build_sha }}
+        python-version: "${{ vars.PYTHON_DEFAULT }}"
     - name: Pre-Clean
-      id: clean
+      id: clean-up-style
       run: make -j1 -f Makefile clean || true ;
     - name: Testing Style
       id: style
-      run: make -j1 -f Makefile test-style >> $GITHUB_STEP_SUMMARY ;
+      run: make -j1 -f Makefile test-style || exit 1 ;
       shell: bash
     - name: Post-Clean
-      id: post
+      id: post-style-test
       run: make -j1 -f Makefile clean || true ;
-      if: ${{ always() }}
+      if: ${{ success() }}
 
 
   INTEGRATION:
@@ -324,92 +814,121 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         python-version: ["${{ vars.PYTHON_OLD_MIN }}", "${{ vars.PYTHON_OLD_EXTRA }}", "${{ vars.PYTHON_DEFAULT }}", "${{ vars.PYTHON_EXPERIMENTAL }}"]
+        use-pytest: ["", "1"]  # un/set to dis/enable
     env:
       OS: ${{ matrix.os }}
       PYTHON_VERSION: ${{ matrix.python-version }}
-      LANG: "en_US.utf-8"
-      LC_CTYPE: "en_US.utf-8"
-      COVERAGE_RCFILE: ./.coveragerc
+      TESTS_USE_PYTEST: ${{ matrix.use-pytest }}
       COV_CORE_SOURCE: ./
       COV_CORE_CONFIG: ./.coveragerc
       COV_CORE_DATAFILE: .coverage
-      CODECLIMATE_REPO_TOKEN: ${{ secrets.CODECLIMATE_TOKEN }}
-      CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
+      CI_BRANCH: ${{ needs.check_mats.outputs.mats_ref_name }}
+      CI_COMMIT_SHA: ${{ needs.check_mats.outputs.mats_sha }}
+      BRANCH_NAME: ${{ needs.check_mats.outputs.mats_ref_name }}
+      VCS_BRANCH_NAME: ${{ needs.check_mats.outputs.build_ref_name }}
+      VCS_COMMIT_ID: ${{ needs.check_mats.outputs.build_sha }}
+    outputs:
+      integration_outcome: ${{ steps.integration_outcome.outcome }}
+      integration_test_outcome: ${{ steps.integration_tests.outputs.integration_test_outcome }}
+      integration_pytest_outcome: ${{ steps.integration-pytest.outcome }}
+      integration_doctest_outcome: ${{ steps.integration-doctests.outcome }}
+      integration_function_outcome: ${{ steps.integration-main.outcome }}
+      integration_upload_codecov_test_outcome: ${{ steps.integration-codecov-results-upload.outcome }}
+      integration_upload_codecov_coverage_outcome: ${{ steps.integration-codecov-upload.outcome }}
+      integration_upload_deepsource_outcome: ${{ steps.integration-deepsource-upload.outcome }}
+      integration_upload_artifact_outcome: ${{ steps.integration-reports-upload.outcome }}
+      integration_artifact_url: ${{ steps.integration-reports-upload.outputs.artifact-url }}
+      integration_artifact_id: ${{ steps.integration-reports-upload.outputs.artifact-id }}
+      integration_artifact_digest: ${{ steps.integration-reports-upload.outputs.artifact-digest }}
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+    - name: pre-checkout repository for actions
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       with:
+        persist-credentials: false
+        ref: ${{ needs.check_mats.outputs.build_sha }}
+        sparse-checkout: '.github/actions/checkout-and-rebuild'
+    - name: Checkout repository for Tests with ${{ matrix.python-version }}
+      id: fetch-build
+      uses: ./.github/actions/checkout-and-rebuild
+      with:
+        sha: ${{ needs.check_mats.outputs.build_sha }}
+        build-run-id: ${{ needs.check_mats.outputs.build_id }}
         python-version: ${{ matrix.python-version }}
+        path: ${{ github.workspace }}
     - name: Install dependencies for python ${{ matrix.python-version }} on ${{ matrix.os }}
-      run: |
-        pip install --upgrade "pip>=24.3.1" "setuptools>=75.0" "wheel>=0.44" "build>=1.2.1";
-        pip install --upgrade -r ./requirements.txt ;
-        pip install --upgrade -r ./tests/requirements.txt || true ;
-        pip install --upgrade -r ./docs/requirements.txt || true ;
-    - name: Install Darwin code-climate tools for ${{ matrix.python-version }}
-      if: ${{ !cancelled() && runner.os != 'Linux' }}
-      run: |
-        if [ "$OS" == "macos-latest" ] ; then curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-darwin-amd64 > ./cc-test-reporter || true ; fi ;
-        if [ "$OS" == "macos-latest" ] ; then chmod +x ./cc-test-reporter 2>/dev/null || true ; fi
-        if [ "$OS" == "macos-latest" ] ; then ./cc-test-reporter before-build || true ; fi
-      shell: bash
-    - name: Install Linux code-climate tools for ${{ matrix.python-version }}
-      if: ${{ !cancelled() && runner.os == 'Linux' }}
-      run: |
-        curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter || curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-arm64 > ./cc-test-reporter || true ;
-        chmod +x ./cc-test-reporter 2>/dev/null || true ;
-        ./cc-test-reporter before-build || true ;
-    - name: Pre-Clean
-      id: clean-prep
-      run: make -j1 -f Makefile clean ;
-    - name: Pre-build for Python ${{ matrix.python-version }} on ${{ matrix.os }}
-      run: make -j1 -f Makefile build ;
-      if: ${{ success() }}
+      id: install-deps
+      if: ${{ !cancelled() }}
+      uses: ./.github/actions/setup-py-reqs
+      with:
+        sha: ${{ needs.check_mats.outputs.build_sha }}
+        python-version: ${{ matrix.python-version }}
+    - name: Install coverage tools for ${{ matrix.python-version }} on ${{ matrix.os }}
+      id: fetch-test-tools
+      if: ${{ !cancelled() && runner.os != 'Windows' }}
+      uses: ./.github/actions/fetch-test-reporter
+      with:
+        token: ${{ github.server_url == 'https://github.com' && github.token || '' }}
+        deepsource-dsn: ${{ github.server_url == 'https://github.com' && secrets.DEEPSOURCE_DSN || '' }}
+        coveralls-token: ${{ github.server_url == 'https://github.com' && secrets.COVERALLS_REPO_TOKEN || '' }}
     - name: Pre-install for Python ${{ matrix.python-version }} on ${{ matrix.os }}
       run: make -j1 -f Makefile user-install || true ;
       if: ${{ success() }}
     - name: Re-Generate Test Coverage for py${{ matrix.python-version }} on ${{ matrix.os }}
+      id: integration-pytest
       run: |
-        make -j1 -f Makefile test-pytest ;
-        cp -vf ./coverage.xml ./test-reports/coverage.xml || true ;
+        make -j1 -f Makefile test || exit 1 ;
+        if [[ -r ./coverage.xml ]]; then
+          cp -vf ./coverage.xml ./test-reports/coverage.xml || true ;
+        fi ;
       shell: bash
     - name: Generate Doctest Coverage for py${{ matrix.python-version }} on ${{ matrix.os }}
+      id: integration-doctests
       run: make -f Makefile test-mat-doctests ;
-    - name: Generate Extra Coverage for py${{ matrix.python-version }} on ${{ matrix.os }}
+    - name: Generate Functional Test Coverage for py${{ matrix.python-version }} on ${{ matrix.os }}
+      id: integration-main
       run: |
         hash -p ./.github/tool_shlock_helper.sh shlock ;
         ./tests/check_integration_coverage || echo "::warning file=tests/check_integration_coverage,line=1,endLine=1,title=SKIPPED::SKIP Integration Tests." ;
       shell: bash
     - name: Upload Python ${{ matrix.python-version }} integration coverage to Codecov
-      uses: codecov/codecov-action@ad3126e916f78f00edff4ed0317cf185271ccc2d # v5.4.2
+      id: integration-codecov-upload
+      uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        job_code: ${{ github.run_id }}-${{ github.run_number }}
-        files: ./test-reports/coverage_supplement.xml,./test-reports/coverage_doctests.xml,./test-reports/coverage.xml
+        job_code: ${{ needs.check_mats.outputs.build_id }}-${{ github.run_number }}
+        override_commit: ${{ needs.check_mats.outputs.build_sha }}
+        override_branch: ${{ needs.check_mats.outputs.build_ref_name }}
+        override_build: ${{ needs.check_mats.outputs.build_id }}
+        override_build_url: ${{ needs.check_mats.outputs.build_url }}
+        override_pr: ${{ needs.check_mats.outputs.build_pr_number }}
+        report_type: 'coverage'
+        slug: 'reactive-firewall-org/multicast'
+        files: ./test-reports/coverage_supplement.xml,./test-reports/coverage.xml,./test-reports/coverage_*.xml
         directory: .
-        env_vars: OS,PYTHON_VERSION
         flags: multicast
         name: multicast-github-${{ matrix.os }}-${{ matrix.python-version }}
         verbose: true
         fail_ci_if_error: false
     - name: Upload Extra Python ${{ matrix.python-version }} Artifact
+      id: integration-reports-upload
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: Integration-Test-Report-${{ matrix.os }}-${{ matrix.python-version }}
         path: ./test-reports/
         if-no-files-found: ignore
-    - name: code-climate for ${{ matrix.python-version }}
-      if: ${{ !cancelled() && runner.os != 'Linux' }}
+        overwrite: true
+    - name: deepsource for ${{ matrix.python-version }} on ${{ matrix.os }}
+      if: ${{ !cancelled() && runner.os != 'Windows' }}
+      id: integration-deepsource-upload
+      shell: bash
+      env:
+        DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
       run: |
-        if [ "$OS" == "macos-latest" ] ; then ./cc-test-reporter after-build --exit-code 0 || true ; else echo "::warning file=.github/workflows/Tests.yml,line=459,endLine=459,title=SKIPPED::SKIP Code-Climate" ; fi ;
-    - name: code-climate for ${{ matrix.python-version }}
-      if: ${{ !cancelled() && runner.os == 'Linux' }}
-      run: |
-        ./cc-test-reporter after-build --exit-code 0 || true ;
+        ./bin/deepsource report --analyzer test-coverage --key python --value-file ./coverage.xml 2>/dev/null || true ;
     - name: Upload Python ${{ matrix.python-version }} integration test results to Codecov
-      if: ${{ !cancelled() }}
-      uses: codecov/test-results-action@f2dba722c67b86c6caa034178c6e4d35335f6706 # v1.1.0
+      if: ${{ !cancelled() && (env.TESTS_USE_PYTEST == '1') }}
+      id: integration-codecov-results-upload
+      uses: codecov/test-results-action@47f89e9acb64b76debcd5ea40642d25a4adced9f # v1.1.1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./test-reports/junit.xml
@@ -418,87 +937,223 @@ jobs:
         name: multicast-github-${{ matrix.os }}-${{ matrix.python-version }}-test-results
         verbose: true
         fail_ci_if_error: false
-    - name: Post-purge
-      id: post-uninstall
-      run: make -j1 -f Makefile purge || true ;
-      if: ${{ !cancelled() }}
-    - name: Post-Clean
-      id: post-end
-      run: make -j1 -f Makefile clean || true ;
-      if: ${{ !cancelled() }}
-
-
-  EXTRAS-FOR-SETUP:
-    permissions:
-      actions: read
-      contents: read
-      statuses: write
-      packages: none
-      pull-requests: read
-      security-events: none
-    environment: ${{ needs.check_mats.outputs.mats_environment }}
-    if: ${{ !cancelled() && success() }}
-    needs: [COVERAGE, STYLE]
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash
-    timeout-minutes: 10
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        python-version: ["${{ vars.PYTHON_OLD_MIN }}", "${{ vars.PYTHON_OLD_EXTRA }}", "${{ vars.PYTHON_DEFAULT }}", "${{ vars.PYTHON_EXPERIMENTAL }}"]
-    env:
-      OS: ${{ matrix.os }}
-      PYTHON_VERSION: ${{ matrix.python-version }}
-      LANG: "en_US.utf-8"
-      LC_CTYPE: "en_US.utf-8"
-      COVERAGE_RCFILE: ./.coveragerc
-      COV_CORE_SOURCE: ./
-      COV_CORE_CONFIG: ./.coveragerc
-      COV_CORE_DATAFILE: .coverage
-      CODECLIMATE_REPO_TOKEN: ${{ secrets.CODECLIMATE_TOKEN }}
-    steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+    - name: Finalize coverage tools for ${{ matrix.python-version }} on ${{ matrix.os }}
+      id: purge-integration-test-tools
+      if: ${{ !cancelled() && runner.os != 'Windows' }}
+      uses: ./.github/actions/purge-test-reporter
       with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies for python ${{ matrix.python-version }} on ${{ matrix.os }}
-      run: |
-        pip install --upgrade "pip>=24.3.1" "setuptools>=75.0" "wheel>=0.44" "build>=1.2.1";
-        pip install -r ./requirements.txt ;
-        pip install -r ./tests/requirements.txt || true ;
-    - name: Pre-Clean
-      id: clean-prep
-      run: make -j1 -f Makefile clean ;
-    - name: Pre-build for Python ${{ matrix.python-version }} on ${{ matrix.os }}
-      run: make -j1 -f Makefile build ;
-      if: ${{ success() }}
-    - name: Pre-install for Python ${{ matrix.python-version }} on ${{ matrix.os }}
-      run: make -j1 -f Makefile user-install || true ;
-      if: ${{ success() }}
-    - name: Generate Extra Legacy Setup Coverage for py${{ matrix.python-version }} on ${{ matrix.os }}
-      run: |
-        hash -p ./.github/tool_shlock_helper.sh shlock ;
-        ./tests/check_legacy_setup_coverage || echo "::warning file=tests/check_legacy_setup_coverage,line=1,endLine=1,title=SKIPPED::SKIP Legacy Setup.py Tests." ;
+        token: ${{ github.server_url == 'https://github.com' && github.token || '' }}
+        deepsource-dsn: ${{ github.server_url == 'https://github.com' && secrets.DEEPSOURCE_DSN || '' }}
+        coveralls-token: ${{ github.server_url == 'https://github.com' && secrets.COVERALLS_REPO_TOKEN || '' }}
+    - name: "Generate Summary Filename"
+      id: output_integration_step_summary
       if: ${{ !cancelled() }}
-    - name: Upload Python ${{ matrix.python-version }} Legacy Setup.py coverage to Codecov
-      uses: codecov/codecov-action@ad3126e916f78f00edff4ed0317cf185271ccc2d # v5.4.2
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./test-reports/coverage_setup.xml
-        directory: .
-        flags: multicast,${{ matrix.os }},${{ matrix.python-version }}
-        name: multicast-github-${{ matrix.os }}-${{ matrix.python-version }}
-        verbose: true
-        fail_ci_if_error: false
-    - name: Upload Extra Python ${{ matrix.python-version }} Artifact
+      shell: bash
+      run: |
+        if [[ ${{ runner.os }} != 'Windows' ]] ; then
+          printf "integration-artifact-name=%s\n" multicast-integration-${VCS_COMMIT_ID}-part-$(uuidgen) >> "$GITHUB_OUTPUT"
+        else
+          printf "integration-artifact-name=%s" multicast-integration-${VCS_COMMIT_ID}-part- >> "$GITHUB_OUTPUT"
+          printf "%04x%04x-%04x-%04x-%04x-%04x%04x%04x\n" $RANDOM $RANDOM $RANDOM $(($RANDOM & 0x0fff | 0x4000)) $(($RANDOM & 0x3fff | 0x8000)) $RANDOM $RANDOM $RANDOM >> "$GITHUB_OUTPUT"
+        fi
+        if [[ -n "$TESTS_USE_PYTEST" ]] ; then
+          printf "%s\n" "TESTS_STEP_SUMMARY=Integration-Summary-Artifact-${{ runner.os }}-${PYTHON_VERSION}-pytest.txt" >> "$GITHUB_ENV"
+        else
+          printf "%s\n" "TESTS_STEP_SUMMARY=Integration-Summary-Artifact-${{ runner.os }}-${PYTHON_VERSION}.txt" >> "$GITHUB_ENV"
+        fi
+    - name: "Evaluate Integration Tests"
+      id: integration_tests
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        if [[ "${{ steps.integration-main.outcome }}" == "success" ]] ; then
+          THE_RESULT="success"
+        else
+          if [[ "${{ steps.integration-main.outcome }}" == "failure" ]] ; then
+            THE_RESULT="failure"
+          else
+            THE_RESULT="skipped"
+          fi
+        fi
+        if [[ "${{ steps.integration-pytest.outcome }}" == "success" && "${THE_RESULT}" == "success" ]] ; then
+          THE_RESULT="success"
+        else
+          if [[ "${{ steps.integration-pytest.outcome }}" == "failure" ]] ; then
+            if [[ "${THE_RESULT}" == "failure" ]] ; then
+              THE_RESULT="failure"
+            else
+              if [[ "${THE_RESULT}" != "success" ]] ; then
+                THE_RESULT="failure"
+              else
+                THE_RESULT="neutral"
+              fi
+            fi
+          else
+            THE_RESULT="skipped"
+          fi
+        fi
+        if [[ "${{ steps.integration-doctests.outcome }}" == "success" && "${THE_RESULT}" == "success" ]] ; then
+          THE_RESULT="success"
+        else
+          if [[ "${{ steps.integration-doctests.outcome }}" == "failure" ]] ; then
+            if [[ "${THE_RESULT}" == "failure" ]] ; then
+              THE_RESULT="failure"
+            else
+              if [[ "${THE_RESULT}" != "success" ]] ; then
+                THE_RESULT="failure"
+              else
+                THE_RESULT="neutral"
+              fi
+            fi
+          else
+            if [[ "${THE_RESULT}" != "failure" ]] ; then
+              if [[ "${THE_RESULT}" != "neutral" ]] ; then
+                THE_RESULT="skipped"
+              else
+                THE_RESULT="neutral"
+              fi
+            else
+              THE_RESULT="failure"
+            fi
+          fi
+        fi
+        printf "%s\n" "integration_test_outcome=${THE_RESULT}" >> "$GITHUB_OUTPUT"
+        if [[ "${THE_RESULT}" != "failure" ]] ; then
+          exit 0
+        else
+          exit 1
+        fi
+    - name: "Evaluate Integration Tests"
+      id: integration_outcome
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        if [[ "${{ steps.integration_tests.outcome }}" == "success" ]] ; then
+          THE_RESULT="success"
+        else
+          THE_RESULT="failure"
+        fi
+        if [[ "${{ steps.integration-codecov-upload.outcome }}" == "success" && "${THE_RESULT}" == "success" ]] ; then
+          THE_RESULT="success"
+        else
+          THE_RESULT="failure"
+        fi
+        if [[ "${{ steps.integration-codecov-results-upload.outcome }}" == "success" && "${THE_RESULT}" == "success" ]] ; then
+          THE_RESULT="success"
+        else
+          if [[ -n "${TESTS_USE_PYTEST}" ]] ; then
+            THE_RESULT="failure"
+          fi ;  # else ignore invalid junit upload outcome
+        fi
+        for CHECK_VALUE in "${{ steps.integration-deepsource-upload.outcome }}" "${{ steps.integration-reports-upload.outcome }}" ; do
+          if [[ "${CHECK_VALUE}" != "failure" && "${THE_RESULT}" == "success" ]] ; then
+            THE_RESULT="success"
+          else
+            THE_RESULT="failure"
+          fi
+        done ;
+        if [[ "${THE_RESULT}" == "success" ]] ; then
+          exit 0
+        else
+          exit 1
+        fi
+    - name: "Summarize Tests"
+      id: integration_report
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        BUILD_LINK="[${VCS_COMMIT_ID}](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
+        if [[ "${{ steps.integration_outcome.outcome }}" == "success" ]] ; then
+          printf "%s\n\n" "## ${PASS_ICON} Integration Acceptance Testing succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for ${BUILD_LINK}" > "$TESTS_STEP_SUMMARY"
+          printf "%s\n" " ${PASS_ICON} Integration Acceptance Testing succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for \`${VCS_COMMIT_ID}\`" >> "$GITHUB_STEP_SUMMARY"
+        else
+          printf "%s\n\n" "## ${FAIL_ICON} ~Integration Acceptance Testing succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for \`${VCS_COMMIT_ID}\`~" > "$TESTS_STEP_SUMMARY"
+          printf "%s\n" " ${FAIL_ICON} ~Integration Acceptance Testing succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\`~" >> "$GITHUB_STEP_SUMMARY"
+        fi
+        if [[ "${{ steps.integration-main.outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${PASS_ICON} Functional testing succeeded" >> "$TESTS_STEP_SUMMARY"
+        else
+          printf "%s\n" "  * ${FAIL_ICON} Functional testing failed" >> "$TESTS_STEP_SUMMARY"
+        fi
+        if [[ -n "$TESTS_USE_PYTEST" ]] ; then
+          WITH_WORD="with" ;
+        else
+          WITH_WORD="without" ;
+        fi
+        if [[ "${{ steps.integration-pytest.outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${PASS_ICON} Acceptance testing ${WITH_WORD} \`pytest\` succeeded" >> "$TESTS_STEP_SUMMARY"
+        else
+          printf "%s\n" "  * ${FAIL_ICON} Acceptance testing ${WITH_WORD} \`pytest\` failed" >> "$TESTS_STEP_SUMMARY"
+        fi
+        if [[ "${{ steps.integration-codecov-results-upload.outcome }}" == "success" ]] ; then
+          printf "%s\n" "    * ${PASS_ICON} Uploading integration testing reports artifact succeeded" >> "$TESTS_STEP_SUMMARY"
+        else
+          printf "%s\n" "    * ${FAIL_ICON} Uploading integration testing reports artifact failed" >> "$TESTS_STEP_SUMMARY"
+        fi
+        if [[ "${{ steps.integration-doctests.outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${PASS_ICON} Integrated Doctesting succeeded" >> "$TESTS_STEP_SUMMARY"
+        else
+          printf "%s\n" "  * ${FAIL_ICON} Integrated Doctesting failed" >> "$TESTS_STEP_SUMMARY"
+        fi
+        printf "\n%s\n\n" "<details><summary>Reporting Details</summary>" >> "$TESTS_STEP_SUMMARY"
+        printf "%s\n\n" "### :open_umbrella: Functional testing coverage reporting" >> "$TESTS_STEP_SUMMARY"
+        if [[ "${{ steps.integration-codecov-upload.outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${UPLOAD_ICON} Uploading integration coverage report to CodeCov succeeded" >> "$TESTS_STEP_SUMMARY"
+        else
+          if [[ "${{ steps.integration-codecov-upload.outcome }}" == "failed" ]] ; then
+            printf "%s\n" "  * :no_entry: Uploading integration coverage report to CodeCov failed" >> "$TESTS_STEP_SUMMARY"
+          else
+            printf "%s\n" "  * ${SKIP_ICON} Uploading integration coverage report to CodeCov was skipped" >> "$TESTS_STEP_SUMMARY"
+          fi
+        fi
+        if [[ "${{ steps.integration-deepsource-upload.outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${UPLOAD_ICON} Uploading integration coverage report to deepsource succeeded" >> "$TESTS_STEP_SUMMARY"
+        else
+          if [[ "${{ steps.integration-deepsource-upload.outcome }}" == "failed" ]] ; then
+            printf "%s\n" "  * :no_entry: Uploading integration coverage report to deepsource failed" >> "$TESTS_STEP_SUMMARY"
+          else
+            printf "%s\n" "  * ${SKIP_ICON} Uploading integration coverage report to deepsource was skipped" >> "$TESTS_STEP_SUMMARY"
+          fi
+        fi
+        printf "\n%s\n\n" "</details>" >> "$TESTS_STEP_SUMMARY"
+        if [[ "${{ steps.integration-reports-upload.outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${PASS_ICON} Uploading [integration coverage report artifact](${{ steps.integration-reports-upload.outputs.artifact-url }}) succeeded" >> "$TESTS_STEP_SUMMARY"
+        else
+          printf "%s\n" "  * ${FAIL_ICON} Uploading integration coverage report artifact failed" >> "$TESTS_STEP_SUMMARY"
+        fi
+    - name: "Collect and Enumerate Generated Files"
+      id: output_summary_files
+      if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+      env:
+        TEST_MATCH_PATTERN: "Integration-Summary-Artifact-*.txt"
+        SCRIPT_NAME: ".github/actions/run-integration-tests/action.yml"
+      shell: bash
+      run: |
+        FILES=$(git ls-files -o --exclude-standard -- ${{ env.TEST_MATCH_PATTERN }} )
+        if [ -z "$FILES" ]; then
+          printf "::warning file=%s:: %s\n" "${SCRIPT_NAME}" "No summary files found."
+          printf "%s\n" "files=" >> "$GITHUB_OUTPUT"
+          exit 1
+        else
+          printf "%s\n" "Test integration summary files found:"
+          printf "%s\n" "$FILES"
+          mkdir EXTRAS || :
+          printf "%s\n" "$FILES" | xargs -I{} cp -f "{}" "EXTRAS/{}" || :
+          # Replace line breaks with spaces for GitHub Action Output
+          FILES="${FILES//$'\n'/ }"
+          printf "%s\n" "files=$FILES" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+    - name: "Upload integration Summary"
+      id: upload
+      if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
-        name: Legacy_Setup-Test-Report-${{ matrix.os }}-${{ matrix.python-version }}
-        path: ./test-reports/
-        if-no-files-found: ignore
+        path: EXTRAS
+        name: ${{ steps.output_integration_step_summary.outputs.integration-artifact-name }}
+        if-no-files-found: error
+        compression-level: 9
+        overwrite: true
     - name: Post-purge
       id: post-uninstall
       run: make -j1 -f Makefile purge || true ;
@@ -508,6 +1163,124 @@ jobs:
       run: make -j1 -f Makefile clean || true ;
       if: ${{ !cancelled() }}
 
+  INTEGRATION_SUMMARY:
+    permissions:
+      actions: read
+      pull-requests: read
+      checks: write
+    needs: [check_mats, INTEGRATION]
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') && (needs.INTEGRATION.outputs.integration_outcome != 'cancelled') }}
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: ${{ github.workspace }}/EXTRAS
+          pattern: multicast-integration-${{ needs.check_mats.outputs.build_sha }}-part-*
+          merge-multiple: true
+      - id: report_status
+        env:
+          BUILD_SHA: ${{ needs.check_mats.outputs.build_sha }}
+          TESTS_COMMENT_BODY: '${{ github.workspace }}/Integration-Summary-Artifact.txt'
+        run: |
+          if [[ "${{ needs.INTEGRATION.outputs.integration_outcome }}" == "success" ]]; then
+            printf "%s\n" "# :clipboard: Testing Summary" > "${TESTS_COMMENT_BODY}"
+            printf "%s\n" "test_success=true" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "tests_summary=CI Tests Passed" >> "$GITHUB_OUTPUT"
+          else
+            printf "%s\n\n" "# Known flaws." > "${TESTS_COMMENT_BODY}"
+            printf "%s\n" "> [!WARNING]" >> "${TESTS_COMMENT_BODY}"
+            printf "%s\n\n" "> This commit has known flaws. Each commit is subject to minimal acceptance testing, and then select commits are subject to extra testing to evaluate release candidates; This commit has been deemed _not ready_ for release." >> "${TESTS_COMMENT_BODY}"
+            printf "%s\n" "test_success=false" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "tests_summary=Some Tests Unsuccessful" >> "$GITHUB_OUTPUT"
+          fi
+          for OS_TAG in "Linux" "macOS" "Windows" ; do
+            for TYPE_TAG in "Integration" ; do
+              printf "\n" >> "${TESTS_COMMENT_BODY}"
+              cat <./EXTRAS/"${TYPE_TAG}-Summary-Artifact-${OS_TAG}-${{ vars.PYTHON_OLD_MIN }}.txt" >> "${TESTS_COMMENT_BODY}" || :
+              if [[ -r ./EXTRAS/"${TYPE_TAG}-Summary-Artifact-${OS_TAG}-${{ vars.PYTHON_OLD_MIN }}-pytest.txt" ]] ; then
+                printf "\n" >> "${TESTS_COMMENT_BODY}"
+                cat <./EXTRAS/"${TYPE_TAG}-Summary-Artifact-${OS_TAG}-${{ vars.PYTHON_OLD_MIN }}-pytest.txt" >> "${TESTS_COMMENT_BODY}" || :
+              fi
+              printf "\n" >> "${TESTS_COMMENT_BODY}"
+              cat <./EXTRAS/"${TYPE_TAG}-Summary-Artifact-${OS_TAG}-${{ vars.PYTHON_OLD_EXTRA }}.txt" >> "${TESTS_COMMENT_BODY}" || :
+              if [[ -r ./EXTRAS/"${TYPE_TAG}-Summary-Artifact-${OS_TAG}-${{ vars.PYTHON_OLD_EXTRA }}-pytest.txt" ]] ; then
+                printf "\n" >> "${TESTS_COMMENT_BODY}"
+                cat <./EXTRAS/"${TYPE_TAG}-Summary-Artifact-${OS_TAG}-${{ vars.PYTHON_OLD_EXTRA }}-pytest.txt" >> "${TESTS_COMMENT_BODY}" || :
+              fi
+              printf "\n" >> "${TESTS_COMMENT_BODY}"
+              cat <./EXTRAS/"${TYPE_TAG}-Summary-Artifact-${OS_TAG}-${{ vars.PYTHON_DEFAULT }}.txt" >> "${TESTS_COMMENT_BODY}" || :
+              if [[ -r ./EXTRAS/"${TYPE_TAG}-Summary-Artifact-${OS_TAG}-${{ vars.PYTHON_DEFAULT }}-pytest.txt" ]] ; then
+                printf "\n" >> "${TESTS_COMMENT_BODY}"
+                cat <./EXTRAS/"${TYPE_TAG}-Summary-Artifact-${OS_TAG}-${{ vars.PYTHON_DEFAULT }}-pytest.txt" >> "${TESTS_COMMENT_BODY}" || :
+              fi
+              printf "\n" >> "${TESTS_COMMENT_BODY}"
+              cat <./EXTRAS/"${TYPE_TAG}-Summary-Artifact-${OS_TAG}-${{ vars.PYTHON_EXPERIMENTAL }}.txt" >> "${TESTS_COMMENT_BODY}" || :
+              if [[ -r ./EXTRAS/"${TYPE_TAG}-Summary-Artifact-${OS_TAG}-${{ vars.PYTHON_EXPERIMENTAL }}-pytest.txt" ]] ; then
+                printf "\n" >> "${TESTS_COMMENT_BODY}"
+                cat <./EXTRAS/"${TYPE_TAG}-Summary-Artifact-${OS_TAG}-${{ vars.PYTHON_EXPERIMENTAL }}-pytest.txt" >> "${TESTS_COMMENT_BODY}" || :
+              fi
+              printf "\n" >> "${TESTS_COMMENT_BODY}"
+            done ;
+          done ;
+          cat <"${TESTS_COMMENT_BODY}" >> "$GITHUB_STEP_SUMMARY"
+          { printf "%s\n" 'tests_text<<EOF'; cat <"${TESTS_COMMENT_BODY}"; printf "%s\n" 'EOF'; } >> "$GITHUB_OUTPUT"
+      - name: "Upload INTEGRATION summary"
+        id: upload-integration-summary
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          path: ./Integration-Summary-Artifact.txt
+          name: INTEGRATION-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
+          if-no-files-found: error
+          compression-level: 3
+          retention-days: 2
+          overwrite: true
+      - name: checkout repository actions for check
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          ref: ${{ needs.check_mats.outputs.build_sha }}
+          sparse-checkout: '.github/actions/check-control'
+      - name: "Complete Tests GitHub Check"
+        id: complete_tests
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && always() }}
+        uses: ./.github/actions/check-control
+        with:
+          name: "CI-TESTs"
+          check-id: ${{ needs.check_mats.outputs.check_id }}
+          title: "Extended Testing"
+          status: 'completed'
+          conclusion: ${{ needs.INTEGRATION.outputs.integration_test_outcome }}
+          summary: ${{ steps.report_status.outputs.tests_summary }}
+          text: ${{ steps.report_status.outputs.tests_text }}
+          sha: ${{ needs.check_mats.outputs.build_sha }}
+          workflow-run-id: ${{ needs.check_mats.outputs.tests_id }}
+          details-url: ${{ needs.check_mats.outputs.tests_url }}
+
+  INTEGRATION_REPORT:
+    permissions:
+      actions: read
+      contents: write
+    needs: [check_mats, INTEGRATION_SUMMARY]
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() }}
+    steps:
+      - name: "Download Status Summary Artifact"
+        id: download-integration-summary
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: INTEGRATION-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
+          github-token: ${{ github.token }}
+      - name: "INTEGRATION commit comment"
+        id: integration-commit-comment
+        if: ${{ success() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: peter-evans/commit-comment@5a6f8285b8f2e8376e41fe1b563db48e6cf78c09 # v3.0.0
+        with:
+          sha: ${{ needs.check_mats.outputs.build_sha }}
+          token: ${{ github.token }}
+          body-path: '${{ steps.download-integration-summary.outputs.download-path }}/Integration-Summary-Artifact.txt'
 
   EXTRAS-FOR-PIP:
     permissions:
@@ -519,7 +1292,7 @@ jobs:
       security-events: none
     environment: ${{ needs.check_mats.outputs.mats_environment }}
     if: ${{ !cancelled() && (needs.check_mats.outputs.mats_environment == 'Testing' || needs.check_mats.outputs.mats_environment == 'Deployment') }}
-    needs: [COVERAGE, STYLE]
+    needs: [check_mats, COVERAGE, STYLE]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -535,17 +1308,34 @@ jobs:
       LANG: "en_US.utf-8"
       LC_CTYPE: "en_US.utf-8"
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+    - name: pre-checkout repository for actions
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       with:
+        persist-credentials: false
+        ref: ${{ needs.check_mats.outputs.build_sha }}
+        sparse-checkout: '.github/actions/checkout-and-rebuild'
+    - name: Checkout repository for Tests with ${{ matrix.python-version }}
+      id: fetch-build
+      uses: ./.github/actions/checkout-and-rebuild
+      with:
+        sha: ${{ needs.check_mats.outputs.build_sha }}
+        build-run-id: ${{ needs.check_mats.outputs.build_id }}
         python-version: ${{ matrix.python-version }}
-    - name: Install dependencies for python ${{ matrix.python-version }}
+        path: ${{ github.workspace }}
+    - name: Install dependencies for python ${{ matrix.python-version }} on ${{ matrix.os }}
+      id: install-pip-deps
+      if: ${{ success() }}
+      uses: ./.github/actions/setup-py-reqs
+      with:
+        sha: ${{ needs.check_mats.outputs.build_sha }}
+        python-version: ${{ matrix.python-version }}
+    - name: Setup pip-licenses
+      id: install-pip-tools
       run: |
-        pip install --upgrade "pip>=24.3.1" "setuptools>=75.0" "wheel>=0.44" "build>=1.2.1" "pip-licenses>=5.0.0";
-        pip install -r ./requirements.txt ;
-        pip install -r ./tests/requirements.txt || true ;
-        pip install --upgrade -r ./docs/requirements.txt || true ;
+        printf "%s\n" "::group::install-tools"
+        pip install -U "pip-licenses>=5.0.0"
+        printf "%s\n" "::endgroup::"
+      shell: bash
     - name: Pre-Clean
       id: clean-prep
       run: make -j1 -f Makefile clean ;
@@ -575,34 +1365,47 @@ jobs:
       security-events: none
     if: ${{ success() && needs.check_mats.outputs.should_run == 'true' }}
     environment: ${{ needs.check_mats.outputs.mats_environment }}
-    needs: [STYLE, COVERAGE, INTEGRATION]
+    needs: [check_mats, STYLE, COVERAGE, INTEGRATION]
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     env:
       OS: 'ubuntu-latest'
       PYTHON_VERSION: "${{ vars.PYTHON_DEFAULT }}"
-      LANG: 'en_US.utf-8'
-      CODECLIMATE_REPO_TOKEN: ${{ secrets.CODECLIMATE_TOKEN }}
-      CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-    - name: Set up Python
-      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+    - name: pre-checkout repository for actions
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       with:
+        persist-credentials: false
+        ref: ${{ needs.check_mats.outputs.build_sha }}
+        sparse-checkout: '.github/actions/checkout-and-rebuild'
+    - name: Checkout repository for Tests with ${{ matrix.python-version }}
+      id: fetch-build
+      uses: ./.github/actions/checkout-and-rebuild
+      with:
+        sha: ${{ needs.check_mats.outputs.build_sha }}
+        build-run-id: ${{ needs.check_mats.outputs.build_id }}
+        path: ${{ github.workspace }}
         python-version: "${{ vars.PYTHON_DEFAULT }}"
     - name: Prep Testing Tox
       id: prep-tox
-      run: |
-        if [ "$OS" == "ubuntu-latest" ] ; then { sudo apt-get update || true ;} ; wait ; { sudo apt-get install --assume-yes python3.10 python3.11 python3.11-venv || echo "::warning file=.github/workflows/Tests.yml,line=482,endLine=482,title=SKIPPED::SKIP Enhanced TOX Tests." ;} ; wait ; fi
-    - name: Install dependencies for Tox
-      run: |
-        pip install --upgrade "pip>=24.3.1" "setuptools>=75.0" "wheel>=0.44" "build>=1.2.1";
-        pip install --upgrade -r ./requirements.txt ;
-        pip install --upgrade -r ./tests/requirements.txt || true ;
-        pip install --upgrade -r ./docs/requirements.txt || true ;
+      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+      with:
+        python-version: |
+          ${{ vars.PYTHON_OLD_MIN }}
+          ${{ vars.PYTHON_OLD_EXTRA }}
+          ${{ vars.PYTHON_EXPERIMENTAL }}
+          ${{ vars.PYTHON_DEFAULT }}
+        update-environment: false
+    - name: Install dependencies for tox
+      id: install-tox-deps
+      if: ${{ success() }}
+      uses: ./.github/actions/setup-py-reqs
+      with:
+        sha: ${{ needs.check_mats.outputs.build_sha }}
+        python-version: "${{ vars.PYTHON_DEFAULT }}"
     - name: Pre-Clean
       id: clean
       run: make -j1 -f Makefile clean || true ;

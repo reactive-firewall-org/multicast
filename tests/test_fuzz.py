@@ -9,7 +9,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 # ..........................................
-# https://www.github.com/reactive-firewall/multicast/LICENSE.md
+# https://github.com/reactive-firewall-org/multicast/tree/HEAD/LICENSE.md
 # ..........................................
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -78,11 +78,11 @@ if not _has_hypothesis:
 
 def onlyIfHasHypothesis(has_hypothesis: bool) -> callable:
 	"""
-	Conditionally enable a class based on the availability of the hypothesis library.
+	Conditionally enable a test suite class based on the availability of the hypothesis library.
 
 	If the provided flag is False, returns a dummy class with a placeholder method that does nothing,
-	allowing tests dependent on hypothesis to be safely bypassed. If True, the original
-	class is returned unchanged.
+	allowing tests dependent on hypothesis to be safely bypassed. If the provided flag is True,
+	the original class is returned unchanged.
 
 	Arguments:
 		has_hypothesis (bool): Flag indicating whether the hypothesis library is available.
@@ -91,7 +91,7 @@ def onlyIfHasHypothesis(has_hypothesis: bool) -> callable:
 		callable: A decorator function that returns either the original class or a dummy class
 		with a placeholder method, depending on the has_hypothesis flag.
 	"""
-	def decorator(cls: callable) -> callable:
+	def decorator(cls: callable) -> callable:  # skipcq: PY-D0003 -- decorator ok
 		if not has_hypothesis:
 			# Create an empty class with a method that returns None
 			return type(cls.__name__, (object,), {

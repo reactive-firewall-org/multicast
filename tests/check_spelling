@@ -151,7 +151,16 @@ declare -a SPECIFIC_TYPOS=(
 	"belone:belong"  # from #373
 	"subbclass:subclass"  # from #379
 	"repostory's:repository's"  # from #384
-	"boundry:boundary"  #from #384
+	"boundry:boundary"  # from #384
+	"rappidly:rapidly"  # from #392
+	"compleated:completed"  # from #338
+	"compleate:complete"  # from #402
+	"excutable:executable"  # from #130
+	"bassed:based"  # from #415
+	"Historicly:Historically"  # from #415
+	"selectivly:selectively"  # from #426
+	"aoutomaticly:automatically"  # PR #429
+	"efectivly:effectively"  # PR #429
 )
 
 function cleanup() {
@@ -199,8 +208,8 @@ if _TEST_ROOT_DIR=$(git rev-parse --show-superproject-working-tree 2>/dev/null);
 	if [ -z "${_TEST_ROOT_DIR}" ]; then
 		_TEST_ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null)
 	fi
-		python3 -B .github/tools/cioutput.py --log-level debug -l debug "Found ${_TEST_ROOT_DIR} ..." ;
-	else
+	python3 -B .github/tools/cioutput.py --log-level debug -l debug "Found ${_TEST_ROOT_DIR} ..." ;
+else
 	python3 -B .github/tools/cioutput.py --log-level debug -l error --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "${FUNCNAME:-$0}" "FAIL: missing valid repository or source structure" >&2
 	EXIT_CODE=40
 fi

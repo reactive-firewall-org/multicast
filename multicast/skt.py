@@ -9,7 +9,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 # ..........................................
-# https://www.github.com/reactive-firewall/multicast/LICENSE.md
+# https://github.com/reactive-firewall-org/multicast/tree/HEAD/LICENSE.md
 # ..........................................
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -205,7 +205,7 @@ def genSocket() -> _socket.socket:
 	"""
 	sock = _socket.socket(_socket.AF_INET, _socket.SOCK_DGRAM, _socket.IPPROTO_UDP)
 	sock.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEADDR, 1)
-	if (hasattr(_socket, 'IP_MULTICAST_TTL')):  # pragma: no branch
+	if hasattr(_socket, 'IP_MULTICAST_TTL'):  # pragma: no branch
 		sock.setsockopt(_socket.IPPROTO_IP, _socket.IP_MULTICAST_TTL, _MCAST_DEFAULT_TTL)
 	sock.settimeout(_MCAST_DEFAULT_TTL)
 	return sock

@@ -1,0 +1,370 @@
+---
+name: CI-CHGLOG
+description: "Continuous Integration workflow for Generating the CHANGELOG.md file."
+run-name: Generate CHANGELOG.md
+#
+# This workflow runs after successful completion of CI-BUILD to ensure
+# that the codebase meets minimal acceptance criteria.
+#
+#
+# Triggers:
+# - Automatically on CI-BUILD workflow completion
+#
+# Required Secrets: None
+#
+# Dependencies:
+# - Requires successful completion of CI-BUILD workflow
+
+on:  # yamllint disable-line rule:truthy
+  workflow_run:
+    workflows: ["CI-BUILD"]
+    types:
+      - completed
+
+# Declare default permissions as none.
+permissions: {}
+
+jobs:
+  check_build:
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+      checks: write
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      sha: ${{ steps.load_build_info.outputs.build_sha }}
+      branch_name: ${{ steps.get_env.outputs.branch }}
+      parent_sha: ${{ steps.get_env.outputs.parent_sha }}
+      branch_ref: ${{ steps.get_env.outputs.branch_ref }}
+      trigger_id: ${{ steps.get_trigger_id.outputs.trigger_id }}
+      build_id: ${{ steps.load_build_info.outputs.build_id }}
+      build_url: ${{ steps.load_build_info.outputs.build_url }}
+      build_ref: ${{ steps.load_build_info.outputs.build_ref }}
+      build_ref_name: ${{ steps.load_build_info.outputs.build_ref_name }}
+      build_sha: ${{ steps.load_build_info.outputs.build_sha }}
+      build_artifact_filename: ${{ steps.load_build_info.outputs.build_artifact_filename }}
+      build_artifact_url: ${{ steps.load_build_info.outputs.build_artifact_url }}
+      build_artifact_id: ${{ steps.load_build_info.outputs.build_artifact_id }}
+      build_artifact_digest: ${{ steps.load_build_info.outputs.build_artifact_digest }}
+      build_environment: ${{ steps.load_build_info.outputs.build_environment }}
+      chglog_url: ${{ steps.output_run_id.outputs.chglog_url }}
+      chglog_id: ${{ steps.output_run_id.outputs.chglog_id }}
+      check_id: ${{ steps.output_chglog_check_id.outputs.check-id }}
+    steps:
+      - id: check
+        run: |
+          if [[ "${{ github.event.workflow_run.conclusion }}" == "success" ]]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          fi
+      - id: get_trigger_id
+        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
+        run: |
+          ID_VALUE=$(gh api "${{ github.event.workflow_run.url }}" --jq '.id')
+          if [[ -n "$ID_VALUE" ]]; then
+            echo "trigger_id=$ID_VALUE" >> "$GITHUB_OUTPUT"
+          else
+            echo "trigger_id=null" >> "$GITHUB_OUTPUT"  # Default fallback
+          fi
+      - name: "Fetch Build Info"
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: "BUILD-info.txt"
+          pattern: multicast-info-*
+          repository: reactive-firewall-org/multicast
+          merge-multiple: true
+          github-token: ${{ env.GH_TOKEN }}
+          run-id: ${{ steps.get_trigger_id.outputs.trigger_id }}
+      - name: "move into place"
+        id: load_build_info
+        run: |
+          mv -vf "BUILD-info.txt/BUILD-info.txt" ./"multicast-info.txt" ;
+          wait ;
+          rmdir -v ./"BUILD-info.txt"
+          mv -vf ./"multicast-info.txt" ./BUILD-info.txt
+          cat <"BUILD-info.txt" >> "$GITHUB_OUTPUT"
+        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
+      - id: output_run_id
+        shell: bash
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        run: |
+          printf "chglog_url=%s\n" 'https://github.com/reactive-firewall-org/multicast/actions/runs/${{ github.run_id }}' >> "$GITHUB_OUTPUT"
+          printf "chglog_id=%s\n" ${{ github.run_id }} >> "$GITHUB_OUTPUT"
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          ref: ${{ steps.load_build_info.outputs.build_sha }}
+          fetch-depth: 0
+      - name: "Queue chglog GitHub Check"
+        id: output_chglog_check_id
+        uses: ./.github/actions/check-control
+        with:
+          name: "CI-CHGLOG"
+          title: "Generating the CHANGELOG.md file"
+          status: 'queued'
+          summary: 'Will generate the CHANGELOG.md file'
+          sha: ${{ steps.load_build_info.outputs.build_sha }}
+          workflow-run-id: ${{ steps.output_run_id.outputs.chglog_id }}
+          details-url: ${{ steps.output_run_id.outputs.chglog_url }}
+      - name: Checkout target commit
+        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
+        run: git checkout ${{ steps.load_build_info.outputs.build_sha }}
+      - id: get_env
+        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
+        run: |
+          echo "branch=$(git name-rev --name-only $(git log -1 --format=%H) | cut -d~ -f1-1)" >> "$GITHUB_OUTPUT"
+          echo "parent_sha=$(git merge-base $(git log -1 --format=%H) refs/remotes/origin/stable)" >> "$GITHUB_OUTPUT"
+          BRANCH_REF=$(head -n1 <(git symbolic-ref HEAD 2>/dev/null || git show-ref $(git name-rev --name-only $(git log -1 --format=%H)) | cut -d\  -f2-2) ) ;
+          echo "branch_ref=${BRANCH_REF}" >> "$GITHUB_OUTPUT"
+      - name: "Start chglog GitHub Check"
+        id: start_chglog_success
+        if: ${{ (steps.check.outputs.should_run == 'true') && success() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: ./.github/actions/check-control
+        with:
+          name: "CI-CHGLOG"
+          check-id: ${{ steps.output_chglog_check_id.outputs.check-id }}
+          title: "Generating the CHANGELOG.md file"
+          status: 'in_progress'
+          summary: 'Generating the CHANGELOG.md file is _progress_'
+          sha: ${{ steps.load_build_info.outputs.build_sha }}
+          workflow-run-id: ${{ steps.output_run_id.outputs.chglog_id }}
+          details-url: ${{ steps.output_run_id.outputs.chglog_url }}
+
+  CHGLOG:
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+      statuses: write
+    needs: check_build
+    if: ${{ !cancelled() && (needs.check_build.outputs.should_run == 'true') }}
+    runs-on: ubuntu-latest
+    environment: ${{ needs.check_build.outputs.build_environment }}
+    defaults:
+      run:
+        shell: bash
+    timeout-minutes: 8
+    outputs:
+      chglog_status: ${{ steps.gen_changelog.outcome || 'cancelled' }}
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+      artifact-name: 'multicast-chglog-${{ needs.check_build.outputs.sha }}'
+      artifact-url: ${{ steps.upload.outputs.artifact-url }}
+      artifact-digest: ${{ steps.upload.outputs.artifact-digest }}
+    env:
+      PYTHON_VERSION: "${{ vars.PYTHON_DEFAULT }}"
+      CHGLOG_PATH: '${{ github.workspace }}/CHANGELOG.md'
+      LANG: "en_US.utf-8"
+    steps:
+      - name: pre-checkout repository for actions
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          ref: ${{ needs.check_build.outputs.sha }}
+          sparse-checkout: '.github/actions/checkout-and-rebuild'
+      - name: Checkout repository for chglog
+        id: fetch-build
+        uses: ./.github/actions/checkout-and-rebuild
+        with:
+          sha: ${{ needs.check_build.outputs.sha }}
+          build-run-id: ${{ needs.check_build.outputs.trigger_id }}
+          python-version: "${{ vars.PYTHON_DEFAULT }}"
+          path: ${{ github.workspace }}
+      - name: "Generate CHANGELOG for ${{ needs.check_build.outputs.sha }}...${{ needs.check_build.outputs.parent_sha }}"
+        id: gen_changelog
+        env:
+          CHGLOG_RANGE: '${{ needs.check_build.outputs.sha }}...${{ needs.check_build.outputs.parent_sha }}'
+          CHGLOG_TOOL: '${{ github.workspace }}/generate_changelog.sh'
+        run: |
+          "${CHGLOG_TOOL}" "${CHGLOG_RANGE}" >"${CHGLOG_PATH}" || exit 1;
+      - name: Upload CHANGELOG artifact
+        id: upload
+        if: ${{ success() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          path: CHANGELOG.md
+          name: 'multicast-chglog-${{ needs.check_build.outputs.sha }}'
+          compression-level: 9
+          overwrite: true
+
+  CHGLOG_SUMMARY:
+    permissions:
+      actions: read
+      pull-requests: read
+      checks: write
+    needs: [check_build, CHGLOG]
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && (needs.check_build.outputs.should_run == 'true') && (needs.CHGLOG.outputs.chglog_status != 'cancelled') }}
+    timeout-minutes: 3
+    outputs:
+      chglog_success: ${{ steps.report_status.outputs.chglog_success }}
+      chglog_sha: ${{ needs.check_build.outputs.sha }}
+      build_success: ${{ steps.report_status.outputs.build_success }}
+      build_trigger_id: ${{ needs.check_build.outputs.trigger_id }}
+      build_sha: ${{ needs.check_build.outputs.sha }}
+    steps:
+      - name: Download ChangeLog Artifact
+        id: download
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: '${{ runner.temp }}/'
+          artifact-ids: ${{ needs.CHGLOG.outputs.artifact-id }}
+          repository: reactive-firewall-org/multicast
+      - name: "Move chglog into place"
+        id: load_chglog_info
+        if: ${{ always() }}
+        run: |
+          mv -vf "${{ runner.temp }}/multicast-chglog-${{ needs.check_build.outputs.sha }}/CHANGELOG.md" "${{ github.workspace }}/CHANGELOG.md" ;
+          wait ;
+          rmdir -v "${{ runner.temp }}/multicast-chglog-${{ needs.check_build.outputs.sha }}" || : ;  # remove if able
+      - name: "Report chglog status"
+        id: report_status
+        env:
+          BUILD_SHA: ${{ needs.check_build.outputs.build_sha }}
+          CHGLOG_ID: ${{ needs.check_build.outputs.chglog_id }}
+          CHGLOG_COMMENT_BODY: '${{ github.workspace }}/chglog-Summary-Artifact.txt'
+          CHGLOG_ARTIFACT_NAME: ${{ needs.CHGLOG.outputs.artifact-name }}
+          CHGLOG_ARTIFACT_URL: ${{ needs.CHGLOG.outputs.artifact-url }}
+        run: |
+          if [[ "${{ needs.CHGLOG.outputs.chglog_status }}" == "success" ]]; then
+            printf "%s\n\n" "# :page_facing_up: Changelog Summary" > "${CHGLOG_COMMENT_BODY}"
+            printf "%s\n" "  * :ballot_box_with_check: Generating Changelog \`${CHGLOG_ID}\` succeeded with commit [${BUILD_SHA}](https://github.com/reactive-firewall-org/multicast/commit/${BUILD_SHA})" >> "${CHGLOG_COMMENT_BODY}"
+            printf "%s\n" "chglog_success=true" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "chglog_summary=Generating Changelog Passed" >> "$GITHUB_OUTPUT"
+          else
+            printf "%s\n\n" "# Known flaws." > "${CHGLOG_COMMENT_BODY}"
+            printf "%s\n" "> [!WARNING]" >> "${CHGLOG_COMMENT_BODY}"
+            printf "%s\n\n" "> This commit has known flaws. Each commit is subject to minimal acceptance testing, and then select commits are subject to extra testing to evaluate release candidates; This commit has been deemed _not ready_ for release." >> "${CHGLOG_COMMENT_BODY}"
+            printf "%s\n" "chglog_success=false" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "  * :x: Generating Changelog \`${CHGLOG_ID}\` Failed" >> "${CHGLOG_COMMENT_BODY}"
+            printf "%s\n" "chglog_summary=Generating Changelog Unsuccessful" >> "$GITHUB_OUTPUT"
+          fi
+          if [[ ( -r "CHANGELOG.md" ) ]] ; then
+            printf "%s\n" "  * :page_facing_up: Including generating the file \`CHANGELOG.md\`" >> "${CHGLOG_COMMENT_BODY}"
+            printf "%s\n" "    * :package: successfully producing the artifact [${CHGLOG_ARTIFACT_NAME}](${CHGLOG_ARTIFACT_URL})" >> "${CHGLOG_COMMENT_BODY}"
+          else
+            printf "%s\n" "  * :x: Failing to generate the file \`CHANGELOG.md\`" >> "${CHGLOG_COMMENT_BODY}"
+          fi
+          cat <"${CHGLOG_COMMENT_BODY}" >> "$GITHUB_STEP_SUMMARY"
+          { printf "%s\n" 'chglog_text<<EOF'; cat <"${CHGLOG_COMMENT_BODY}"; printf "%s\n" 'EOF'; } >> "$GITHUB_OUTPUT"
+      - name: "Upload chglog summary"
+        id: upload-chglog-summary
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          path: ./chglog-Summary-Artifact.txt
+          name: chglog-COMMENT-BODY-${{ needs.check_build.outputs.sha }}
+          if-no-files-found: error
+          compression-level: 3
+          retention-days: 2
+          overwrite: true
+      - name: Checkout repository actions for check
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          ref: ${{ needs.check_build.outputs.sha }}
+          sparse-checkout: '.github/actions/check-control'
+      - name: "Complete chglog GitHub Check"
+        id: complete_chglog
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && always() }}
+        uses: ./.github/actions/check-control
+        with:
+          name: "CI-CHGLOG"
+          check-id: ${{ needs.check_build.outputs.check_id }}
+          title: "Generating the CHANGELOG.md file"
+          status: 'completed'
+          conclusion: ${{ needs.CHGLOG.outputs.chglog_status }}
+          summary: ${{ steps.report_status.outputs.chglog_summary }}
+          text: ${{ steps.report_status.outputs.chglog_text }}
+          sha: ${{ needs.check_build.outputs.sha }}
+          workflow-run-id: ${{ needs.check_build.outputs.chglog_id }}
+          details-url: ${{ needs.check_build.outputs.chglog_url }}
+
+  CHGLOG_STATUS:
+    permissions:
+      actions: read
+      pull-requests: read
+    needs: [check_build, CHGLOG]
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && (needs.check_build.outputs.should_run == 'true') && (needs.CHGLOG.outputs.chglog_status != 'cancelled') }}
+    timeout-minutes: 2
+    outputs:
+      chglog_success: ${{ steps.check_status.outputs.chglog_success }}
+      chglog_sha: ${{ needs.check_build.outputs.sha }}
+      build_success: ${{ steps.check_status.outputs.build_success }}
+      build_trigger_id: ${{ needs.check_build.outputs.trigger_id }}
+      build_sha: ${{ needs.check_build.outputs.sha }}
+    steps:
+      - id: check_status
+        run: |
+          if [[ "${{ needs.check_build.result }}" == "success" ]]; then
+            printf "%s\n" "build_success=${{ needs.check_build.outputs.should_run }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "parent_sha=${{ needs.check_build.outputs.parent_sha }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_url=${{ needs.check_build.outputs.build_url }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_ref=${{ needs.check_build.outputs.build_ref }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_sha=${{ needs.check_build.outputs.build_sha }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_ref_name=${{ needs.check_build.outputs.build_ref_name }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_artifact_filename=${{ needs.check_build.outputs.build_artifact_filename }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_artifact_url=${{ needs.check_build.outputs.build_artifact_url }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_artifact_id=${{ needs.check_build.outputs.build_artifact_id }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_artifact_digest=${{ needs.check_build.outputs.build_artifact_digest }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_environment=${{ needs.check_build.outputs.build_environment }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_id=${{ needs.check_build.outputs.build_id }}" >> "$GITHUB_OUTPUT"
+            cat <"$GITHUB_OUTPUT" >> "BUILD-info.txt"
+          else
+            printf "%s\n" "build_success=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [[ "${{ needs.CHGLOG.result }}" == "success" && "${{ needs.check_build.result }}" == "success" ]]; then
+            printf "%s\n" "chglog_success=true" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "chglog_url=${{ github.api_url }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "chglog_ref=${{ needs.check_build.outputs.build_ref }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "chglog_sha=${{ needs.check_build.outputs.sha }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "chglog_parent_sha=${{ needs.check_build.outputs.parent_sha }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "chglog_ref_name=${{ needs.check_build.outputs.build_ref_name }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "chglog_environment=${{ needs.check_build.outputs.build_environment }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "chglog_id=${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+          else
+            printf "%s\n" "chglog_success=false" >> "$GITHUB_OUTPUT"
+          fi
+          cat <"$GITHUB_OUTPUT" >> "chglog-info.txt"
+      - name: Upload build summary
+        id: upload-build-info
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          path: "chglog-info.txt"
+          name: multicast-chglog-info-${{ needs.check_build.outputs.sha }}
+          if-no-files-found: error
+          compression-level: 3
+          retention-days: 2
+          overwrite: true
+
+  CHGLOG_REPORT:
+    permissions:
+      actions: read
+      contents: write
+    needs: [check_build, CHGLOG_SUMMARY]
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() }}
+    steps:
+      - name: "Download Status Summary Artifact"
+        id: download-chglog-summary
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: chglog-COMMENT-BODY-${{ needs.check_build.outputs.sha }}
+          github-token: ${{ github.token }}
+      - name: "chglog commit comment"
+        id: chglog-commit-comment
+        if: ${{ success() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: peter-evans/commit-comment@5a6f8285b8f2e8376e41fe1b563db48e6cf78c09 # v3.0.0
+        with:
+          sha: ${{ needs.check_build.outputs.sha }}
+          token: ${{ github.token }}
+          body-path: '${{ steps.download-chglog-summary.outputs.download-path }}/chglog-Summary-Artifact.txt'

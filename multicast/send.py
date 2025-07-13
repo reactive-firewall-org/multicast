@@ -9,7 +9,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 # ..........................................
-# https://www.github.com/reactive-firewall/multicast/LICENSE.md
+# https://github.com/reactive-firewall-org/multicast/tree/HEAD/LICENSE.md
 # ..........................................
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -305,12 +305,21 @@ class McastSAY(multicast.mtool):
 				dest="groups",
 				help="multicast groups (ip addrs) to listen to join."
 			)
-			parser.add_argument(
+			msgGrp = parser.add_argument_group()
+			msgGrp.add_argument(
 				"-m",
 				"--message",
 				nargs="+",
 				dest="data",
 				default="PING from {name}: group: {group}, port: {port}",
+			)
+			# v2.0.9: Added the --pipe option
+			msgGrp.add_argument(
+				"--pipe",
+				action="store_const",
+				const=["-"],
+				dest="data",
+				help="read message from stdin (equivalent to --message -)"
 			)
 
 	@staticmethod
@@ -332,10 +341,10 @@ class McastSAY(multicast.mtool):
 		_success = False
 		sock = multicast.genSocket()
 		if __debug__:
-				module_logger.info(
-					"Preparing to send %d",  # lazy formatting to avoid PYL-W1203
-					len(data),
-				)
+			module_logger.info(
+				"Preparing to send %d",  # lazy formatting to avoid PYL-W1203
+				len(data),
+			)
 		try:
 			if __debug__ and module_logger.isEnabledFor(logging.DEBUG):  # pragma: no branch
 				module_logger.debug("Encoding.")

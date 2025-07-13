@@ -9,7 +9,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 # ..........................................
-# https://www.github.com/reactive-firewall/multicast/LICENSE.md
+# https://github.com/reactive-firewall-org/multicast/tree/HEAD/LICENSE.md
 # ..........................................
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,7 +36,7 @@ except Exception as baton:
 
 
 @context.markWithMetaTag("mat", "hear")
-class McastHearTestSuite(context.BasicUsageTestSuite):
+class McastHearTestSuite(context.BasicUsageTestSuite):  # skipcq: PTC-W0046 -- intermediate class
 
 	__module__ = "tests.test_hear_server"
 
@@ -61,7 +61,7 @@ class McastHearTestSuite(context.BasicUsageTestSuite):
 			s.connect(("203.0.113.1", 59095))
 			# Get the IP address of the default interface
 			ip = s.getsockname()[0]
-		except socket.error as _cause:
+		except OSError as _cause:
 			raise multicast.exceptions.CommandExecutionError("Failed to determine IP", 69) from _cause
 		finally:
 			if s is not None:
@@ -84,7 +84,7 @@ class McastServerTestSuite(McastHearTestSuite):
 
 	__name__ = "tests.test_hear_server.McastServerTestSuite"
 
-	def test_handle_error_without_stop_in_request(self):
+	def test_handle_error_without_stop_in_request(self) -> None:
 		"""
 		Test McastServer.handle_error with a non-STOP request.
 
@@ -118,10 +118,33 @@ class McastServerTestSuite(McastHearTestSuite):
 			self.fail(fail_fixture)
 		self.assertTrue(theResult, fail_fixture)
 
-	def test_handle_error_with_none_request(self):
-		theResult = False
-		fail_fixture = "Mock(EMPTY) --X Handler-HEAR != Safe"
-		_fixture_port_num = self._the_test_port
+	def test_handle_error_with_none_request(self) -> None:
+		"""
+		Test the behavior of the handle_error method when provided with a None request.
+
+		This test verifies that when the handle_error method is called with None as the request,
+		the method should handle the error gracefully without raising exceptions. The test checks
+		that the request remains None after the error handling.
+
+		Verifies that:
+			1. The random port number is not None and is an integer.
+			2. The McastServer initializes correctly with the specified server address and handler.
+			3. The handle_error method can process a None request without raising an error.
+
+		Fail Fixture:
+			The test will fail if the handle_error method does not handle the None request correctly
+			or if any unexpected exceptions are raised during the process.
+
+		Raises:
+			AssertionError: If the port number is None or not an integer.
+			Exception: If any unexpected error occurs during processing.
+		"""
+		theResult: bool = False
+		fail_fixtures: list = [
+			"Server fixture was NOT initialized.",
+			"Mock(EMPTY) --X Handler-HEAR != Safe",
+		]
+		_fixture_port_num: int = self._the_test_port
 		try:
 			self.assertIsNotNone(_fixture_port_num)
 			self.assertIsInstance(_fixture_port_num, int)
@@ -129,6 +152,8 @@ class McastServerTestSuite(McastHearTestSuite):
 			server_address = ('224.0.0.1', _fixture_port_num)
 			server = multicast.hear.McastServer(server_address, multicast.hear.HearUDPHandler)
 			client_address = (self.get_default_ip(), _fixture_port_num)
+			# check the server is
+			self.assertIsNotNone(server, fail_fixtures[0])
 			# Mock None as a request
 			request = None
 			self.assertIsNone(request, "RESOURCE LEAK")
@@ -140,8 +165,8 @@ class McastServerTestSuite(McastHearTestSuite):
 			theResult = (request is None)
 		except Exception as _cause:
 			context.debugtestError(_cause)
-			self.fail(fail_fixture)
-		self.assertTrue(theResult, fail_fixture)
+			self.fail(fail_fixtures[1])
+		self.assertTrue(theResult, fail_fixtures[1])
 
 
 class HearUDPHandlerTestSuite(McastHearTestSuite):
@@ -160,7 +185,27 @@ class HearUDPHandlerTestSuite(McastHearTestSuite):
 
 	__name__ = "tests.test_hear_server.HearUDPHandlerTestSuite"
 
-	def test_handle_with_none_data_and_sock(self):
+	def test_handle_with_none_data_and_sock(self) -> None:
+		"""
+		Test the behavior of the HearUDPHandler when provided with None data and socket.
+
+		This test verifies that when the handler is initialized with None
+		for both the request and the socket, it should return early without
+		processing. The test checks that the handler's return value is
+		None, indicating that no further action was taken.
+
+		Verifies that:
+			1. The random port number is not None and is an integer.
+			2. The handler initializes correctly with None request and None socket.
+			3. The resulting handler returns None when handling with None request and None socket.
+
+		Fail Fixture:
+			The test will fail if the handler does not return None when
+			initialized with the specified parameters.
+
+		Raises:
+			AssertionError: If the port number is None or not an integer.
+		"""
 		fail_fixture = "Handler(None, None) --> HEAR == error"
 		_fixture_port_num = self._the_test_port
 		self.assertIsNotNone(_fixture_port_num)
@@ -170,11 +215,32 @@ class HearUDPHandlerTestSuite(McastHearTestSuite):
 			client_address=(self.get_default_ip(), _fixture_port_num),
 			server=None
 		)
+		self.assertIsNotNone(handler)
 		# Should return early without processing
 		result = handler.handle()
 		self.assertIsNone(result, fail_fixture)
 
-	def test_handle_with_data_none_sock(self):
+	def test_handle_with_data_none_sock(self) -> None:
+		"""
+		Test the behavior of the HearUDPHandler when provided with a None inputs.
+
+		This test verifies that when the handler is initialized with a
+		No-Op request and None socket, it should return early without
+		processing. The test checks that the handler's return value is
+		None, indicating that no further action was taken.
+
+		Verifies that:
+			1. That the random port number is not None and is an integer.
+			2. The handler initializes at all with a request and a None socket.
+			3. The resulting handler returns None when handling with None request and None socket.
+
+		Fail Fixture:
+			The test will fail if the handler does not return None when
+			initialized with the specified parameters.
+
+		Raises:
+			AssertionError: If the port number is None or not an integer.
+		"""
 		fail_fixture = """Handler(None, None) --> HEAR == error"""
 		_fixture_port_num = self._the_test_port
 		self.assertIsNotNone(_fixture_port_num)
@@ -184,11 +250,33 @@ class HearUDPHandlerTestSuite(McastHearTestSuite):
 			client_address=(self.get_default_ip(), _fixture_port_num),
 			server=None
 		)
+		self.assertIsNotNone(handler)
 		# Should return early without processing
 		result = handler.handle()
 		self.assertIsNone(result, fail_fixture)
 
-	def test_handle_with_valid_data_and_sock(self):
+	def test_handle_with_valid_data_and_sock(self) -> None:
+		"""
+		Test the behavior of the HearUDPHandler when provided with valid data and socket.
+
+		This test verifies that when the handler is initialized with a valid
+		request and a valid socket, it should process the message correctly.
+		The test checks that the handler's return value is None, indicating
+		successful processing.
+
+		Verifies that:
+			1. The random port number is not None and is an integer.
+			2. The handler initializes correctly with a valid request and socket.
+			3. The resulting handler processes the message without errors.
+
+		Fail Fixture:
+			The test will fail if the handler does not return None when
+			handling the valid request and socket.
+
+		Raises:
+			AssertionError: If the port number is None or not an integer.
+			Exception: If any unexpected error occurs during processing.
+		"""
 		sock = multicast.genSocket()
 		fail_fixture = """Handler("The Test", sock) --> HEAR == error"""
 		_fixture_port_num = self._the_test_port
@@ -200,6 +288,7 @@ class HearUDPHandlerTestSuite(McastHearTestSuite):
 				client_address=(self.get_default_ip(), _fixture_port_num),
 				server=None
 			)
+			self.assertIsNotNone(handler)
 			# Should process the message
 			result = handler.handle()
 			# Clean up socket

@@ -1,14 +1,42 @@
 [build-system]
-requires = ["setuptools>=75.0", "build>=1.2.1", "wheel>=0.44"]
+requires = ["setuptools>=80.9", "build>=1.2.1", "wheel>=0.45"]
 build-backend = "setuptools.build_meta"
+
+[project]
+classifiers = ["Intended Audience :: Developers", "Operating System :: POSIX", "Operating System :: MacOS :: MacOS X", "Operating System :: POSIX :: Linux", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3.13", "Programming Language :: Python :: 3.12", "Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.10", "Programming Language :: Python :: 3 :: Only", "Topic :: Software Development :: Libraries :: Python Modules", "Topic :: System :: Networking"]
+dependencies = []
+description = "Multicast Python Module to provide for Send/Recv functionality."
+keywords = ["multicast", "RFC-1112", "udp-protocol", "network-programming", "POSIX-compliant", "socket", "many-to-many", "client-server"]
+license-files = ["LICENSE.md"]
+maintainers = [{ "name" = "reactive-firewall", "email" = "reactive-firewall@users.noreply.github.com" }]
+name = "multicast"
+requires-python = ">=3.9.6, !=3.9.7, !=3.9.8, !=3.9.9, !=3.9.10, !=3.9.11, !=3.9.12, !=3.9.13, !=3.9.14, !=3.9.15, !=3.9.16, !=3.9.17, !=3.9.18, !=3.9.19, !=3.13.0, <3.14.0"
+scripts = { "multicast" = "multicast.__main__:cli" }
+version = "v2.0.9"
+
+[project.urls]
+"Bug Tracker" = "https://github.com/reactive-firewall-org/multicast/issues"
+License = "https://raw.githubusercontent.com/reactive-firewall-org/multicast/HEAD/LICENSE.md"
+Documentation = "https://reactive-firewallmulticast.readthedocs.io/en/stable"
+Repository = "https://github.com/reactive-firewall-org/multicast.git"
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown; charset=UTF-8; variant=GFM"
+
+[tool.setuptools]
+packages = ["multicast"]
+
+[tool.setuptools.exclude-package-data]
+multicast = ["tests*", "docs*"]
 
 [tool.flake8]
 # OPTIONAL - BCP selection
-# select = ["C", "E", "F", "W", "B", "B950"]
+select = ["C", "E", "F", "W", "B", "B950"]
 # CEP-7 specific
 extend-select = ["D", "E"]
 # OPTIONAL - BCP Ignore specific warnings and errors according to CEP-8 style
-# ignore = ["W191", "W391", "E117"]
+ignore = ["W191", "W391", "E117"]
 # Ignore specific warnings and errors according to CEP-7 style
 extend-ignore = ["E117", "D203", "D208", "D212"]
 # REQUIRED CEP-7 Custom Exceptions:
@@ -25,10 +53,13 @@ testpaths = "tests"
 python_files = "test_*.py"
 
 [tool.pytest.ini_options]
-minversion = "6.0"
-testpaths = "tests"
+minversion = "7.4"
+# testpaths = "tests"
+pythonpath = "multicast tests"
 python_files = "test_*.py"
-addopts = "--cache-clear --doctest-glob=**/*.py --doctest-modules"
+python_classes = "*TestSuite"
+addopts = "--cache-clear --doctest-glob=**/*.py --doctest-modules --cov=multicast --cov-append --cov-report=xml --junitxml=test-reports/junit.xml --rootdir=."
+junit_logging = "all"
 
 [tool.pytest.markers]
 mat = "minimum acceptance tests"
@@ -46,9 +77,6 @@ security = "security tests"
 fuzzing = "fuzzing tests"
 slow = "smaller sub-set of fuzzing tests"
 performance = "performance and scalability tests"
-
-[tool.pytest.enabler.flake8]
-addopts = "--flake8"
 
 [tool.pytest.enabler.doctest]
 addopts = "--doctest-glob=**/*.py --doctest-modules"

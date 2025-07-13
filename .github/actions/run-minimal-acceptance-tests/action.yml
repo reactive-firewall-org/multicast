@@ -1,0 +1,310 @@
+---
+name: 'Multicast Minimal Acceptance Tests'
+description: 'Performs various Minimal Acceptance Testing for the Multicast Project'
+author: 'Mr. Walls'
+branding:
+  icon: 'bar-chart-2'
+  color: 'black'
+inputs:
+  sha:
+    description: |
+      The commit to report mats for. Should already be cloned and checked-out beforehand.
+    required: true
+    default: ${{ github.server_url == 'https://github.com' && github.sha || 'HEAD' }}
+  token:
+    description: |
+      The token used to authenticate when uploading results from the Minimal Acceptance Testing.
+      When running this action on github.com, the default value is sufficient. When running on
+      GHES, you can pass a personal access token for github.com if you are experiencing
+      rate limiting.
+    default: ${{ github.server_url == 'https://github.com' && github.token || '' }}
+    required: true
+  python-version:
+    description: |
+      The python version to use. The default is to use the value of the environment
+      variable 'PYTHON_VERSION'.
+    default: '3.12'
+    required: true
+outputs:
+  sha:
+    description: "The SHA of the commit checked-out"
+    value: ${{ steps.output_sha.outputs.sha || 'HEAD' }}
+  python-version:
+    description: "The python version that was used in the run"
+    value: ${{ steps.output_python.outputs.python-version || '' }}
+  mats_status:
+    description: "The outcome of evaluating the MATs steps"
+    value: ${{ steps.mats_outcome.outcome || 'cancelled' }}
+  mats_build_status:
+    description: "The outcome of the MATs Build Group"
+    value: ${{ steps.mats_build.outcome || 'cancelled' }}
+  mats_bootstrap_status:
+    description: "The outcome of the MATs Bootstrap Group"
+    value: ${{ steps.mats_bootstrap.outcome || 'cancelled' }}
+  mats_basic_status:
+    description: "The outcome of the MATs Basic Group"
+    value: ${{ steps.mats_basic.outcome || 'cancelled' }}
+  mats_say_status:
+    description: "The outcome of the MATs SAY Group"
+    value: ${{ steps.mats_say.outcome || 'cancelled' }}
+  mats_hear_status:
+    description: "The outcome of the MATs HEAR Group"
+    value: ${{ steps.mats_hear.outcome || 'cancelled' }}
+  mats_usage_status:
+    description: "The outcome of the MATs Usage Group"
+    value: ${{ steps.mats_usage.outcome || 'cancelled' }}
+  mats_coverage_status:
+    description: "The outcome of the MATs Coverage Group"
+    value: ${{ steps.mats_coverage.outcome || 'cancelled' }}
+  mats_doctests_status:
+    description: "The outcome of the MATs DocTests Group"
+    value: ${{ steps.mats_doctests.outcome || 'cancelled' }}
+  artifact-name:
+    description: "The uploaded artifact-name"
+    value: ${{ steps.output_artifact_name.outputs.artifact-name }}
+  artifact-files:
+    description: "The uploaded artifact-files"
+    value: ${{ steps.output_artifact_files.outputs.files }}
+  artifact-id:
+    description: "The uploaded artifact-id"
+    value: ${{ steps.upload.outputs.artifact-id }}
+  artifact-url:
+    description: "The uploaded artifact-url"
+    value: ${{ steps.upload.outputs.artifact-url }}
+  artifact-digest:
+    description: "The uploaded artifact-digest"
+    value: ${{ steps.upload.outputs.artifact-digest }}
+
+runs:
+  using: composite
+  steps:
+    - name: "Calculate Commit SHA"
+      id: output_sha
+      shell: bash
+      run: |
+        printf "sha=%s\n" $(git rev-parse --verify '${{ inputs.sha }}') >> "$GITHUB_OUTPUT"
+        printf "BUILD_SHA=%s\n" $(git rev-parse --verify '${{ inputs.sha }}') >> "$GITHUB_ENV"
+    - name: "Setup Python"
+      id: output_python
+      if: ${{ !cancelled() }}
+      env:
+        PYTHON_VERSION_INPUT: ${{ inputs.python-version }}
+      shell: bash
+      run: |
+        if [[ -n $PYTHON_VERSION_INPUT ]]; then
+          printf "python-version=%s\n" "${PYTHON_VERSION_INPUT}" >> "$GITHUB_OUTPUT"
+          PYTHON_VERSION=${PYTHON_VERSION_INPUT}
+        else
+          printf "python-version=%s\n" "${PYTHON_VERSION}" >> "$GITHUB_OUTPUT"
+        fi
+        printf "%s\n" "PYTHON_VERSION=${PYTHON_VERSION}" >> "$GITHUB_ENV"
+    - name: "Prepare Artifact Name"
+      id: output_artifact_name
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        printf "artifact-name=%s\n" multicast-mats-${{ steps.output_sha.outputs.sha }}-part-$(uuidgen) >> "$GITHUB_OUTPUT"
+        printf "%s\n" "MATS_STEP_SUMMARY=MATs-Summary-Artifact-${PYTHON_VERSION}.txt" >> "$GITHUB_ENV"
+    - name: "Run Build MATs"
+      id: mats_build
+      if: ${{ (github.repository == 'reactive-firewall-org/multicast') && !cancelled() }}
+      shell: bash
+      run: |
+        printf "%s\n" "::group::Build-MATs"
+        make -f Makefile test-mat-build || exit 1
+        printf "%s\n" "::endgroup::"
+    - name: "Run bootstrap MATs"
+      id: mats_bootstrap
+      if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
+      shell: bash
+      run: |
+        printf "%s\n" "::group::Bootstrap-MATs"
+        make -f Makefile test-mat-bootstrap || exit 1
+        printf "%s\n" "::endgroup::"
+    - name: "Run basic MATs"
+      id: mats_basic
+      if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
+      shell: bash
+      run: |
+        printf "%s\n" "::group::Basic-MATs"
+        make -f Makefile test-mat-basic || exit 1
+        printf "%s\n" "::endgroup::"
+    - name: "Run SAY MATs"
+      id: mats_say
+      if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
+      shell: bash
+      run: |
+        printf "%s\n" "::group::SAY-MATs"
+        make -f Makefile test-mat-say || exit 1
+        printf "%s\n" "::endgroup::"
+    - name: "Run HEAR MATs"
+      id: mats_hear
+      if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
+      shell: bash
+      run: |
+        printf "%s\n" "::group::HEAR-MATs"
+        make -f Makefile test-mat-hear || exit 1
+        printf "%s\n" "::endgroup::"
+    - name: "Run Usage MATs"
+      id: mats_usage
+      if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
+      shell: bash
+      run: |
+        printf "%s\n" "::group::Usage-MATs"
+        make -f Makefile test-mat-usage || exit 1
+        printf "%s\n" "::endgroup::"
+    - name: "Run Extra Coverage tests"
+      id: mats_coverage
+      if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
+      shell: bash
+      run: |
+        printf "%s\n" "::group::Coverage-MATs"
+        make -f Makefile test-extra-coverage || exit 1
+        printf "%s\n" "::endgroup::"
+    - name: "Run doctest MATs"
+      id: mats_doctests
+      if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
+      shell: bash
+      run: |
+        printf "%s\n" "::group::DocTests-MATs"
+        make -f Makefile test-mat-doctests || exit 1
+        printf "%s\n" "::endgroup::"
+    - name: "Evaluate MATs"
+      id: mats_outcome
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        if [[ "${{ steps.mats_build.outcome }}" == "success" ]] ; then
+          THE_RESULT="success"
+        else
+          THE_RESULT="failure"
+        fi
+        if [[ "${{ steps.mats_bootstrap.outcome }}" == "success" && "${THE_RESULT}" == "success" ]] ; then
+          THE_RESULT="success"
+        else
+          THE_RESULT="failure"
+        fi
+        if [[ "${{ steps.mats_basic.outcome }}" == "success" && "${THE_RESULT}" == "success" ]] ; then
+          THE_RESULT="success"
+        else
+          THE_RESULT="failure"
+        fi
+        if [[ "${{ steps.mats_say.outcome }}" == "success" && "${THE_RESULT}" == "success" ]] ; then
+          THE_RESULT="success"
+        else
+          THE_RESULT="failure"
+        fi
+        if [[ "${{ steps.mats_hear.outcome }}" == "success" && "${THE_RESULT}" == "success" ]] ; then
+          THE_RESULT="success"
+        else
+          THE_RESULT="failure"
+        fi
+        if [[ "${{ steps.mats_usage.outcome }}" == "success" && "${THE_RESULT}" == "success" ]] ; then
+          THE_RESULT="success"
+        else
+          THE_RESULT="failure"
+        fi
+        if [[ "${THE_RESULT}" == "success" ]] ; then
+          exit 0
+        else
+          exit 1
+        fi
+    - name: "Summarize MATs"
+      id: mats_report
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        if [[ "${{ steps.mats_outcome.outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * :ballot_box_with_check: MATS succeeded with python version \`${PYTHON_VERSION}\` for [${BUILD_SHA}](https://github.com/reactive-firewall-org/multicast/commit/${BUILD_SHA})" > "$MATS_STEP_SUMMARY"
+          printf "%s\n" " :ballot_box_with_check: MATS succeeded with python version \`${PYTHON_VERSION}\`" >> "$GITHUB_STEP_SUMMARY"
+        else
+          printf "%s\n" "  * :x: ~MATS succeeded with python version \`${PYTHON_VERSION}\` for \`${BUILD_SHA}\`~" > "$MATS_STEP_SUMMARY"
+          printf "%s\n" " :x: ~MATS succeeded with python version \`${PYTHON_VERSION}\`~" >> "$GITHUB_STEP_SUMMARY"
+        fi
+        if [[ "${{ steps.mats_build.outcome }}" == "success" ]] ; then
+          printf "%s\n" "    * :ballot_box_with_check: Minimal Build Testing succeeded" >> "$MATS_STEP_SUMMARY"
+        else
+          printf "%s\n" "    * :x: Minimal Build Testing failed" >> "$MATS_STEP_SUMMARY"
+        fi
+        if [[ "${{ steps.mats_bootstrap.outcome }}" == "success" ]] ; then
+          printf "%s\n" "    * :ballot_box_with_check: Minimal Bootstrap Testing succeeded" >> "$MATS_STEP_SUMMARY"
+        else
+          printf "%s\n" "    * :x: Minimal Bootstrap Testing failed" >> "$MATS_STEP_SUMMARY"
+        fi
+        if [[ "${{ steps.mats_basic.outcome }}" == "success" ]] ; then
+          printf "%s\n" "    * :ballot_box_with_check: Basic Minimal Acceptance Testing succeeded" >> "$MATS_STEP_SUMMARY"
+        else
+          printf "%s\n" "    * :x: Basic Minimal Acceptance Testing failed" >> "$MATS_STEP_SUMMARY"
+        fi
+        if [[ "${{ steps.mats_say.outcome }}" == "success" ]] ; then
+          printf "%s\n" "    * :ballot_box_with_check: Minimal Acceptance Testing for \`SAY\` succeeded" >> "$MATS_STEP_SUMMARY"
+        else
+          printf "%s\n" "    * :x: Minimal Acceptance Testing for \`SAY\` failed" >> "$MATS_STEP_SUMMARY"
+        fi
+        if [[ "${{ steps.mats_hear.outcome }}" == "success" ]] ; then
+          printf "%s\n" "    * :ballot_box_with_check: Minimal Acceptance Testing for \`HEAR\` and \`RECV\` succeeded" >> "$MATS_STEP_SUMMARY"
+        else
+          printf "%s\n" "    * :x: Minimal Acceptance Testing for \`HEAR\` and/or \`RECV\` failed" >> "$MATS_STEP_SUMMARY"
+        fi
+        if [[ "${{ steps.mats_usage.outcome }}" == "success" ]] ; then
+          printf "%s\n" "    * :ballot_box_with_check: Minimal Acceptance Testing for the Command-line interface succeeded" >> "$MATS_STEP_SUMMARY"
+        else
+          printf "%s\n" "    * :x: Basic Minimal Acceptance Testing failed" >> "$MATS_STEP_SUMMARY"
+        fi
+        if [[ "${{ steps.mats_doctests.outcome }}" == "success" ]] ; then
+          printf "%s\n" "    * :ballot_box_with_check: Minimal doctest Testing succeeded" >> "$MATS_STEP_SUMMARY"
+        else
+          printf "%s\n" "    * :x: Minimal doctest Testing failed" >> "$MATS_STEP_SUMMARY"
+        fi
+        if [[ "${{ steps.mats_coverage.outcome }}" == "success" ]] ; then
+          printf "%s\n" "    * :ballot_box_with_check: Minimal Testing Coverage succeeded" >> "$MATS_STEP_SUMMARY"
+        else
+          printf "%s\n" "    * :x: Minimal Testing Coverage failed" >> "$MATS_STEP_SUMMARY"
+        fi
+    - name: "Collect and Enumerate Generated Files"
+      id: output_artifact_files
+      if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+      env:
+        MATS_MATCH_PATTERN: "MATs-Summary-Artifact-*.txt test-reports/*"
+        SCRIPT_NAME: ".github/actions/run-minimal-acceptance-tests/action.yml"
+      shell: bash
+      run: |
+        FILES=$(git ls-files -o --exclude-standard -- ${{ env.MATS_MATCH_PATTERN }} )
+        if [ -z "$FILES" ]; then
+          printf "::warning file=%s:: %s\n" "${SCRIPT_NAME}" "No Built files found."
+          printf "%s\n" "files=" >> "$GITHUB_OUTPUT"
+          exit 1
+        else
+          printf "%s\n" "MATs files found:"
+          printf "%s\n" "$FILES"
+          mkdir MATS || :
+          mkdir MATS/test-reports || :
+          printf "%s\n" "$FILES" | xargs -I{} cp -f "{}" "MATS/{}" || :
+          # Replace line breaks with spaces for GitHub Action Output
+          FILES="${FILES//$'\n'/ }"
+          printf "%s\n" "files=$FILES" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+    - name: "Upload Details"
+      id: upload
+      if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        path: MATS
+        name: ${{ steps.output_artifact_name.outputs.artifact-name }}
+        if-no-files-found: error
+        compression-level: 9
+        overwrite: true
+    - name: "Cleanup from run"
+      id: mats_cleanup_success
+      if: ${{ success() }}
+      shell: bash
+      run: |
+        rm -fRd ./MATs 2>/dev/null || :
+    - name: "Cleanup from failed run"
+      id: mats_cleanup_failure
+      if: ${{ failure() }}
+      shell: bash
+      run: |
+        rm -fRd ./MATs 2>/dev/null
+        exit 1

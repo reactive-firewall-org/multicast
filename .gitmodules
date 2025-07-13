@@ -1,0 +1,4 @@
+[submodule "fetch-test-reporter"]
+	path = .github/tools/fetch-test-reporter
+	url = https://gist.github.com/c718380a1747d43dda1519167fc50ac0.git
+	ignore = dirty

@@ -9,7 +9,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 # ..........................................
-# https://www.github.com/reactive-firewall/multicast/LICENSE.md
+# https://github.com/reactive-firewall-org/multicast/tree/HEAD/LICENSE.md
 # ..........................................
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,10 +17,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Extra Test module for docs.utils functionality.
+"""Extra Test module for optional functionality.
 
-This module provides extra test cases for the docs.utils module, focusing on the
-utils.sanitize_url method for url encoding.
+> [!CAUTION]
+> Multicast project testing code is under an MIT license like the Multicast module; however
+> the project's Testing can use tools which are split between multiple licenses.
+> While all the source-code is open-source, using some of the project test code is only possible
+> in an environment where additional restrictions apply, due to third-party licensing which is
+> incompatible if it were to be included with the rest of the project.
+>
+> Environment Compatibility: Users must ensure that their testing environments are equipped
+> with the necessary components and licenses to run the testing code. This is akin to a
+> "batteries not included" disclaimer, indicating that additional setup may be required.
+> AS-IS Disclaimer: Please note that the Multicast project is provided "AS-IS," and we do not
+> guarantee compatibility or support for the testing code outside of the specified environments.
+> Users are responsible for ensuring compliance with all applicable licenses and for setting up
+> their environments accordingly.
+
+This module provides extra test cases for some of the optional components and are expected to fail.
+
 """
 
 
@@ -37,12 +52,73 @@ try:
 		raise ModuleNotFoundError("[CWE-758] Failed to import context") from None
 	else:
 		from context import unittest
-		import docs.utils
 except ImportError as baton:  # pragma: no branch
 	raise ImportError("[CWE-758] Failed to import test context") from baton
 
 
+_HAS_DOCS: bool = False
+"""
+This module optionally provides extra test cases for the docs.utils module, focusing on the
+utils.sanitize_url method for url encoding.
+
+	Bundling documentation is not supported by this project, however for users that accept the
+	relevant terms and conditions of the optional docs module's dependencies, and have installed it,
+	the following optional tests hopefully extend to testing some of the multicast documentation
+	code.
+
+	Otherwise this file is effectively omitted from testing.
+
+	Disclaimer:
+	For clarity this file (as python sourcecode) is Licensed under MIT (the "License");
+	The resulting python tests (as software) are only provided "AS IS" and WITHOUT WARRANTIES OR
+	CONDITIONS OF ANY KIND, either express or implied. The dependencies of the resulting
+	python tests (as software), are NOT covered by the same Licensed. Assembly may be required.
+"""
+
+
+if not _HAS_DOCS:
+	try:
+		import docs.utils
+		_HAS_DOCS = True
+	except ImportError:  # pragma: no branch
+		_HAS_DOCS = False
+
+
+def onlyIfHasDocs(has_docs: bool) -> callable:
+	"""
+	Conditionally enable a test suite class based on the availability of the multicast docs library.
+
+	If the provided flag is False, returns a dummy class with a placeholder method that does nothing,
+	allowing tests dependent on docs to be safely bypassed. If the provided flag is True,
+	the original class is returned unchanged.
+
+	Arguments:
+		has_docs (bool): Flag indicating whether the docs module is available.
+
+	Returns:
+		callable: A decorator function that returns either the original class or a dummy class
+		with a placeholder method, depending on the has_docs flag.
+
+	Meta-Testing:
+
+		>>> @onlyIfHasDocs(has_docs=False)
+		... class TestClass: pass
+		>>> hasattr(TestClass(), 'method')
+		True
+
+	"""
+	def decorator(cls: callable) -> callable:  # skipcq: PY-D0003 -- decorator ok
+		if not has_docs:
+			# Create an empty class with a method that returns None
+			return type(cls.__name__, (object,), {
+				'method': lambda self: None
+			})
+		return cls
+	return decorator
+
+
 @context.markWithMetaTag("extra", "security")
+@onlyIfHasDocs(has_docs=_HAS_DOCS)
 class ExtraDocsUtilsTestSuite(context.BasicUsageTestSuite):
 	"""Test cases for docs.utils module."""
 

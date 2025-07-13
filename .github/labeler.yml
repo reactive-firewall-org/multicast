@@ -1,10 +1,9 @@
-# .github/labler.yml
+# .github/labeler.yml
 ---
-# Add 'Multicast' label to any root file changes
+# Add 'Multicast' label to any core file changes
 Multicast:
   - changed-files:
     - any-glob-to-any-file:
-      - 'setup.*'
       - multicast/*.py
       - LICENSE
       - LICENSE.md
@@ -21,12 +20,14 @@ Linter:
       - .flake8.ini
       - .coveragerc
       - .deepsource.toml
-      - .markdownlint.yml
+      - .markdownlint.yaml
       - tests/check_s*
       - tests/check_c*
       - tests/check_pip
+      - '.github/actions/*/action.yml'
+      - '.github/workflows/*'
 
-# Add 'bash lang' label to any bash file changes
+# Add 'Bash Lang' label to any bash file changes
 Bash Lang:
   - changed-files:
     - any-glob-to-any-file:
@@ -46,7 +47,7 @@ Python Lang:
       - '**/*.py'
       - '*.py'
 
-# Add 'Lang' label to any python file changes
+# Add 'Make Lang' label to any Makefile file changes
 Make Lang:
   - changed-files:
     - any-glob-to-any-file:
@@ -55,6 +56,7 @@ Make Lang:
       - '**/makefile'
       - Makefile
 
+# Add 'Configs' label to any configuration file changes
 Configs:
   - changed-files:
     - any-glob-to-any-file:
@@ -66,31 +68,40 @@ Configs:
       - '*.toml'
       - '*.cfg'
       - '*.conf'
+      - '.coveragerc'
+      - '.gitattributes'
+      - '.gitignore'
       - requirements.txt
-      - test-requirements.txt
       - tests/requirements.txt
       - docs/requirements.txt
 
+# Add 'documentation' label to any documentation file changes
 documentation:
   - changed-files:
     - any-glob-to-any-file:
       - '*.md'
       - './**/*.md'
-      - docs/**/*
-      - docs/*
+      - 'docs/**/*'
+      - 'docs/*'
+      - '.readthedocs.yaml'
+      - generate_changelog.sh
       - README.md
 
-# Add 'test' label
+# Add 'Testing' label to any testing file changes
 Testing:
   - changed-files:
     - any-glob-to-any-file:
-      - tests/*.py
+      - 'tests/*.py'
+      - test-requirements.txt
       - tests/requirements.txt
-      - tests/check_*
-      - .github/tools/*
-      - .github/workflows/*.yml
-      - .circleci/*
+      - 'tests/check_*'
+      - '.github/tools/*.bash'
+      - '.github/tools/*.sh'
+      - '.github/tools/*.py'
+      - '.github/workflows/*.yml'
+      - '.circleci/*'
 
+# Add 'CI' label to any CI/CD file changes
 CI:
   - changed-files:
     - any-glob-to-any-file:
@@ -98,19 +109,35 @@ CI:
       - tests/requirements.txt
       - .travis.yml
       - .appveyor.yml
-      - .github/actions/*/action.yml
-      - .github/workflows/*
-      - .circleci/*
+      - '.circleci/*'
+      - '.github/tool_*.sh'
+      - '.github/tools/*'
+      - '.github/actions/*/action.yml'
+      - '.github/workflows/*'
 
+# Add 'GitHub' label to any GitHub file changes
 GitHub:
   - changed-files:
     - any-glob-to-any-file:
       - .github/**/*
       - .github/*
       - README.md
+      - LICENSE.md
+      - docs/SECURITY.md
+
+# Add Special Case labels to any special-case file changes
 
 invalid:
   - changed-files:
     - any-glob-to-any-file:
       - .stickler.yml
       - .hound.yml
+      - setup.py
+      - .markdownlint.yml
+      - '.git_skipList'
+
+JavaScript:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/*.js'
+      - 'package.json'

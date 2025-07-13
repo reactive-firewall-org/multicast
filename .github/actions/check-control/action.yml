@@ -1,0 +1,312 @@
+---
+name: 'Control Check'
+description: 'Helps manage the workflow checks'
+author: 'Mr. Walls'
+branding:
+  icon: 'check-circle'
+  color: 'black'
+inputs:
+  sha:
+    description: |
+      The commit to attach the check to. When running this action on github.com,
+      the default value is sufficient.
+    required: true
+    default: ${{ github.server_url == 'https://github.com' && github.sha || '0000000000000000000000000000000000000000' }}
+  workflow-run-id:
+    description: |
+      The workflow run to to attach the check to. When running this action on github.com,
+      the default value is the calling workflow.
+    required: true
+    default: ${{ github.server_url == 'https://github.com' && github.run_id || '' }}
+  check-id:
+    description: |
+      The check's ID to update (Optional). Must be the check-id from a previously created check.
+    required: false
+    default: ''
+  token:
+    description: |
+      The token used to authenticate when fetching Python distributions from
+      https://github.com/actions/python-versions. When running this action on github.com,
+      the default value is sufficient. When running on GHES, you can pass a personal access
+      token for github.com if you are experiencing rate limiting.
+    default: ${{ github.server_url == 'https://github.com' && github.token || '' }}
+    required: true
+  details-url:
+    description: |
+      The check's details url. See 'https://docs.github.com/en/rest/checks/runs?apiVersion=2022-11-28#update-a-check-run'
+      for documentation.
+    default: 'DEFAULT'
+    required: true
+  name:
+    description: |
+      The check's display name. See 'https://docs.github.com/en/rest/checks/runs?apiVersion=2022-11-28#update-a-check-run'
+      for documentation.
+    default: ${{ github.server_url == 'https://github.com' && github.workflow || '' }}
+    required: true
+  title:
+    description: |
+      The check's title. See 'https://docs.github.com/en/rest/checks/runs?apiVersion=2022-11-28#update-a-check-run'
+      for documentation.
+    default: ${{ github.server_url == 'https://github.com' && github.workflow || '' }}
+    required: true
+  summary:
+    description: |
+      The check's summary. See 'https://docs.github.com/en/rest/checks/runs?apiVersion=2022-11-28#update-a-check-run'
+      for documentation.
+    default: ''
+    required: true
+  text:
+    description: |
+      The check's body text. See 'https://docs.github.com/en/rest/checks/runs?apiVersion=2022-11-28#update-a-check-run'
+      for documentation.
+    default: ''
+    required: true
+  status:
+    description: |
+      The check's status. See 'https://docs.github.com/en/rest/checks/runs?apiVersion=2022-11-28#update-a-check-run'
+      for documentation.
+    default: 'completed'
+    required: false
+    type: choice
+    options:
+      - queued
+      - in_progress
+      - completed
+  conclusion:
+    description: |
+      The check's conclusion. See 'https://docs.github.com/en/rest/checks/runs?apiVersion=2022-11-28#update-a-check-run'
+      for documentation.
+    default: ''
+    required: false
+    type: choice
+    options:
+      - cancelled
+      - failure
+      - neutral
+      - success
+      - skipped
+      - timed_out
+outputs:
+  check-id:
+    description: "The check ID operated on."
+    value: ${{ steps.output_check_id.outputs.check_id || '' }}
+  check-url:
+    description: "The url for the check-run operated on."
+    value: ${{ steps.output_check_id.outputs.check_url || '' }}
+  check-operation:
+    description: "The operation performed for the check"
+    value: ${{ steps.output_check_outcome.outputs.check_operation }}
+  check-date:
+    description: "The event date for the check."
+    value: ${{ steps.output_date.outputs.check_date }}
+  api-outcome:
+    description: "The outcome of the api operation"
+    value: ${{ steps.output_check_outcome.outputs.check_outcome || 'cancelled' }}
+
+runs:
+  using: composite
+  steps:
+    - id: output_sha
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: printf "sha=%s\n" $(git rev-parse --verify '${{ inputs.sha }}') >> "$GITHUB_OUTPUT"
+    - id: output_uuid
+      if: ${{ !cancelled() && (inputs.check-id == '') }}
+      shell: bash
+      run: |
+        if [[ ${{ runner.os }} != 'Windows' ]] ; then
+          printf "uuid=%s\n" $(uuidgen) >> "$GITHUB_OUTPUT"
+        else
+          printf "uuid=%04x%04x-%04x-%04x-%04x-%04x%04x%04x\n" $RANDOM $RANDOM $RANDOM $(($RANDOM & 0x0fff | 0x4000)) $(($RANDOM & 0x3fff | 0x8000)) $RANDOM $RANDOM $RANDOM >> "$GITHUB_OUTPUT"
+        fi
+    - id: output_date
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        printf "check_date=%s\n" $(TZ=UTC date -Iseconds | cut -d+ -f1-1) >> "$GITHUB_OUTPUT"
+    - id: output_check_details_url
+      if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+      shell: bash
+      run: |
+        if [[ "${{ inputs.details-url }}" != "" ]] ; then
+          printf "details_url=%s\n" '${{ inputs.details-url }}' >> "$GITHUB_OUTPUT"
+          printf "::debug:: %s\n" "Check detail url was provided: ${{ inputs.details-url }}" ;
+        else
+          if [[ "${{ inputs.workflow-run-id }}" != "" ]] ; then
+            printf "details_url=%s\n" 'https://github.com/reactive-firewall-org/multicast/actions/runs/${{ github.run_id }}' >> "$GITHUB_OUTPUT"
+            printf "::debug:: %s\n" "Check detail url was created from workflow ${{ inputs.workflow-run-id }}" ;
+          else
+            if [[ "${{ inputs.check-id }}" != "" ]] ; then
+              printf "details_url=https://github.com/reactive-firewall-org/multicast/runs/%s\n" ${{ inputs.check-id }} >> "$GITHUB_OUTPUT"
+              printf "::debug:: %s\n" "Check detail url was created from id given: ${{ inputs.check-id }}" ;
+            else
+              printf "details_url=null\n" >> "$GITHUB_OUTPUT"
+              printf "::warning title='NO Detail Link':: %s\n" "Check details URL is NULL" ;
+            fi
+          fi
+        fi
+    - name: "Create New Check"
+      id: create_new_check
+      if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (inputs.check-id == '') && (inputs.status != 'completed') }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        printf "%s\n" "::group::create-new-check"
+        # GitHub CLI api
+        # https://cli.github.com/manual/gh_api
+        CHECK_ID=$(gh api --method POST -H "Accept: application/vnd.github+json" \
+        /repos/reactive-firewall-org/multicast/check-runs \
+        -f "name=${{ inputs.name }}" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
+        -f "status=${{ inputs.status }}" -f "external_id=${{ steps.output_uuid.outputs.uuid }}" \
+        -f "started_at=${{ steps.output_date.outputs.check_date }}Z" \
+        -f "details_url=${{ steps.output_check_details_url.outputs.details_url }}" \
+        -f 'output[title]=${{ inputs.title }}' \
+        -f 'output[summary]=' -f 'output[text]=' --jq '.id');
+        printf "check_id=%s\n" "${CHECK_ID}" >> "$GITHUB_OUTPUT"
+        printf "%s\n" "::endgroup::"
+    - name: "Forge New Check"
+      id: forge_new_check
+      if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (inputs.check-id == '') && (inputs.status == 'completed') }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        printf "%s\n" "::group::update-new-check"
+        # GitHub CLI api
+        # https://cli.github.com/manual/gh_api
+        CHECK_ID=$(gh api --method POST -H "Accept: application/vnd.github+json" \
+        /repos/reactive-firewall-org/multicast/check-runs \
+        -f "name=${{ inputs.name }}" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
+        -f "status=in_progress" -f "external_id=${{ steps.output_uuid.outputs.uuid }}" \
+        -f "started_at=${{ steps.output_date.outputs.check_date }}Z" \
+        -f "details_url=${{ steps.output_check_details_url.outputs.details_url }}" \
+        -f 'output[title]=${{ inputs.title }}' \
+        -f 'output[summary]=Check is in progress.' -f 'output[text]=' --jq '.id');
+        printf "check_id=%s\n" "${CHECK_ID}" >> "$GITHUB_OUTPUT"
+        printf "%s\n" "::endgroup::"
+    - id: output_check_id
+      if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+      shell: bash
+      run: |
+        if [[ "${{ steps.create_new_check.outcome }}" == "success" ]] ; then
+          printf "check_id=%s\n" ${{ steps.create_new_check.outputs.check_id }} >> "$GITHUB_OUTPUT"
+          printf "check_url=https://github.com/reactive-firewall-org/multicast/runs/%s\n" ${{ steps.create_new_check.outputs.check_id }} >> "$GITHUB_OUTPUT"
+          printf "::debug:: %s\n" "Check id was created as ${{ steps.create_new_check.outputs.check_id }}" ;
+        else
+          if [[ "${{ steps.forge_new_check.outcome }}" == "success" ]] ; then
+            printf "check_id=%s\n" ${{ steps.forge_new_check.outputs.check_id }} >> "$GITHUB_OUTPUT"
+            printf "check_url=https://github.com/reactive-firewall-org/multicast/runs/%s\n" ${{ steps.forge_new_check.outputs.check_id }} >> "$GITHUB_OUTPUT"
+            printf "::debug:: %s\n" "Check id is forged as ${{ steps.forge_new_check.outputs.check_id }}" ;
+          else
+            if [[ "${{ inputs.check-id }}" != "" ]] ; then
+              printf "check_id=%s\n" ${{ inputs.check-id }} >> "$GITHUB_OUTPUT"
+              printf "check_url=https://github.com/reactive-firewall-org/multicast/runs/%s\n" ${{ inputs.check-id }} >> "$GITHUB_OUTPUT"
+              printf "::debug:: %s\n" "Check id given is ${{ inputs.check-id }}" ;
+            else
+              printf "check_id=null\n" >> "$GITHUB_OUTPUT"
+              printf "::warning title='NO ID':: %s\n" "Check id is NULL" ;
+            fi
+          fi
+        fi
+    - name: "Update Check by ID"
+      id: update_check
+      if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.output_check_id.outputs.check_id != '') && (inputs.status != 'completed') }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        printf "%s\n" "::group::update-check"
+        # GitHub CLI api
+        # https://cli.github.com/manual/gh_api
+        gh api --method PATCH -H "Accept: application/vnd.github+json" \
+        /repos/reactive-firewall-org/multicast/check-runs/${{ steps.output_check_id.outputs.check_id }} \
+        -f "name=${{ inputs.name }}" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
+        -f "status=${{ inputs.status }}" \
+        -f "details_url=${{ steps.output_check_details_url.outputs.details_url }}" \
+        -f 'output[title]=${{ inputs.title }}' \
+        -f 'output[summary]=${{ inputs.summary }}' -f 'output[text]=${{ inputs.text }}'
+        printf "%s\n" "::endgroup::"
+    - name: "Update Check"
+      id: complete_check
+      if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.output_check_id.outputs.check_id != '') && (inputs.conclusion != '') }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        printf "%s\n" "::group::complete-check"
+        # GitHub CLI api
+        # https://cli.github.com/manual/gh_api
+        gh api --method PATCH -H "Accept: application/vnd.github+json" \
+        /repos/reactive-firewall-org/multicast/check-runs/${{ steps.output_check_id.outputs.check_id }} \
+        -f "name=${{ inputs.name }}" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
+        -f "status=completed" -f "conclusion=${{ inputs.conclusion }}" \
+        -f "completed_at=${{ steps.output_date.outputs.check_date }}Z" \
+        -f "details_url=${{ steps.output_check_details_url.outputs.details_url }}" \
+        -f 'output[title]=${{ inputs.title }}' \
+        -f 'output[summary]=${{ inputs.summary }}' -f 'output[text]=${{ inputs.text }}'
+        printf "%s\n" "::endgroup::"
+    - name: "Report outcome of checks API"
+      id: output_check_outcome
+      if: ${{ always() && (github.repository == 'reactive-firewall-org/multicast') }}
+      shell: bash
+      run: |
+        if [[ "${{ steps.forge_new_check.outcome }}" == "success" ]] ; then
+          CHECK_CREATED="true"
+          CHECK_FORGED="true"
+          CHECK_OPERATION="forged"
+        else
+          if [[ "${{ steps.create_new_check.outcome }}" == "success" ]] ; then
+            CHECK_CREATED="true"
+            CHECK_OPERATION="created"
+          else
+            CHECK_CREATED="false"
+          fi
+        fi
+        if [[ "${{ steps.complete_check.outcome }}" == "success" ]] ; then
+          CHECK_UPDATED="true"
+          CHECK_CONCLUDED="true"
+          CHECK_OPERATION="completed"
+        else
+          if [[ "${{ steps.update_check.outcome }}" == "success" ]] ; then
+            CHECK_UPDATED="true"
+            CHECK_OPERATION="updated"
+          else
+            CHECK_UPDATED="false"
+          fi
+          CHECK_CONCLUDED="false"
+        fi
+        if [[ -z ${CHECK_OPERATION} ]] ; then
+          printf "check_outcome=success\n" >> "$GITHUB_OUTPUT"
+          printf "check_operation=%s\n" "${CHECK_OPERATION}" >> "$GITHUB_OUTPUT"
+          exit 0
+        else
+          EXIT_CODE=1
+          if [[ "${{ steps.forge_new_check.outcome }}" == "failure" ]] ; then
+            printf "check_outcome=failure\n" >> "$GITHUB_OUTPUT"
+            CHECK_OPERATION="cancelled"
+          else
+            if [[ "${{ steps.create_new_check.outcome }}" == "failure" ]] ; then
+              printf "check_outcome=failure\n" >> "$GITHUB_OUTPUT"
+              CHECK_OPERATION="uncreated"
+            else
+              if [[ "${{ steps.complete_check.outcome }}" == "failure" ]] ; then
+                printf "check_outcome=failure\n" >> "$GITHUB_OUTPUT"
+                CHECK_OPERATION="uncompleted"
+              else
+                if [[ "${{ steps.update_check.outcome }}" == "failure" ]] ; then
+                  printf "check_outcome=failure\n" >> "$GITHUB_OUTPUT"
+                  CHECK_OPERATION="unaffected"
+                else
+                  # skipped or cancelled both result in overall skipped for us
+                  printf "check_outcome=skipped\n" >> "$GITHUB_OUTPUT"
+                  CHECK_OPERATION="unknown"
+                  # also don't fail on skip
+                  EXIT_CODE=0
+                fi
+              fi
+            fi
+          fi
+          printf "check_operation=%s\n" "${CHECK_OPERATION}" >> "$GITHUB_OUTPUT"
+          exit ${EXIT_CODE}
+        fi

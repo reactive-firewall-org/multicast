@@ -23,6 +23,7 @@ env:
   # Define Python versions at the top level -- Expected format: X.Y (e.g., 3.13)
   PYTHON_DEFAULT: "${{ vars.PYTHON_DEFAULT }}"
   PYTHON_OLD_MIN: "${{ vars.PYTHON_OLD_MIN }}"  # For Oldest Python versions
+  PYTHON_OLD_EXTRA: "${{ vars.PYTHON_OLD_EXTRA }}"  # For Oldest Python versions (Extra coverage)
   PYTHON_EXPERIMENTAL: "${{ vars.PYTHON_EXPERIMENTAL }}"  # For future Python versions
 
 jobs:
@@ -34,7 +35,7 @@ jobs:
       packages: none
       pull-requests: read
       security-events: none
-    if: ${{ !cancelled() && (github.repository == 'reactive-firewall/multicast') }}
+    if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
     runs-on: ubuntu-latest
     environment: ${{ (github.ref == 'refs/heads/stable' || startsWith(github.ref, 'refs/tags/v')) && 'Deployment' || (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/feature') || startsWith(github.ref, 'refs/heads/patch-') || startsWith(github.ref, 'refs/tags/v')) && 'Testing' || 'Experimenting' }}
     defaults:
@@ -42,17 +43,33 @@ jobs:
         shell: bash
     env:
       LANG: "en_US.UTF-8"
-      BUILD_MATCH_PATTERN: "dist/multicast-*-*.whl dist/multicast-*.tar.gz"
+      BUILD_MATCH_PATTERN: "${{ vars.BUILD_MATCH_PATTERN }}"
     outputs:
+      build_environment: ${{ env.ENVIRONMENT }}
       build_status: ${{ steps.build.outcome }}
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+      artifact-url: ${{ steps.upload.outputs.artifact-url }}
+      artifact-digest: ${{ steps.upload.outputs.artifact-digest }}
+      artifact-files: ${{ steps.buildfiles.outputs.files }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+      - id: build-python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "${{ vars.PYTHON_DEFAULT }}"
+      - id: output_python
+        name: "bootstrap Python"
+        shell: bash
+        run: |
+          printf "%s\n" "::group::bootstrap-python-env"
+          printf "python-path=%s\n" "${{ steps.build-python.outputs.python-path }}" >> "$GITHUB_OUTPUT"
+          printf "PYTHON=%s\n" "${{ steps.build-python.outputs.python-path }}" >> "$GITHUB_ENV"
+          printf "python-version=%s\n" "${{ steps.build-python.outputs.python-version }}" >> "$GITHUB_OUTPUT"
+          printf "PYTHON_VERSION=%s\n" "${{ steps.build-python.outputs.python-version }}" >> "$GITHUB_ENV"
+          printf "%s\n" "::endgroup::"
       - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: ~/.cache/pip
@@ -61,9 +78,23 @@ jobs:
             ${{ runner.os }}-pip-
       - name: Pre-Clean
         id: clean
+        shell: bash
         run: make -j1 -f Makefile purge 2>/dev/null || true
+      - name: "License"
+        id: show-build-license
+        shell: bash
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        run: |
+          if [[ -r LICENSE.md ]] ; then
+            printf "\n\n"
+            cat <LICENSE.md ;
+            printf "\n\n"
+          else
+            printf "%s\n" "::warning title=UNLICENSED:: This is an UNLICENSED Build"
+          fi
       - name: Test Build
         id: build
+        shell: bash
         run: make -j1 -f Makefile build
       - name: Get BUILD Files
         id: buildfiles
@@ -81,13 +112,22 @@ jobs:
             printf "%s\n" "files=$FILES" >> "$GITHUB_OUTPUT"
           fi
         if: ${{ success() }}
+      - name: "Hint for pip hashing"
+        id: build-pip-hash-hint
+        shell: bash
+        if: ${{ !cancelled() }}
+        run: |
+          for build_file in ${{ steps.buildfiles.outputs.files }} ; do
+            ${{ steps.build-python.outputs.python-path }} -m pip hash --algorithm sha512 ${build_file} ;
+          done
       - name: Upload build artifact
         id: upload
-        if: ${{ !cancelled() && (steps.buildfiles.outputs.files != '') && (github.repository == 'reactive-firewall/multicast') }}
+        if: ${{ !cancelled() && (steps.buildfiles.outputs.files != '') && (github.repository == 'reactive-firewall-org/multicast') }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           path: dist
-          name: multicast-build-${{ github.sha }}.zip
+          name: multicast-build-${{ github.sha }}
+          if-no-files-found: error
           compression-level: 3
           overwrite: true
 
@@ -99,10 +139,9 @@ jobs:
       packages: none
       pull-requests: read
       security-events: none
-    if: ${{ !cancelled() }}
+    if: ${{ (github.repository == 'reactive-firewall-org/multicast') && !cancelled() }}
     needs: BUILD
     runs-on: ubuntu-latest
-    environment: ${{ needs.BUILD.environment }}
     defaults:
       run:
         shell: bash
@@ -112,14 +151,17 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["${{ vars.PYTHON_OLD_MIN }}", "${{ vars.PYTHON_DEFAULT }}", "${{ vars.PYTHON_EXPERIMENTAL }}"]
-        lang-var: ["de.utf-8", "jp.utf-8"]
+        lang-var: ["de_DE.UTF-8", "ja_JP.UTF-8", "fr_CA.UTF-8"]
         experimental: [true]
         include:
           - python-version: "${{ vars.PYTHON_DEFAULT }}"
-            lang-var: "de.utf-8"
+            lang-var: "de_DE.UTF-8"
             experimental: false
           - python-version: "${{ vars.PYTHON_DEFAULT }}"
-            lang-var: "jp.utf-8"
+            lang-var: "ja_JP.UTF-8"
+            experimental: false
+          - python-version: "${{ vars.PYTHON_DEFAULT }}"
+            lang-var: "fr_CA.UTF-8"
             experimental: false
           - python-version: "${{ vars.PYTHON_OLD_MIN }}"
             lang-var: "en_US.utf-8"
@@ -132,50 +174,64 @@ jobs:
             experimental: false
           - python-version: "${{ vars.PYTHON_EXPERIMENTAL }}"
             lang-var: "en_US.utf-8"
-            experimental: ${{ (needs.BUILD.environment == 'Experimenting') }}
+            experimental: ${{ (needs.BUILD.outputs.build_environment == 'Experimenting') }}
     outputs:
       bootstrap_status: ${{ steps.bootstrap.outcome }}
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
       LANG: ${{ matrix.lang-var }}
+      LC_CTYPE: ${{ matrix.lang-var }}
+      LC_ALL: ${{ matrix.lang-var }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
-      - name: Set up Python
+      - id: buildpy
+        name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Set up dependencies
+      - id: output_python
+        name: "bootstrap Python"
+        shell: bash
         run: |
-          pip install --upgrade "pip>=24.3.1" "setuptools>=75.0" "wheel>=0.44" "build>=1.2.1";
-          pip install -r ./requirements.txt ;
+          printf "%s\n" "::group::bootstrap-python-env"
+          printf "python-path=%s\n" "${{ steps.buildpy.outputs.python-path }}" >> "$GITHUB_OUTPUT"
+          printf "PYTHON=%s\n" "${{ steps.buildpy.outputs.python-path }}" >> "$GITHUB_ENV"
+          printf "python-version=%s\n" "${{ steps.buildpy.outputs.python-version }}" >> "$GITHUB_OUTPUT"
+          printf "PYTHON_VERSION=%s\n" "${{ steps.buildpy.outputs.python-version }}" >> "$GITHUB_ENV"
+          printf "%s\n" "::endgroup::"
       - name: Pre-build
         id: bootstrap
         run: |
+          printf "%s\n" "::group::make-init"
+          make -f Makefile init || exit 1 ;
+          printf "%s\n%s\n" "::endgroup::" "::group::make-clean"
           make -j1 -f Makefile clean || true ;
-          make -j1 -f Makefile build ;
+          printf "%s\n%s\n" "::endgroup::" "::group::make-build"
+          make -j1 -f Makefile build || exit 1 ;
+          printf "%s\n" "::endgroup::"
         shell: bash
-      - name: Summerize Building
-        id: sumerize-py-build
+      - name: Summarize Building
+        id: summarize-py-build
         run: |
-          echo "- [x] Building works on python version ${{ matrix.python-version }}" >> "$GITHUB_STEP_SUMMARY"
+          printf "%s\n" "- [x] Building works on python version ${PYTHON_VERSION}" >> "$GITHUB_STEP_SUMMARY"
         if: ${{ success() }}
         shell: bash
       - name: Run Tests
         id: test-user-install
         run: make -j1 -f Makefile user-install ;
         shell: bash
-      - name: Summerize Install
-        id: sumerize-user-install
+      - name: Summarize Install
+        id: summarize-user-install
         run: |
-          echo "- [x] User Installing works on python version ${{ matrix.python-version }}" >> "$GITHUB_STEP_SUMMARY"
+          printf "%s\n" "- [x] User Installing works on python version ${PYTHON_VERSION}" >> "$GITHUB_STEP_SUMMARY"
         if: ${{ success() }}
         shell: bash
       - name: Test Info
         id: test-info
-        run: python -m setup --name --version --license || true ;
+        run: python -m multicast --version || true ;
       - name: Post-Clean
         id: post-bootstrap
         run: |
@@ -184,34 +240,189 @@ jobs:
         if: ${{ always() }}
         shell: bash
 
+  BUILD_ATTEST:
+    permissions:
+      actions: read
+      id-token: write
+      contents: read
+      attestations: write
+    needs: [BUILD]
+    runs-on: ubuntu-latest
+    environment: ${{ needs.BUILD.outputs.build_environment }}
+    if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+    outputs:
+      build-artifact-attestation-url: ${{ steps.multicast-build-attest.outputs.attestation-url }}
+      build-artifact-attestation-id: ${{ steps.multicast-build-attest.outputs.attestation-id }}
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: ${{ github.workspace }}/dist
+          pattern: multicast-build-${{ github.sha }}
+          merge-multiple: true
+      - name: Calculate artifact digests
+        run: |
+          shasum -a 512 dist/* > build.checksums.txt
+      - name: "Attest Build Checksums"
+        id: multicast-build-chksum-attest
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') && (needs.BUILD.outputs.build_environment == 'Deployment' && startsWith(github.ref, 'refs/tags/v')) }}
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+        with:
+          subject-checksums: build.checksums.txt
+          github-token: ${{ github.token }}
+      - name: "Attest Build Artifact"
+        id: multicast-build-attest
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+        with:
+          subject-name: multicast-build-${{ github.sha }}
+          subject-digest: sha256:${{ needs.BUILD.outputs.artifact-digest }}
+          github-token: ${{ github.token }}
+          show-summary: false
+
   BUILD_STATUS:
     permissions:
       actions: read
       contents: read
       pull-requests: read
-    needs: [BUILD, BOOTSTRAP]
+    needs: [BUILD, BOOTSTRAP, BUILD_ATTEST]
     runs-on: ubuntu-latest
-    environment: ${{ needs.BUILD.environment }}
+    environment: ${{ needs.BUILD.outputs.build_environment }}
     if: ${{ !cancelled() }}
     outputs:
       didBUILD: ${{ steps.check_status.outputs.build_success }}
       build_ref: ${{ steps.check_status.outputs.build_ref }}
       build_ref_name: ${{ steps.check_status.outputs.build_ref_name }}
-      environment: ${{ needs.BUILD.environment }}
+      build-artifact-filename: ${{ steps.check_status.outputs.build_artifact_filename }}
+      build-artifact-id: ${{ needs.BUILD.outputs.artifact-id }}
+      build-artifact-url: ${{ needs.BUILD.outputs.artifact-url }}
+      build-artifact-digest: ${{ needs.BUILD.outputs.artifact-digest }}
+      build-artifact-attestation-url: ${{ needs.BUILD_ATTEST.outputs.build-artifact-attestation-url || '' }}
+      build-artifact-attestation-id: ${{ needs.BUILD_ATTEST.outputs.build-artifact-attestation-id || '' }}
+      environment: ${{ steps.check_status.outputs.build_environment }}
     steps:
       - id: check_status
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if [[ "${{ needs.BUILD.result }}" == "success" && "${{ needs.BOOTSTRAP.result }}" == "success" ]]; then
-            echo "build_success=true" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_success=true" >> "$GITHUB_OUTPUT"
           else
-            echo "build_success=false" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_success=false" >> "$GITHUB_OUTPUT"
           fi
-          echo "build_ref=${{ github.ref }}" >> "$GITHUB_OUTPUT"
-          echo "build_ref_name=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          printf "%s\n" "build_url=${{ github.api_url }}" >> "$GITHUB_OUTPUT"
+          printf "%s\n" "build_ref=${{ github.ref }}" >> "$GITHUB_OUTPUT"
+          printf "%s\n" "build_sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          printf "%s\n" "build_ref_name=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          printf "%s\n" "build_artifact_filename=multicast-build-${{ github.sha }}.zip" >> "$GITHUB_OUTPUT"
+          printf "%s\n" "build_artifact_url=${{ needs.BUILD.outputs.artifact-url }}" >> "$GITHUB_OUTPUT"
+          printf "%s\n" "build_artifact_id=${{ needs.BUILD.outputs.artifact-id }}" >> "$GITHUB_OUTPUT"
+          printf "%s\n" "build_artifact_digest=${{ needs.BUILD.outputs.artifact-digest }}" >> "$GITHUB_OUTPUT"
+          if [[ "${{ needs.BUILD_ATTEST.result }}" == "success" ]] ; then
+            printf "%s\n" "build-artifact-attestation-url=${{ needs.BUILD_ATTEST.outputs.build-artifact-attestation-url }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build-artifact-attestation-id=${{ needs.BUILD_ATTEST.outputs.build-artifact-attestation-id }}" >> "$GITHUB_OUTPUT"
+          fi
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            printf "%s\n" "build_pr_number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          else
+            PRS_LIST=$(gh api "/repos/reactive-firewall-org/multicast/pulls?state=open&head=reactive-firewall-org:${{ github.ref_name }}" --jq '.[].number')
+            # Determine the highest pull request number or set to null
+            if [[ -n "${PRS_LIST}" ]]; then
+              highest_pr_number=$(printf "%s\n" "$PRS_LIST" | sort -n | tail -n 1)
+              printf "%s\n" "build_pr_number=$highest_pr_number" >> $GITHUB_OUTPUT
+            else
+              printf "%s\n" "build_pr_number=null" >> $GITHUB_OUTPUT
+            fi
+          fi
+          printf "%s\n" "build_environment=${ENVIRONMENT}" >> "$GITHUB_OUTPUT"
+          printf "%s\n" "build_id=${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+          cat <"$GITHUB_OUTPUT" >> "BUILD-info.txt"
       - name: Download All Artifacts
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: ${{ github.workspace }}/dist
-          pattern: multicast-build-${{ github.sha }}.zip
+          pattern: multicast-build-${{ github.sha }}
           merge-multiple: true
-      - run: ls -R dist
+      - name: Upload build summary
+        id: upload-build-info
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          path: "BUILD-info.txt"
+          name: multicast-info-${{ github.sha }}
+          if-no-files-found: error
+          compression-level: 3
+          retention-days: 2
+          overwrite: true
+      - name: "Summarize Build"
+        id: summarize-build-success
+        env:
+          BUILD_ID: ${{ github.run_id }}
+          BUILD_SHA: ${{ github.sha }}
+          BUILD_ARTIFACT_FILES: ${{ needs.BUILD.outputs.artifact-files }}
+          BUILD_COMMENT_BODY: '${{ github.workspace }}/Build-Summary-Artifact.txt'
+        shell: bash
+        run: |
+          printf "%s\n\n" "# :building_construction: Build" > "${BUILD_COMMENT_BODY}"
+          printf "%s\n" ":ballot_box_with_check: BUILD \`${BUILD_ID}\` succeeded with commit [${BUILD_SHA}](https://github.com/reactive-firewall-org/multicast/commit/${BUILD_SHA})" >> "${BUILD_COMMENT_BODY}"
+          if [[ ( -d dist ) ]] ; then
+            for BLD_FILE in ${BUILD_ARTIFACT_FILES} ; do
+              printf "%s\n" "  * :page_facing_up: Including building the file \`${BLD_FILE}\`" >> "${BUILD_COMMENT_BODY}"
+            done
+            printf "%s\n" "  * :package: Including producing the build artifact [multicast-build-${BUILD_SHA}](https://github.com/reactive-firewall-org/multicast/actions/runs/${BUILD_ID}#artifacts)" >> "${BUILD_COMMENT_BODY}"
+            if [[ "${{ needs.BUILD_ATTEST.result }}" == "success" ]] ; then
+              printf "%s\n" "    * :receipt: Build Attestation Created [\`${{ needs.BUILD_ATTEST.outputs.build-artifact-attestation-id }}\`](${{ needs.BUILD_ATTEST.outputs.build-artifact-attestation-url }})" >> "${BUILD_COMMENT_BODY}"
+            else
+              printf "%s\n" "    * :no_entry_sign: Build Unattested" >> "${BUILD_COMMENT_BODY}"
+            fi
+          fi
+          cat <"${BUILD_COMMENT_BODY}" >> "$GITHUB_STEP_SUMMARY"
+        if: ${{ success() && (github.repository == 'reactive-firewall-org/multicast') }}
+      - name: "Summarize Build (FAILED)"
+        id: summarize-build-failure
+        env:
+          BUILD_ID: ${{ github.run_id }}
+          BUILD_SHA: ${{ github.sha }}
+          BUILD_COMMENT_BODY: '${{ github.workspace }}/Build-Summary-Artifact.txt'
+        shell: bash
+        run: |
+          printf "%s\n" "# :construction: Build" > "${BUILD_COMMENT_BODY}"
+          printf "%s\n" ":x: ~BUILD \`${BUILD_ID}\` succeeded with commit [${BUILD_SHA}](https://github.com/reactive-firewall-org/multicast/commit/${BUILD_SHA})~" > "${BUILD_COMMENT_BODY}"
+          cat <"${BUILD_COMMENT_BODY}" >> "$GITHUB_STEP_SUMMARY"
+        if: ${{ failure() && (github.repository == 'reactive-firewall-org/multicast') }}
+      - name: Upload build summary
+        id: upload-build-summary
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          path: ./Build-Summary-Artifact.txt
+          name: BUILD-COMMENT-BODY-${{ github.sha }}
+          if-no-files-found: error
+          compression-level: 3
+          retention-days: 2
+          overwrite: true
+
+  BUILD_SUMMARY:
+    permissions:
+      actions: read
+      contents: write
+    needs: [BUILD_STATUS]
+    runs-on: ubuntu-latest
+    environment: ${{ needs.BUILD_STATUS.outputs.environment }}
+    if: ${{ !cancelled() }}
+    steps:
+      - name: "Download Status Summary Artifact"
+        id: download-build-summary
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: BUILD-COMMENT-BODY-${{ github.sha }}
+          github-token: ${{ github.token }}
+      - name: "Build commit comment"
+        id: build-commit-comment
+        if: ${{ success() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: peter-evans/commit-comment@5a6f8285b8f2e8376e41fe1b563db48e6cf78c09 # v3.0.0
+        with:
+          sha: ${{ github.sha }}
+          token: ${{ github.token }}
+          body-path: '${{ steps.download-build-summary.outputs.download-path }}/Build-Summary-Artifact.txt'

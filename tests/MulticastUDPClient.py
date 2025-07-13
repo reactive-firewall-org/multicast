@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Multicast Python Module (Testing)
@@ -9,7 +9,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 # ..........................................
-# https://www.github.com/reactive-firewall/multicast/LICENSE.md
+# https://github.com/reactive-firewall-org/multicast/tree/HEAD/LICENSE.md
 # ..........................................
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -309,7 +309,7 @@ class MCastClient(object):  # skipcq: PYL-R0205
 		sock.sendto(bytes(msg + "\n", "utf-8"), (address, port))  # pragma: no cover
 		received = str(sock.recv(1024), "utf-8")  # pragma: no cover
 		sp = " " * 4  # pragma: no cover
-		if (sys.stdout.isatty()):  # pragma: no cover
+		if sys.stdout.isatty():  # pragma: no cover
 			print(f"Sent: {sp}{msg}")  # skipcq: PYL-C0209  -  must remain compatible
 			print(f"Received: {received}")  # skipcq: PYL-C0209  -  must remain compatible
 

@@ -20,6 +20,34 @@ furnished to do so, subject to the following conditions:
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 
+Dependencies NOT included.
+
+***
+
+## Excluded Licenses, not included with package
+
+### Third-Party Dependencies
+
+Multicast project testing code is under an MIT license like the Multicast module; however
+the project's Testing can use tools which are split between multiple licenses (but may not be
+bundled). While all of the source code is open-source, using some of the project testing is only
+possible in an environment where additional restrictions apply, due to third-party licensing which
+is incompatible if it were to be included with the rest of the project as a whole.
+
+### Files: `requirements.txt`, `docs/requirements.txt`, `tests/requirements.txt`
+
+***
+Certain Continuous Integration/Continuous Deployment (CI/CD) tools may require GNU licensed
+software to operate effectively.
+Environment Compatibility: Users must ensure that their testing environments are equipped
+with the necessary components and licenses to run the testing code. This is akin to a
+"batteries not included" disclaimer, indicating that additional setup may be required.
+
+Users are responsible for ensuring compliance with all applicable licenses and for setting up
+their environments accordingly.
+
+The individual dependencies are owned by their respective copyright holders.
+_NO ASSOCIATION._
 ***
 
 ## Included Licenses and additional Acknowledgments included with package
@@ -30,7 +58,7 @@ copies or substantial portions of the Software.
 Copyright (c) 2017-2022, Python Test Repo Template
 ALSO Licensed under MIT
 You may obtain a copy of the License at
-[MIT License](http://www.github.com/reactive-firewall/python-repo/LICENSE.md)
+[MIT License](https://github.com/reactive-firewall/python-repo/blob/HEAD/LICENSE.md)
 ***
 
 ### Files: `.github/workflows/markdown-lint.yml`, and `.github/workflows/yaml-lint.yml`
@@ -39,7 +67,20 @@ You may obtain a copy of the License at
 Copyright (c) 2017-2025, Your Mileage May Vary
 ALSO Licensed under MIT
 You may obtain a copy of the License at
-[MIT License](http://www.github.com/reactive-firewall/ymmv/LICENSE.md)
+[MIT License](https://github.com/reactive-firewall/ymmv/blob/HEAD/LICENSE.md)
+***
+
+### File: `Logo.svg`
+
+***
+Copyright (c) 2024-2025, Multicast Logo by Mr. Walls.
+Source-code (e.g., xml) is under Apache 2.0 License.
+Rasterized variants (e.g., when rendered/cached/etc. as an image with discrete dimensions) are
+the Multicast trademark (Namely Multicast's M like symbol and its likeness), and some
+rights are reserved. See the License for the specific language governing permissions and
+limitations under the License.
+You may obtain a copy of the License at
+[Apache-2.0 License](http://www.apache.org/licenses/LICENSE-2.0)
 ***
 
 ## Third-party Acknowledgments :bow:

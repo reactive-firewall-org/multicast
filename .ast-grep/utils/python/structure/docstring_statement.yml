@@ -5,7 +5,7 @@ rule:
   pattern:
     selector: expression_statement
     context: |
-      $$$
+      $EXPRESSION
     has:
       pattern:
         selector: string

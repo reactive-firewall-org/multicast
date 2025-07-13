@@ -15,7 +15,7 @@
 * Open your terminal and run:
 
   ```shell
-  git clone https://github.com/reactive-firewall/multicast.git
+  git clone https://github.com/reactive-firewall-org/multicast.git
   cd multicast
   ```
 
@@ -76,7 +76,7 @@ enabling developers to implement efficient and robust multicast functionality wi
 * [README](./README): Introduction and installation instructions.
 * [Usage Guide](./USAGE): Detailed usage examples and API documentation.
 * [FAQ](./FAQ): Frequently asked questions and troubleshooting tips.
-* [Release Notes](https://github.com/reactive-firewall/multicast/releases): Release information.
+* [Release Notes](https://github.com/reactive-firewall-org/multicast/releases): Release information.
 * [Environment Configuration](./Environment_Configuration): Environment Configuration Guide.
 * [CI Processes](./CI): Information on continuous integration and testing strategies.
 * [Exceptions in `multicast`](./Exception_Guide): Information on exceptions and their handling in
@@ -94,6 +94,7 @@ apidocs/index
 /FAQ
 /Environment_Configuration
 /CI
+/Testing
 /Exception_Guide
 /LICENSE
 ```
@@ -102,4 +103,4 @@ apidocs/index
 
 ### Copyright (c) 2021-2025, Mr. Walls
 
-[![License - MIT](https://img.shields.io/github/license/reactive-firewall/multicast.svg?maxAge=3600)](https://github.com/reactive-firewall/multicast/blob/stable/LICENSE.md)
+[![License - MIT](https://img.shields.io/pypi/l/multicast?cacheSeconds=3600)](https://github.com/reactive-firewall-org/multicast/tree/HEAD/LICENSE.md)

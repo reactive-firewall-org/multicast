@@ -28,8 +28,8 @@
 		<dc:format>image/svg+xml</dc:format>
 		<!-- Produced by OmniGraffle 7.24.1\n2024-12-01 04:08:34 +0000-->
 		<dc:language>en</dc:language>
-		<dc:relation>https://github.com/reactive-firewall/multicast.git</dc:relation>
-		<dc:rights>Copyright © 2024-2025 Mr. Walls. Source-code (e.g. xml) is under Apache 2.0 License, Rastered variants (e.g. when rendered/cached/etc. as an image with descrete dimentions) are the Multicast trademark (Namely Multicast's M like symbol and it's likeness), and some rights are reserved.</dc:rights>
+		<dc:relation>https://github.com/reactive-firewall-org/multicast.git</dc:relation>
+		<dc:rights>Copyright © 2024-2025 Mr. Walls. Source-code (e.g., xml) is under Apache 2.0 License, Rasterized variants (e.g., when rendered/cached/etc. as an image with discrete dimensions) are the Multicast trademark (Namely Multicast's M like symbol and its likeness), and some rights are reserved.</dc:rights>
 	</metadata>
 	<g id="Background" fill-opacity="1" stroke="none" stroke-opacity="1" fill="none" stroke-dasharray="none">
 		<title>Background</title>

@@ -1,0 +1,100 @@
+---
+name: 'Fetch Code Coverage Tools'
+description: 'Fetch various Code Coverage tools'
+author: 'Mr. Walls'
+branding:
+  icon: 'download-cloud'
+  color: 'blue'
+inputs:
+  token:
+    description: |
+      The token used to authenticate when performing GitHub API operations.
+      When running this action on github.com, the default value is sufficient. When running on
+      GHES, you can pass a personal access token for github.com if you are experiencing
+      rate limiting.
+    default: ${{ github.server_url == 'https://github.com' && github.token || '' }}
+    required: true
+  codeclimate-token:  # deprecated in v2.0.9a7
+    description: "UNUSED."
+    deprecationMessage: |
+      This input is deprecated as of v2.0.9a7 and will be removed in a future release.
+      CodeClimate support has been discontinued.
+    default: ''
+    required: false
+  cc-test-reporter-id:  # deprecated in v2.0.9a7
+    description: "UNUSED."
+    deprecationMessage: |
+      This input is deprecated as of v2.0.9a7 and will be removed in a future release.
+      CodeClimate support has been discontinued.
+    default: ''
+    required: false
+  deepsource-dsn:
+    description: |
+      The deepsource DSN when performing deepsource API operations.
+    default: ''
+    required: true
+  coveralls-token:
+    description: |
+      The coveralls token used when performing coveralls API operations.
+    default: ''
+    required: true
+outputs:
+  sha:
+    description: "The SHA of the commit checked-out"
+    value: ${{ steps.output_sha.outputs.sha || 'HEAD' }}
+  can_fetch:
+    description: "Can the fetch tool even be used?"
+    value: ${{ steps.output_can_fetch.outputs.can_fetch || 'false' }}
+  status:
+    description: "The outcome of the fetch test reporter action."
+    value: ${{ steps.fetch_outcome.outputs.status || 'cancelled' }}
+
+runs:
+  using: composite
+  steps:
+    - name: "Calculate Commit SHA"
+      id: output_sha
+      shell: bash
+      run: |
+        printf "sha=%s\n" $(git rev-parse --verify HEAD) >> "$GITHUB_OUTPUT"
+        printf "FETCH_SHA=%s\n" $(git rev-parse --verify HEAD) >> "$GITHUB_ENV"
+    - name: "Check has Fetch Tool"
+      id: output_can_fetch
+      shell: bash
+      run: |
+        if [[ -x ${{ github.workspace }}/.github/tools/fetch-test-reporter/fetch-test-reporter ]] ; then
+          printf "can_fetch=true\n" >> "$GITHUB_OUTPUT"
+          printf "::debug::%s\n" "Found ${{ github.workspace }}/.github/tools/fetch-test-reporter/fetch-test-reporter"
+        else
+          printf "::warning title='Missing tool':: %s\n" "Can't find fetch-test-reporter tool."
+          printf "can_fetch=false\n" >> "$GITHUB_OUTPUT"
+        fi
+    - name: "Install test reporter tools on ${{ runner.os }}"
+      id: fetch-test-reporter-main
+      if: ${{ !cancelled() && (steps.output_can_fetch.outputs.can_fetch == 'true') && (runner.os != 'Windows') && (github.repository == 'reactive-firewall-org/multicast') }}
+      shell: bash
+      env:
+        COVERALLS_REPO_TOKEN: ${{ github.server_url == 'https://github.com' && inputs.coveralls-token || '' }}
+        DEEPSOURCE_DSN: ${{ github.server_url == 'https://github.com' && inputs.deepsource-dsn || '' }}
+      run: |
+        ${{ github.workspace }}/.github/tools/fetch-test-reporter/fetch-test-reporter || exit $?
+    - name: "Evaluate Fetch Task"
+      id: fetch_outcome
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        if [[ "${{ steps.output_can_fetch.outputs.can_fetch }}" == "true" ]] ; then
+          if [[ "${{ steps.fetch-test-reporter-main.outcome }}" == "success" ]] ; then
+            THE_RESULT="success"
+          else
+            THE_RESULT="failure"
+          fi ;
+        else
+          THE_RESULT="skipped"
+        fi
+        printf "status=%s\n" "${THE_RESULT}" >> "$GITHUB_OUTPUT"
+        if [[ "${THE_RESULT}" == "failure" ]] ; then
+          exit 1
+        else
+          exit 0
+        fi

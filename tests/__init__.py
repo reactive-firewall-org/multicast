@@ -8,7 +8,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 # ..........................................
-# http://www.github.com/reactive-firewall/python-reop/LICENSE.md
+# https://github.com/reactive-firewall-org/multicast/tree/HEAD/LICENSE.md
 # ..........................................
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -46,6 +46,23 @@
 		True
 		>>>
 
+	Testcase 1: Load tests
+
+		>>> import tests as _tests
+		>>> _tests.__module__ is not None
+		True
+		>>> import unittest as _unittest
+		>>> _tests.TEST_GROUPS is not None
+		True
+		>>> _tests.get_test_suite is not None
+		True
+		>>>
+		>>> output = _tests.get_test_suite()
+		>>> output is not None
+		True
+		>>> isinstance(output, _unittest.TestSuite)
+		True
+		>>>
 
 """
 
@@ -57,7 +74,6 @@ try:
 	import sys
 	import os
 	import unittest
-	from unittest import TestSuite as TestSuite
 	import types
 	from typing import Optional
 except ImportError as _cause:  # pragma: no branch
@@ -67,6 +83,32 @@ try:
 	import logging
 	try:
 		class ANSIColors:
+			"""
+			A class that defines ANSI color codes for terminal output.
+
+			This class contains ANSI escape sequences for various colors and a
+			mapping of logging levels to their corresponding colors. It also
+			includes a nested class for a colored stream handler that formats
+			log messages with the appropriate colors based on their severity.
+
+			Attributes:
+				BLACK (str): ANSI code for black text.
+				RED (str): ANSI code for red text.
+				GREEN (str): ANSI code for green text.
+				YELLOW (str): ANSI code for yellow text.
+				BLUE (str): ANSI code for blue text.
+				MAGENTA (str): ANSI code for magenta text.
+				CYAN (str): ANSI code for cyan text.
+				GREY (str): ANSI code for grey text.
+				AMBER (str): ANSI code for amber text.
+				REDBG (str): ANSI code for red background.
+				ENDC (str): ANSI code to reset text formatting.
+
+				logging_color (dict): A dictionary mapping logging levels to their
+										corresponding ANSI color codes.
+				logging_level (dict): A dictionary mapping logging levels to their
+										corresponding logging module constants.
+			"""
 			# Define ANSI color codes
 			BLACK = """\033[30m"""
 			RED = """\033[31m"""
@@ -96,7 +138,30 @@ try:
 		}
 
 		class ColoredStreamHandler(logging.StreamHandler):
+			"""
+			A custom logging handler that outputs with color formatting based on the log level.
+
+			This handler checks if the output stream is a terminal and applies
+			the appropriate ANSI color codes to the log messages. If the output
+			is not a terminal, it outputs plain text without color.
+
+			Methods:
+				emit(record: logging.LogRecord) -> None:
+					Formats and writes the log message to the stream with
+					appropriate color based on the log level.
+			"""
+
 			def emit(self, record: logging.LogRecord) -> None:
+				"""
+				Formats and writes the log message to the stream with color.
+
+				Args:
+					record (logging.LogRecord): The log record containing
+												information about the log event.
+
+				Raises:
+					ValueError: If the log level is invalid or not recognized.
+				"""
 				# Get the log level as a string
 				loglevel = record.levelname.lower()
 				# Validate the log level
@@ -104,8 +169,8 @@ try:
 					raise ValueError("Invalid log level") from None  # pragma: no cover
 				# Determine color based on whether the output is a terminal
 				if sys.stdout.isatty():
-					colorPrefix = logging_color[loglevel]
-					endColor = ANSIColors.ENDC
+					colorPrefix = logging_color[loglevel]  # skipcq: TCV-002
+					endColor = ANSIColors.ENDC  # skipcq: TCV-002
 				else:
 					colorPrefix = ""
 					endColor = ""
@@ -152,7 +217,7 @@ try:
 	from tests import test_basic
 	from tests import test_exceptions
 	from tests import test_deps
-	from tests import test_install_requires
+	# removed test_install_requires, in v2.0.9a3
 	from tests import test_manifest
 	from tests import test_build
 	from tests import test_usage
@@ -166,7 +231,6 @@ try:
 		profiling,
 		test_basic,
 		test_deps,
-		test_install_requires,
 		test_build,
 		test_manifest,
 		test_usage,
@@ -208,7 +272,7 @@ except ImportError as _cause:  # pragma: no branch
 	raise ImportError("[CWE-440] context Failed to import.") from _cause
 
 
-def loadDocstringsFromModule(module: types.ModuleType) -> TestSuite:
+def loadDocstringsFromModule(module: types.ModuleType) -> unittest.TestSuite:
 	"""
 	Load and return a test suite containing doctests from the specified module.
 
@@ -223,7 +287,7 @@ def loadDocstringsFromModule(module: types.ModuleType) -> TestSuite:
 	- The function checks if the `doctest` module is already imported to
 		avoid unnecessary imports.
 	- The `DocTestFinder` is configured with the following options:
-		- `verbose=True`: Enables verbose output for the test discovery.
+		- `verbose=False`: Disables verbose output for the test discovery. (changed in v2.0.9a3)
 		- `recurse=True`: Allows the finder to search for doctests in
 			nested functions and classes.
 		- `exclude_empty=True`: Excludes empty doctests from the results.
@@ -255,7 +319,6 @@ def loadDocstringsFromModule(module: types.ModuleType) -> TestSuite:
 
 		>>> import multicast
 		>>> suite = loadDocstringsFromModule(multicast)  #doctest: +ELLIPSIS
-		Finding tests in multicast...
 		>>> if suite:
 		...     print(f"Loaded {len(suite._tests)} doctests from "
 		...         f"{multicast.__name__}")  # doctest: +ELLIPSIS
@@ -263,7 +326,7 @@ def loadDocstringsFromModule(module: types.ModuleType) -> TestSuite:
 		>>>
 
 	"""
-	if not module:
+	if not module:  # pragma: no branch
 		return None
 	try:
 		if 'doctest' not in sys.modules:
@@ -272,11 +335,11 @@ def loadDocstringsFromModule(module: types.ModuleType) -> TestSuite:
 			doctest = sys.modules["doctest"]
 	except Exception as _cause:  # pragma: no branch
 		raise ImportError("[CWE-440] doctest Failed to import.") from _cause
-	finder = doctest.DocTestFinder(verbose=True, recurse=True, exclude_empty=True)
+	finder = doctest.DocTestFinder(verbose=False, recurse=True, exclude_empty=True)
 	doc_suite = unittest.TestSuite()
 	try:
 		doc_suite.addTests(doctest.DocTestSuite(module=module, test_finder=finder))
-	except ValueError as _cause:
+	except ValueError as _cause:  # pragma: no branch
 		# ValueError is raised when no tests are found
 		_LOGGER.warning(
 			"No doctests found in %s: %s",  # lazy formatting to avoid PYL-W1203
@@ -305,7 +368,8 @@ MINIMUM_ACCEPTANCE_TESTS = {
 		# Build and packaging tests
 		test_build.BuildPEP517TestSuite,
 		test_manifest.ManifestInclusionTestSuite,
-		test_install_requires.ParseRequirementsTestSuite,
+		test_build.BuildPEP621TestSuite,  # added in v2.0.9a3
+		# removed test_install_requires.ParseRequirementsTestSuite in v2.0.9a3
 	],
 	"doctests": [
 		# These will be loaded dynamically via DocTestSuite
@@ -348,7 +412,7 @@ EXTRA_TESTS = {
 }
 
 try:
-	from tests import test_recv
+	from tests import test_recv  # added in v2.0.7
 	depends.insert(11, test_recv)
 	EXTRA_TESTS["coverage"].append(test_recv.McastRECVTestSuite)
 except Exception:  # pragma: no branch
@@ -363,7 +427,7 @@ except Exception:  # pragma: no branch
 	# reported, so now just continue with testing
 
 try:
-	from tests import test_extra
+	from tests import test_extra  # added in v2.0.7
 	depends.insert(11, test_extra)
 	EXTRA_TESTS["security"].append(test_extra.ExtraDocsUtilsTestSuite)
 	import docs.utils
@@ -396,7 +460,10 @@ TEST_GROUPS = {
 }
 
 
-def get_test_suite(group: Optional[str] = None, category: Optional[str] = None) -> TestSuite:
+def get_test_suite(
+	group: Optional[str] = None,
+	category: Optional[str] = None,
+) -> unittest.TestSuite:
 	"""Get a test suite based on group and category.
 
 	Args:
@@ -411,6 +478,21 @@ def get_test_suite(group: Optional[str] = None, category: Optional[str] = None) 
 
 	# Helper function to add test cases to suite
 	def add_test_cases(test_cases: list) -> None:
+		"""
+		Adds a list of test cases to the test suite.
+
+		This function iterates over the provided list of test cases. If a test case
+		is an instance of unittest.TestSuite, it adds the entire suite to the
+		main suite. If the test case is a class, it loads the tests from that
+		class and adds them to the main suite.
+
+		Args:
+			test_cases (list): A list of test cases or test suites to be added
+								to the main test suite.
+
+		Returns:
+			None: This function does not return a value.
+		"""
 		for test_case in test_cases:
 			if isinstance(test_case, unittest.TestSuite):
 				# Handle doctests

@@ -17,7 +17,7 @@
 ## Steps to Reproduce Issue
 
 > Avoid vague language like "it doesn't work." Please describe as specifically as you can what
-> behavior you are actually seeing (eg: an error message? a nil return value?).
+> behavior you are actually seeing (e.g., an error message? a nil return value?).
 
 1.
 2.

@@ -99,12 +99,21 @@ check_command gpgv ;
 check_command shasum ;
 check_command shlock ;
 
-# sorry no windows support here
-if [[ $( \uname -s ) == "*arwin" ]] ; then
-	CI_OS="macos"
-else
-	CI_OS="linux"
-fi
+# Detect the operating system
+case "$( command uname -s )" in
+	*arwin)
+		CI_OS="macos"
+		;;
+	Linux)
+		CI_OS="linux"
+		;;
+	*)
+		# assume windows
+		printf 'Unsupported OS\n' >&2 ;
+		CI_OS="windows"
+		;;
+esac
+
 
 function cleanup() {
 	# shellcheck disable=SC2317
@@ -139,7 +148,7 @@ fi
 
 # this is how test files are found:
 
-# THIS IS THE ACTUAL TEST DIR USED (update _TEST_ROOT_DIR as needed)
+# THIS IS THE ACTUAL GIT DIR USED (update _TEST_ROOT_DIR as needed)
 if _TEST_ROOT_DIR=$(git rev-parse --show-superproject-working-tree 2>/dev/null); then
 	if [ -z "${_TEST_ROOT_DIR}" ]; then
 		_TEST_ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null)
@@ -149,12 +158,9 @@ else
 	EXIT_CODE=40
 fi
 
-# This File  MUST BE GIT-IGNORED
-# to be SAFELY USED to store Tokens and env vars (update logic as needed)
-if [[ ( -r ./codecov_env ) ]] ; then
-	# shellcheck disable=SC1091
-	source ./codecov_env 2>/dev/null || true ;
-fi
+#########################
+# actual Work starts here
+#########################
 
 if [[ ( -r ./codecov.yml ) ]] ; then
 	curl -X POST --data-binary @- https://codecov.io/validate <codecov.yml 2>/dev/null || EXIT_CODE=6
@@ -164,52 +170,43 @@ if [[ ( -r ./.codecov.yml ) ]] ; then
 fi
 
 
-#########################
-# actual Work starts here
-#########################
-curl -fLso codecov "https://uploader.codecov.io/latest/${CI_OS:-linux}/codecov" ;
-for i in 1 256 512 ; do
-	curl -fLso "codecov.SHA${i}SUM" "https://uploader.codecov.io/latest/${CI_OS:-linux}/codecov.SHA${i}SUM" ; wait ;
-	curl -fLso "codecov.SHA${i}SUM.sig" "https://uploader.codecov.io/latest/${CI_OS:-linux}/codecov.SHA${i}SUM.sig" ; wait ;
-	# test sha1/sha512 signatures if found and sha256 even if not found
-	if [[ ( -r "codecov.SHA${i}SUM" ) ]] || [[ ( ${i} -eq 256 ) ]] ; then
-		if [[ ( -r "codecov.SHA${i}SUM.sig" ) ]] ; then
-			# configure your CI evironment to trust the key at https://keybase.io/codecovsecurity/pgp_keys.asc
-			# FP: 2703 4E7F DB85 0E0B BC2C 62FF 806B B28A ED77 9869
-			# OR...
-			# Set CI=true to continue on missing keys
-			gpgv "codecov.SHA${i}SUM.sig" "codecov.SHA${i}SUM" || ${CI} || EXIT_CODE=126
-			rm -vf "codecov.SHA${i}SUM.sig" 2>/dev/null ;
+if [[ "${CI_OS:-Other}" == "Linux" ]] && [[ ( ${EXIT_CODE} -eq 0 ) ]] && [[ ( ${CI_CODECOV_UPLOAD_ENABLED:-0} -eq 1 ) ]] ; then
+	curl -fLso codecov "https://uploader.codecov.io/latest/${CI_OS:-linux}/codecov" || EXIT_CODE=126 ;
+	for i in 1 256 512 ; do
+		curl -fLso "codecov.SHA${i}SUM" "https://uploader.codecov.io/latest/${CI_OS:-linux}/codecov.SHA${i}SUM" ; wait ;
+		curl -fLso "codecov.SHA${i}SUM.sig" "https://uploader.codecov.io/latest/${CI_OS:-linux}/codecov.SHA${i}SUM.sig" ; wait ;
+		# test sha1/sha512 signatures if found and sha256 even if not found
+		if [[ ( -r "codecov.SHA${i}SUM" ) ]] || [[ ( ${i} -eq 256 ) ]] ; then
+			if [[ ( -r "codecov.SHA${i}SUM.sig" ) ]] ; then
+				# configure your CI evironment to trust the key at https://keybase.io/codecovsecurity/pgp_keys.asc
+				# FP: 2703 4E7F DB85 0E0B BC2C 62FF 806B B28A ED77 9869
+				# OR...
+				# Set CI=true to continue on missing keys
+				gpgv "codecov.SHA${i}SUM.sig" "codecov.SHA${i}SUM" || ${CI} || EXIT_CODE=126
+				rm -vf "codecov.SHA${i}SUM.sig" 2>/dev/null ;
+			fi
+			shasum -a $i -c --ignore-missing "codecov.SHA${i}SUM" || EXIT_CODE=126
+			rm -vf "codecov.SHA${i}SUM" 2>/dev/null ;
 		fi
-		shasum -a $i -c --ignore-missing "codecov.SHA${i}SUM" || EXIT_CODE=126
-		rm -vf "codecov.SHA${i}SUM" 2>/dev/null ;
+	done
+
+	# shellcheck disable=SC2086
+	if [[ ( ${EXIT_CODE} -eq 0 ) ]] ; then
+		chmod 751 ./codecov || EXIT_CODE=126
 	fi
-done
 
-# shellcheck disable=SC2086
-if [[ ( ${EXIT_CODE} -eq 0 ) ]] ; then
-	chmod -v 751 ./codecov || EXIT_CODE=126
-fi
+	# shellcheck disable=SC2086
+	if [[ ( ${EXIT_CODE} -eq 0 ) ]] ; then
+		./codecov --help
+		#./codecov upload-coverage -n "Custom Test Run" -X gcov --flag multicast --git-service github --sha ${VCS_COMMIT_ID} --dir . --file ./test-reports/coverage.xml -Z || EXIT_CODE=10 ;
+	fi
 
-if [[ ( -x $(command -v coverage3) ) ]] ; then
-	coverage3 combine 2>/dev/null || true
-	wait ;
-	coverage3 xml --include=multicast/*,tests/*,setup.py 2>/dev/null || true
-elif [[ ( -x $(command -v coverage) ) ]] ; then
-	coverage combine 2>/dev/null || true
-	wait ;
-	coverage xml --include=multicast/*,tests/*,setup.py 2>/dev/null || coverage xml 2>/dev/null || true
-fi
+	rm -f ./codecov 2>/dev/null > /dev/null || true ; wait ;
 
-# shellcheck disable=SC2086
-if [[ ( ${EXIT_CODE} -eq 0 ) ]] ; then
-	./codecov -n "Custom Test Run" -X gcov -F multicast,"${CI_OS:-linux}-latest" -Z || EXIT_CODE=10 ;
-fi
-
+fi ;  # end if linux
 
 unset _TEST_ROOT_DIR 2>/dev/null || true ;
 
-rm -f ./codecov 2>/dev/null > /dev/null || true ; wait ;
 rm -f "${LOCK_FILE}" 2>/dev/null > /dev/null || true ; wait ;
 
 # shellcheck disable=SC2086

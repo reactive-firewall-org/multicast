@@ -39,13 +39,25 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
-      head_branch: ${{ steps.get_sha.outputs.head_branch }}
-      sha: ${{ steps.get_sha.outputs.head_sha }}
+      sha: ${{ steps.load_build_info.outputs.build_sha }}
       branch_name: ${{ steps.get_env.outputs.branch }}
       parent_sha: ${{ steps.get_env.outputs.parent_sha }}
       branch_ref: ${{ steps.get_env.outputs.branch_ref }}
-      trigger_id: ${{ steps.get_env.outputs.trigger_id }}
-      build_environment: "Testing"
+      trigger_id: ${{ steps.get_trigger_id.outputs.trigger_id }}
+      build_id: ${{ steps.load_build_info.outputs.build_id }}
+      build_url: ${{ steps.load_build_info.outputs.build_url }}
+      build_ref: ${{ steps.load_build_info.outputs.build_ref }}
+      build_ref_name: ${{ steps.load_build_info.outputs.build_ref_name }}
+      build_sha: ${{ steps.load_build_info.outputs.build_sha }}
+      build_artifact_filename: ${{ steps.load_build_info.outputs.build_artifact_filename }}
+      build_artifact_url: ${{ steps.load_build_info.outputs.build_artifact_url }}
+      build_artifact_id: ${{ steps.load_build_info.outputs.build_artifact_id }}
+      build_artifact_digest: ${{ steps.load_build_info.outputs.build_artifact_digest }}
+      build_pr_number: ${{ steps.load_build_info.outputs.build_pr_number }}
+      build_environment: ${{ steps.load_build_info.outputs.build_environment }}
+      mats_url: ${{ steps.output_run_id.outputs.mats_url }}
+      mats_id: ${{ steps.output_run_id.outputs.mats_id }}
+      check_id: ${{ steps.output_mats_check_id.outputs.check-id }}
     steps:
       - id: check
         run: |
@@ -54,28 +66,7 @@ jobs:
           else
             echo "should_run=false" >> "$GITHUB_OUTPUT"
           fi
-      - id: get_sha
-        env:
-          BRANCH_VALUE: ${{ github.event.workflow_run.head_branch }}
-          SHA_VALUE: ${{ github.event.workflow_run.head_sha }}
-        run: |
-          if [[ -n "$BRANCH_VALUE" ]]; then
-            echo "head_branch=$BRANCH_VALUE" >> "$GITHUB_OUTPUT"
-            echo "head_sha=$SHA_VALUE" >> "$GITHUB_OUTPUT"
-          else
-            echo "head_branch='undefined'" >> "$GITHUB_OUTPUT"  # Default fallback
-            echo "head_sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"  # Default fallback
-          fi
-        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
-      - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-      - name: Checkout target commit
-        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
-        run: git checkout ${{ steps.get_sha.outputs.head_sha }}
-      - id: get_env
+      - id: get_trigger_id
         if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
         run: |
           ID_VALUE=$(gh api "${{ github.event.workflow_run.url }}" --jq '.id')
@@ -84,10 +75,71 @@ jobs:
           else
             echo "trigger_id=null" >> "$GITHUB_OUTPUT"  # Default fallback
           fi
+      - name: "Fetch Build Info"
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: "BUILD-info.txt"
+          pattern: multicast-info-*
+          repository: reactive-firewall-org/multicast
+          merge-multiple: true
+          github-token: ${{ env.GH_TOKEN }}
+          run-id: ${{ steps.get_trigger_id.outputs.trigger_id }}
+      - name: "move into place"
+        id: load_build_info
+        run: |
+          mv -vf "BUILD-info.txt/BUILD-info.txt" ./"multicast-info.txt" ;
+          wait ;
+          rmdir -v ./"BUILD-info.txt"
+          mv -vf ./"multicast-info.txt" ./BUILD-info.txt
+          cat <"BUILD-info.txt" >> "$GITHUB_OUTPUT"
+        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
+      - id: output_run_id
+        shell: bash
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        run: |
+          printf "mats_url=%s\n" 'https://github.com/reactive-firewall-org/multicast/actions/runs/${{ github.run_id }}' >> "$GITHUB_OUTPUT"
+          printf "mats_id=%s\n" ${{ github.run_id }} >> "$GITHUB_OUTPUT"
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          ref: ${{ steps.load_build_info.outputs.build_sha }}
+          fetch-depth: 0
+      - name: "Queue MATs GitHub Check"
+        id: output_mats_check_id
+        uses: ./.github/actions/check-control
+        with:
+          name: "CI-MATs"
+          title: "Minimal Acceptance Testing"
+          status: 'queued'
+          summary: 'Minimal Acceptance Testing is _Starting_'
+          sha: ${{ steps.load_build_info.outputs.build_sha }}
+          workflow-run-id: ${{ steps.output_run_id.outputs.mats_id }}
+          details-url: ${{ steps.output_run_id.outputs.mats_url }}
+      - name: Checkout target commit
+        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
+        run: git checkout ${{ steps.load_build_info.outputs.build_sha }}
+      - id: get_env
+        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
+        run: |
           echo "branch=$(git name-rev --name-only $(git log -1 --format=%H) | cut -d~ -f1-1)" >> "$GITHUB_OUTPUT"
           echo "parent_sha=$(git merge-base $(git log -1 --format=%H) refs/remotes/origin/stable)" >> "$GITHUB_OUTPUT"
           BRANCH_REF=$(head -n1 <(git symbolic-ref HEAD 2>/dev/null || git show-ref $(git name-rev --name-only $(git log -1 --format=%H)) | cut -d\  -f2-2) ) ;
           echo "branch_ref=${BRANCH_REF}" >> "$GITHUB_OUTPUT"
+      - name: "Start MATs GitHub Check"
+        id: start_mats_success
+        if: ${{ (steps.check.outputs.should_run == 'true') && success() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: ./.github/actions/check-control
+        with:
+          name: "CI-MATs"
+          check-id: ${{ steps.output_mats_check_id.outputs.check-id }}
+          title: "Minimal Acceptance Testing"
+          status: 'in_progress'
+          summary: 'Minimal Acceptance Testing is _in progress_'
+          sha: ${{ steps.load_build_info.outputs.build_sha }}
+          workflow-run-id: ${{ steps.output_run_id.outputs.mats_id }}
+          details-url: ${{ steps.output_run_id.outputs.mats_url }}
 
   MATS:
     permissions:
@@ -107,7 +159,13 @@ jobs:
       matrix:
         python-version: ["${{ vars.PYTHON_OLD_MIN }}", "${{ vars.PYTHON_DEFAULT }}", "${{ vars.PYTHON_EXPERIMENTAL }}"]
     outputs:
-      mats_status: ${{ steps.tests.outcome }}
+      mats_status: ${{ steps.tests.outputs.mats_status }}
+      python-version: ${{ steps.tests.outputs.python-version }}
+      artifact-id: ${{ steps.tests.outputs.artifact-id }}
+      artifact-name: ${{ steps.tests.outputs.artifact-name }}
+      artifact-url: ${{ steps.tests.outputs.artifact-url }}
+      artifact-digest: ${{ steps.tests.outputs.artifact-digest }}
+      artifact-files: ${{ steps.tests.outputs.artifact-files }}
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
       LANG: "en_US.utf-8"
@@ -126,39 +184,136 @@ jobs:
           build-run-id: ${{ needs.check_build.outputs.trigger_id }}
           python-version: ${{ matrix.python-version }}
           path: ${{ github.workspace }}
-      - name: Summarize MATs for python ${{ matrix.python-version }}
-        id: summarize-fetch-build-success
-        env:
-          BUILD_ARTIFACT_NAME: ${{ steps.fetch-build.outputs.artifact-name }}
-          BUILD_ARTIFACT_FILES: ${{ steps.fetch-build.outputs.artifact-files }}
-        run: |
-          echo "- [x] BUILD ${{ needs.check_build.outputs.trigger_id }} succeeded with commit ${{ needs.check_build.outputs.sha }}" > "$GITHUB_STEP_SUMMARY"
-          echo "    * Including building the files ${BUILD_ARTIFACT_FILES}" >> "$GITHUB_STEP_SUMMARY"
-          echo "    * Including producing the build artifact ${BUILD_ARTIFACT_NAME}" >> "$GITHUB_STEP_SUMMARY"
-        if: ${{ success() }}
-      - name: Summarize MATs for python ${{ matrix.python-version }} (FAILED)
-        id: summarize-fetch-build-failure
-        run: |
-          echo "- [ ] ~BUILD ${{ needs.check_build.outputs.trigger_id }} succeeded with commit ${{ needs.check_build.outputs.sha }}~" > "$GITHUB_STEP_SUMMARY"
-        if: ${{ failure() }}
       - name: Run Tests for python ${{ matrix.python-version }}
         id: tests
-        run: make -j1 -f Makefile test-mats ;
-        if: ${{ !cancelled() }}
-      - name: Summarize MATs for python ${{ matrix.python-version }}
-        id: summarize-mats-success
-        run: |
-          echo "- [x] MATS succeeded with python version ${{ matrix.python-version }}" >> "$GITHUB_STEP_SUMMARY"
-        if: ${{ success() }}
-      - name: Summarize MATs for python ${{ matrix.python-version }} (FAILED)
-        id: summarize-mats-failure
-        run: |
-          echo "- [ ] ~MATS succeeded with python version ${{ matrix.python-version }}~" >> "$GITHUB_STEP_SUMMARY"
-        if: ${{ failure() }}
+        uses: ./.github/actions/run-minimal-acceptance-tests
+        with:
+          sha: ${{ needs.check_build.outputs.sha }}
+          python-version: ${{ matrix.python-version }}
       - name: Post-Clean
         id: post
         run: make -j1 -f Makefile clean || true ;
         if: ${{ always() }}
+
+  MATs_SUMMARY:
+    permissions:
+      actions: read
+      pull-requests: read
+      checks: write
+    needs: [check_build, MATS]
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && (needs.check_build.outputs.should_run == 'true') && (needs.MATS.outputs.mats_status != 'cancelled') }}
+    outputs:
+      mats_success: ${{ steps.report_status.outputs.mats_success }}
+      mats_sha: ${{ needs.check_build.outputs.sha }}
+      build_success: ${{ steps.report_status.outputs.build_success }}
+      build_trigger_id: ${{ needs.check_build.outputs.trigger_id }}
+      build_sha: ${{ needs.check_build.outputs.sha }}
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: ${{ github.workspace }}/MATS
+          pattern: multicast-mats-${{ needs.check_build.outputs.sha }}-part-*
+          merge-multiple: true
+      - name: "move into place"
+        shell: bash
+        run: |
+          mv -vf "MATS/test-reports" ./"test-reports" || : ;
+        if: ${{ (needs.check_build.outputs.should_run == 'true') && success() }}
+      - id: report_status
+        env:
+          BUILD_SHA: ${{ needs.check_build.outputs.build_sha }}
+          MATS_COMMENT_BODY: '${{ github.workspace }}/MATs-Summary-Artifact.txt'
+        run: |
+          if [[ "${{ needs.MATS.outputs.mats_status }}" == "success" ]]; then
+            echo "# :green_circle: Automated Code Checks Passed" > "${MATS_COMMENT_BODY}"
+            echo "" >> "${MATS_COMMENT_BODY}"
+            echo "mats_summary=Minimal Acceptance Tests Passed" >> "$GITHUB_OUTPUT"
+            echo "## :building_construction: Build" >> "${MATS_COMMENT_BODY}"
+            echo "" >> "${MATS_COMMENT_BODY}"
+            if [[ "${{ needs.check_build.outputs.should_run }}" == "true" ]]; then
+              echo " :ballot_box_with_check: BUILD \`${{ needs.check_build.outputs.trigger_id }}\` succeeded with commit [${BUILD_SHA}](https://github.com/reactive-firewall-org/multicast/commit/${BUILD_SHA})" >> "${MATS_COMMENT_BODY}"
+              echo "build_success=true" >> "$GITHUB_OUTPUT"
+            else
+              echo " :x: BUILD ${{ needs.check_build.outputs.trigger_id }} failed" >> "${MATS_COMMENT_BODY}"
+              echo "build_success=false" >> "$GITHUB_OUTPUT"
+            fi
+            echo "" >> "${MATS_COMMENT_BODY}"
+            echo "## :1234: Minimal Acceptance Testing" >> "${MATS_COMMENT_BODY}"
+            echo "" >> "${MATS_COMMENT_BODY}"
+            cat <./MATS/"MATs-Summary-Artifact-${{ vars.PYTHON_OLD_MIN }}.txt" >> "${MATS_COMMENT_BODY}"
+            echo "" >> "${MATS_COMMENT_BODY}"
+            cat <./MATS/"MATs-Summary-Artifact-${{ vars.PYTHON_DEFAULT }}.txt" >> "${MATS_COMMENT_BODY}"
+            echo "" >> "${MATS_COMMENT_BODY}"
+            cat <./MATS/"MATs-Summary-Artifact-${{ vars.PYTHON_EXPERIMENTAL }}.txt" >> "${MATS_COMMENT_BODY}"
+            echo "" >> "${MATS_COMMENT_BODY}"
+            echo "mats_success=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "mats_summary=Minimal Acceptance Tests Unsuccessful" >> "$GITHUB_OUTPUT"
+            echo "# Unstable Commit" > "${MATS_COMMENT_BODY}"
+            echo "" >> "${MATS_COMMENT_BODY}"
+            echo "> [!CAUTION]" >> "${MATS_COMMENT_BODY}"
+            echo "> Unstable - This commit is failed to pass minimal acceptance testing." >> "${MATS_COMMENT_BODY}"
+            echo "" >> "${MATS_COMMENT_BODY}"
+            echo "## :construction: Build" >> "${MATS_COMMENT_BODY}"
+            echo "" >> "${MATS_COMMENT_BODY}"
+            if [[ "${{ needs.check_build.outputs.should_run }}" == "true" ]]; then
+              echo " :ballot_box_with_check: BUILD \`${{ needs.check_build.outputs.trigger_id }}\` succeeded with commit [${BUILD_SHA}](https://github.com/reactive-firewall-org/multicast/commit/${BUILD_SHA})" >> "${MATS_COMMENT_BODY}"
+              echo "build_success=true" >> "$GITHUB_OUTPUT"
+            else
+              echo " :x: BUILD ${{ needs.check_build.outputs.trigger_id }} failed" >> "${MATS_COMMENT_BODY}"
+              echo "build_success=false" >> "$GITHUB_OUTPUT"
+            fi
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "## :red_circle: Minimal Acceptance Testing" >> "${MATS_COMMENT_BODY}"
+            echo "" >> "${MATS_COMMENT_BODY}"
+            echo " :x: MATs ${{ github.run_id }} failed with commit ${{ needs.check_build.outputs.sha }}" >> "${MATS_COMMENT_BODY}"
+            echo "" >> "${MATS_COMMENT_BODY}"
+            echo "## :1234: Minimal Acceptance Testing" >> "${MATS_COMMENT_BODY}"
+            echo "" >> "${MATS_COMMENT_BODY}"
+            cat <./MATS/"MATs-Summary-Artifact-${{ vars.PYTHON_OLD_MIN }}.txt" >> "${MATS_COMMENT_BODY}"
+            echo "" >> "${MATS_COMMENT_BODY}"
+            cat <./MATS/"MATs-Summary-Artifact-${{ vars.PYTHON_DEFAULT }}.txt" >> "${MATS_COMMENT_BODY}"
+            echo "" >> "${MATS_COMMENT_BODY}"
+            cat <./MATS/"MATs-Summary-Artifact-${{ vars.PYTHON_EXPERIMENTAL }}.txt" >> "${MATS_COMMENT_BODY}"
+            echo "" >> "${MATS_COMMENT_BODY}"
+            echo "mats_success=false" >> "$GITHUB_OUTPUT"
+          fi
+          cat <"${MATS_COMMENT_BODY}" >> "$GITHUB_STEP_SUMMARY"
+          { echo 'mats_text<<EOF'; cat <"${MATS_COMMENT_BODY}"; echo EOF; } >> "$GITHUB_OUTPUT"
+      - name: "Upload MATs summary"
+        id: upload-mats-summary
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          path: ./MATs-Summary-Artifact.txt
+          name: MATS-COMMENT-BODY-${{ needs.check_build.outputs.sha }}
+          if-no-files-found: error
+          compression-level: 3
+          retention-days: 2
+          overwrite: true
+      - name: checkout repository actions for check
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          ref: ${{ needs.check_build.outputs.sha }}
+          sparse-checkout: '.github/actions/check-control'
+      - name: "Complete MATs GitHub Check"
+        id: complete_mats
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && always() }}
+        uses: ./.github/actions/check-control
+        with:
+          name: "CI-MATs"
+          check-id: ${{ needs.check_build.outputs.check_id }}
+          title: "Minimal Acceptance Testing"
+          status: 'completed'
+          conclusion: ${{ needs.MATS.outputs.mats_status }}
+          summary: ${{ steps.report_status.outputs.mats_summary }}
+          text: ${{ steps.report_status.outputs.mats_text }}
+          sha: ${{ needs.check_build.outputs.sha }}
+          workflow-run-id: ${{ needs.check_build.outputs.mats_id }}
+          details-url: ${{ needs.check_build.outputs.mats_url }}
 
   MATS_STATUS:
     permissions:
@@ -166,7 +321,8 @@ jobs:
       pull-requests: read
     needs: [check_build, MATS]
     runs-on: ubuntu-latest
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && (needs.check_build.outputs.should_run == 'true') && (needs.MATS.outputs.mats_status != 'cancelled') }}
+    environment: ${{ needs.check_build.outputs.build_environment }}
     outputs:
       mats_success: ${{ steps.check_status.outputs.mats_success }}
       mats_sha: ${{ needs.check_build.outputs.sha }}
@@ -176,45 +332,68 @@ jobs:
     steps:
       - id: check_status
         run: |
-          if [[ "${{ needs.MATS.outputs.mats_status }}" == "success" ]]; then
-            echo "# :green_circle: Automated Code Checks Passed" > "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "## :building_construction: Build" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            if [[ "${{ needs.check_build.outputs.should_run }}" == "true" ]]; then
-              echo " :ballot_box_with_check: BUILD ${{ needs.check_build.outputs.trigger_id }} succeeded with commit ${{ needs.check_build.outputs.sha }}" >> "$GITHUB_STEP_SUMMARY"
-              echo "build_success=true" >> "$GITHUB_OUTPUT"
-            else
-              echo " :x: BUILD ${{ needs.check_build.outputs.trigger_id }} failed" >> "$GITHUB_STEP_SUMMARY"
-              echo "build_success=false" >> "$GITHUB_OUTPUT"
-            fi
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "## :1234: Minimal Acceptance Testing" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo " :ballot_box_with_check: MATS succeeded with python version ${{ vars.PYTHON_OLD_MIN }}" >> "$GITHUB_STEP_SUMMARY"
-            echo " :ballot_box_with_check: MATS succeeded with python version ${{ vars.PYTHON_DEFAULT }}" >> "$GITHUB_STEP_SUMMARY"
-            echo " :ballot_box_with_check: MATS succeeded with python version ${{ vars.PYTHON_EXPERIMENTAL }}" >> "$GITHUB_STEP_SUMMARY"
-            echo "mats_success=true" >> "$GITHUB_OUTPUT"
-            exit 0
+          if [[ "${{ needs.check_build.result }}" == "success" ]]; then
+            printf "%s\n" "build_success=${{ needs.check_build.outputs.should_run }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "parent_sha=${{ needs.check_build.outputs.parent_sha }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_url=${{ needs.check_build.outputs.build_url }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_ref=${{ needs.check_build.outputs.build_ref }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_sha=${{ needs.check_build.outputs.build_sha }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_ref_name=${{ needs.check_build.outputs.build_ref_name }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_artifact_filename=${{ needs.check_build.outputs.build_artifact_filename }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_artifact_url=${{ needs.check_build.outputs.build_artifact_url }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_artifact_id=${{ needs.check_build.outputs.build_artifact_id }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_artifact_digest=${{ needs.check_build.outputs.build_artifact_digest }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_pr_number=${{ needs.check_build.outputs.build_pr_number }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_environment=${{ needs.check_build.outputs.build_environment }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "build_id=${{ needs.check_build.outputs.build_id }}" >> "$GITHUB_OUTPUT"
+            cat <"$GITHUB_OUTPUT" >> "BUILD-info.txt"
           else
-            echo "# Unstable Commit" > "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "> [!CAUTION]" >> "$GITHUB_STEP_SUMMARY"
-            echo "> Unstable - This commit is failed to pass minimal acceptance testing." >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "## :construction: Build" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            if [[ "${{ needs.check_build.outputs.should_run }}" == "true" ]]; then
-              echo " :ballot_box_with_check: BUILD ${{ needs.check_build.outputs.trigger_id }} succeeded with commit ${{ needs.check_build.outputs.sha }}" >> "$GITHUB_STEP_SUMMARY"
-              echo "build_success=true" >> "$GITHUB_OUTPUT"
-            else
-              echo " :x: BUILD ${{ needs.check_build.outputs.trigger_id }} failed" >> "$GITHUB_STEP_SUMMARY"
-              echo "build_success=false" >> "$GITHUB_OUTPUT"
-            fi
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "## :red_circle: Minimal Acceptance Testing" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo " :x: MATs ${{ github.run_id }} failed with commit ${{ needs.check_build.outputs.sha }}" >> "$GITHUB_STEP_SUMMARY"
-            echo "mats_success=false" >> "$GITHUB_STEP_SUMMARY"
-            exit 1
+            printf "%s\n" "build_success=false" >> "$GITHUB_OUTPUT"
           fi
+          if [[ "${{ needs.MATS.result }}" == "success" && "${{ needs.check_build.result }}" == "success" ]]; then
+            printf "%s\n" "mats_success=true" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "mats_url=${{ github.api_url }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "mats_ref=${{ needs.check_build.outputs.build_ref }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "mats_sha=${{ needs.check_build.outputs.sha }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "mats_ref_name=${{ needs.check_build.outputs.branch_ref }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "mats_environment=${{ needs.check_build.outputs.build_environment }}" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "mats_id=${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+          else
+            printf "%s\n" "mats_success=false" >> "$GITHUB_OUTPUT"
+          fi
+          cat <"$GITHUB_OUTPUT" >> "multicast-info.txt"
+      - name: Upload build summary
+        id: upload-build-info
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          path: "multicast-info.txt"
+          name: multicast-info-${{ needs.check_build.outputs.sha }}
+          if-no-files-found: error
+          compression-level: 3
+          retention-days: 2
+          overwrite: true
+
+  MATs_REPORT:
+    permissions:
+      actions: read
+      contents: write
+    needs: [check_build, MATs_SUMMARY]
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() }}
+    steps:
+      - name: "Download Status Summary Artifact"
+        id: download-mats-summary
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: MATS-COMMENT-BODY-${{ needs.check_build.outputs.sha }}
+          github-token: ${{ github.token }}
+      - name: "MATs commit comment"
+        id: mats-commit-comment
+        if: ${{ success() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: peter-evans/commit-comment@5a6f8285b8f2e8376e41fe1b563db48e6cf78c09 # v3.0.0
+        with:
+          sha: ${{ needs.check_build.outputs.sha }}
+          token: ${{ github.token }}
+          body-path: '${{ steps.download-mats-summary.outputs.download-path }}/MATs-Summary-Artifact.txt'

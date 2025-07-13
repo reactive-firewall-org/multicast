@@ -9,7 +9,7 @@ updates:
     directory: "/"  # Location of package manifests
     milestone: 1
     target-branch: "master"
-    versioning-strategy: increase-if-necessary
+    versioning-strategy: increase
     # Labels on pull requests for version updates only
     labels:
       - "Configs"
@@ -20,19 +20,17 @@ updates:
     groups:
       production-dependencies:
         dependency-type: "production"
-      development-dependencies:
-        dependency-type: "development"
-        exclude-patterns:
-          - "setuptools*"
     allow:
-      - dependency-name: "setuptools"
-        dependency-type: "production"
       - dependency-name: "pip"
         dependency-type: "direct"
+      - dependency-name: "setuptools"
+        dependency-type: "production"
       - dependency-name: "wheel"
         dependency-type: "production"
       - dependency-name: "build"
         dependency-type: "production"
+    ignore:
+      - dependency-name: "*"
     assignees:
       - "reactive-firewall"
     commit-message:
@@ -51,23 +49,32 @@ updates:
       - "Testing"
       - "Python Lang"
       - "CI"
-    rebase-strategy: "disabled"
     groups:
       production-dependencies:
         dependency-type: "production"
+        patterns:
+          - "pip"
+          - "setuptools"
+          - "wheel"
+          - "build"
       development-dependencies:
         dependency-type: "development"
         exclude-patterns:
+          - "pip"
           - "setuptools*"
+          - "wheel"
+          - "build"
     allow:
       - dependency-name: "setuptools"
         dependency-type: "production"
       - dependency-name: "pip"
-        dependency-type: "direct"
+        dependency-type: "production"
       - dependency-name: "wheel"
         dependency-type: "production"
       - dependency-name: "build"
         dependency-type: "production"
+      - dependency-name: "virtualenv"
+        dependency-type: "development"
       - dependency-name: "tox"
         dependency-type: "development"
       - dependency-name: "virtualenv"
@@ -77,8 +84,8 @@ updates:
       - dependency-name: "pep8"
         dependency-type: "development"
       - dependency-name: "pytest"
-        dependency-type: "direct"
-      - dependency-name: "pytest-checkdocs"
+        dependency-type: "development"
+      - dependency-name: "pytest-doctestplus"
         dependency-type: "development"
       - dependency-name: "pytest-cov"
         dependency-type: "development"
@@ -87,7 +94,9 @@ updates:
       - dependency-name: "pytest-flake8"
         dependency-type: "development"
       - dependency-name: "coverage"
-        dependency-type: "direct"
+        dependency-type: "development"
+    ignore:
+      - dependency-name: "*"
     assignees:
       - "reactive-firewall"
     commit-message:
@@ -107,6 +116,7 @@ updates:
       - "Duplicate"
       - "GitHub"
       - "Testing"
+      - "CI"
     assignees:
       - "reactive-firewall"
     commit-message:
@@ -128,8 +138,15 @@ updates:
     groups:
       development-dependencies:
         dependency-type: "development"
+        patterns:
+          - "markdownlint*"
     allow:
-      - dependency-type: "development"
+      - dependency-name: "markdownlint"
+        dependency-type: "development"
+      - dependency-name: "markdownlint-cli"
+        dependency-type: "development"
+    ignore:
+      - dependency-name: "*"
     assignees:
       - "reactive-firewall"
     commit-message:

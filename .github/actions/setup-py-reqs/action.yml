@@ -1,0 +1,239 @@
+---
+name: 'Manage and install requirements'
+description: 'Performs steps to install from various requirement.txt files for the Multicast Project.'
+author: 'Mr. Walls'
+branding:
+  icon: 'download-cloud'
+  color: 'purple'
+inputs:
+  sha:
+    description: |
+      The commit to report dependencies for. Should already be cloned and checked-out beforehand.
+    required: true
+    default: ${{ github.server_url == 'https://github.com' && github.sha || 'HEAD' }}
+  token:
+    description: |
+      The token used to authenticate when fetching results from GitHub repositories.
+      When running this action on github.com, the default value is sufficient. When running on
+      GHES, you can pass a personal access token for github.com if you are experiencing
+      rate limiting.
+    default: ${{ github.server_url == 'https://github.com' && github.token || '' }}
+    required: true
+  python-version:
+    description: |
+      The python version to use. The default is to use the value of the environment
+      variable 'PYTHON_VERSION'.
+    default: '3.12'
+    required: true
+outputs:
+  sha:
+    description: "The SHA of the commit checked-out"
+    value: ${{ steps.output_sha.outputs.sha || 'HEAD' }}
+  python-version:
+    description: "The python version that was used in the run"
+    value: ${{ steps.output_python.outputs.python-version || '' }}
+  deps_status:
+    description: "The outcome of evaluating the DEPs steps"
+    value: ${{ steps.deps_outcome.outcome || 'cancelled' }}
+  deps_build_status:
+    description: "The outcome of the requirements.txt install Group"
+    value: ${{ steps.install_build_requirements.outcome || 'cancelled' }}
+  deps_test_status:
+    description: "The outcome of the tests/requirements.txt install Group"
+    value: ${{ steps.install_test_requirements.outcome || 'cancelled' }}
+  deps_doc_status:
+    description: "The outcome of the docs/requirements.txt install Group"
+    value: ${{ steps.install_docs_requirements.outcome || 'cancelled' }}
+  artifact-name:
+    description: "The uploaded artifact-name"
+    value: ${{ steps.output_artifact_name.outputs.artifact-name }}
+  artifact-files:
+    description: "The uploaded artifact-files"
+    value: ${{ steps.output_artifact_files.outputs.files }}
+  artifact-id:
+    description: "The uploaded artifact-id"
+    value: ${{ steps.upload.outputs.artifact-id }}
+  artifact-url:
+    description: "The uploaded artifact-url"
+    value: ${{ steps.upload.outputs.artifact-url }}
+  artifact-digest:
+    description: "The uploaded artifact-digest"
+    value: ${{ steps.upload.outputs.artifact-digest }}
+
+runs:
+  using: composite
+  steps:
+    - name: "Calculate Commit SHA"
+      id: output_sha
+      shell: bash
+      run: |
+        printf "sha=%s\n" $(git rev-parse --verify '${{ inputs.sha }}') >> "$GITHUB_OUTPUT"
+        printf "BUILD_SHA=%s\n" $(git rev-parse --verify '${{ inputs.sha }}') >> "$GITHUB_ENV"
+    - name: "Setup Python"
+      id: output_python
+      if: ${{ !cancelled() }}
+      env:
+        PYTHON_VERSION_INPUT: ${{ inputs.python-version }}
+      shell: bash
+      run: |
+        if [[ -n $PYTHON_VERSION_INPUT ]]; then
+          printf "python-version=%s\n" "${PYTHON_VERSION_INPUT}" >> "$GITHUB_OUTPUT"
+          PYTHON_VERSION=${PYTHON_VERSION_INPUT}
+        else
+          printf "python-version=%s\n" "${PYTHON_VERSION}" >> "$GITHUB_OUTPUT"
+        fi
+        printf "%s\n" "PYTHON_VERSION=${PYTHON_VERSION}" >> "$GITHUB_ENV"
+    - name: "Prepare Artifact Name"
+      id: output_artifact_name
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        if [[ ${{ runner.os }} != 'Windows' ]] ; then
+          printf "artifact-name=%s\n" multicast-integration-${BUILD_SHA}-part-$(uuidgen) >> "$GITHUB_OUTPUT"
+        else
+          printf "artifact-name=%s" multicast-integration-${BUILD_SHA}-part- >> "$GITHUB_OUTPUT"
+          printf "%04x%04x-%04x-%04x-%04x-%04x%04x%04x\n" $RANDOM $RANDOM $RANDOM $(($RANDOM & 0x0fff | 0x4000)) $(($RANDOM & 0x3fff | 0x8000)) $RANDOM $RANDOM $RANDOM >> "$GITHUB_OUTPUT"
+        fi
+        printf "%s\n" "DEPS_STEP_SUMMARY=Dependencies-Summary-Artifact-${{ runner.os }}-${PYTHON_VERSION}.txt" >> "$GITHUB_ENV"
+    - name: "Install Build Dependencies"
+      id: install_build_requirements
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        printf "%s\n" "::group::prep-build-reqs"
+        make -j1 -f Makefile init || exit 1
+        printf "%s\n" "::endgroup::"
+    - name: "Install Test Dependencies"
+      id: install_test_requirements
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        printf "%s\n" "::group::prep-test-reqs"
+        make -j1 -f Makefile test-reqs || exit 1
+        printf "%s\n" "::endgroup::"
+    - name: "Install Documentation Dependencies"
+      id: install_docs_requirements
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        printf "%s\n" "::group::prep-docs-reqs"
+        make -j1 -f Makefile docs-reqs || exit 1
+        printf "%s\n" "::endgroup::"
+    - name: "Evaluate Dependencies"
+      id: deps_outcome
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        if [[ "${{ steps.install_build_requirements.outcome }}" != "failure" ]] ; then
+          if [[ ( -r requirements.txt ) ]] ; then
+            # Initialize result as success b/c nothing failed ... yet
+            THE_RESULT="success"
+          else
+            # Initialize result as skipped b/c nothing could be done without requirements.txt
+            THE_RESULT="skipped"
+          fi
+        else
+          # Initialize result as failure right away
+          THE_RESULT="failure"
+        fi
+        if [[ "${{ steps.install_test_requirements.outcome }}" == "success" && "${THE_RESULT}" == "success" ]] ; then
+          # keep result as success b/c something succeeded and nothing failed ... yet
+          THE_RESULT="success"
+        else
+          # check for actual failure
+          if [[ "${{ steps.install_test_requirements.outcome }}" == "failure" ]] ; then
+             # force result as failure b/c something failed
+             THE_RESULT="failure"
+          fi
+        fi
+        if [[ "${{ steps.install_docs_requirements.outcome }}" == "success" && "${THE_RESULT}" == "success" ]] ; then
+          # keep result as success b/c something succeeded and nothing failed ... at all
+          THE_RESULT="success"
+        else
+          # check for actual failure
+          if [[ "${{ steps.install_docs_requirements.outcome }}" == "failure" ]] ; then
+             # force result as failure b/c something failed
+             THE_RESULT="failure"
+          fi
+        fi
+        # hint to help with debugging
+        printf "::debug:: %s\n" "The result of dependency evaluation: ${THE_RESULT}"
+        if [[ "${THE_RESULT}" == "success" ]] ; then
+          exit 0
+        else
+          # exit as failure b/c either a soft-fail (skip/cancelled/etc.) or actual failure
+          exit 1
+        fi
+    - name: "Summarize DEPs"
+      id: deps_report
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        if [[ "${{ steps.deps_outcome.outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * :ballot_box_with_check: Installing dependencies succeeded with python version \`${PYTHON_VERSION}\` for [${BUILD_SHA}](https://github.com/reactive-firewall-org/multicast/blob/${BUILD_SHA}/requirements.txt)" > "$DEPS_STEP_SUMMARY"
+          printf "%s\n" " :ballot_box_with_check: Installing dependencies succeeded with python version \`${PYTHON_VERSION}\`" >> "$GITHUB_STEP_SUMMARY"
+        else
+          printf "%s\n" "  * :x: ~Installing dependencies succeeded with python version \`${PYTHON_VERSION}\` for \`${BUILD_SHA}\`~" > "$DEPS_STEP_SUMMARY"
+          printf "%s\n" " :x: ~Installing dependencies succeeded with python version \`${PYTHON_VERSION}\`~" >> "$GITHUB_STEP_SUMMARY"
+        fi
+        if [[ "${{ steps.install_build_requirements.outcome }}" == "success" ]] ; then
+          printf "%s\n" "    * :ballot_box_with_check: Installing from [requirements.txt](https://github.com/reactive-firewall-org/multicast/blob/${BUILD_SHA}/requirements.txt) succeeded" >> "$DEPS_STEP_SUMMARY"
+        else
+          printf "%s\n" "    * :x: Installing from `requirements.txt` failed" >> "$DEPS_STEP_SUMMARY"
+        fi
+        if [[ "${{ steps.install_test_requirements.outcome }}" == "success" ]] ; then
+          printf "%s\n" "    * :ballot_box_with_check: Installing from [tests/requirements.txt](https://github.com/reactive-firewall-org/multicast/blob/${BUILD_SHA}/tests/requirements.txt) succeeded" >> "$DEPS_STEP_SUMMARY"
+        else
+          printf "%s\n" "    * :x: Installing from `tests/requirements.txt` failed" >> "$DEPS_STEP_SUMMARY"
+        fi
+        if [[ "${{ steps.install_docs_requirements.outcome }}" == "success" ]] ; then
+          printf "%s\n" "    * :ballot_box_with_check: Installing from [docs/requirements.txt](https://github.com/reactive-firewall-org/multicast/blob/${BUILD_SHA}/docs/requirements.txt) succeeded" >> "$DEPS_STEP_SUMMARY"
+        else
+          printf "%s\n" "    * :x: Installing from `docs/requirements.txt` failed" >> "$DEPS_STEP_SUMMARY"
+        fi
+    - name: "Collect and Enumerate Generated Files"
+      id: output_artifact_files
+      if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+      env:
+        DEPS_MATCH_PATTERN: "Dependencies-Summary-Artifact-*.txt"
+        SCRIPT_NAME: ".github/actions/setup-py-reqs/action.yml"
+      shell: bash
+      run: |
+        FILES=$(git ls-files -o --exclude-standard -- ${{ env.DEPS_MATCH_PATTERN }} )
+        if [ -z "$FILES" ]; then
+          printf "::warning file=%s:: %s\n" "${SCRIPT_NAME}" "No summary files found."
+          printf "%s\n" "files=" >> "$GITHUB_OUTPUT"
+          exit 1
+        else
+          printf "%s\n" "DEPS summary files found:"
+          printf "%s\n" "$FILES"
+          mkdir DEPS || :
+          printf "%s\n" "$FILES" | xargs -I{} mv -f "{}" "DEPS/{}" || :
+          # Replace line breaks with spaces for GitHub Action Output
+          FILES="${FILES//$'\n'/ }"
+          printf "%s\n" "files=$FILES" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+    - name: "Upload Details"
+      id: upload
+      if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        path: DEPS
+        name: ${{ steps.output_artifact_name.outputs.artifact-name }}
+        if-no-files-found: error
+        compression-level: 9
+        overwrite: true
+    - name: "Cleanup from run"
+      id: deps_cleanup_success
+      if: ${{ success() }}
+      shell: bash
+      run: |
+        rm -fRd ./DEPS 2>/dev/null || :
+    - name: "Cleanup from failed run"
+      id: deps_cleanup_failure
+      if: ${{ failure() }}
+      shell: bash
+      run: |
+        rm -fRd ./DEPS 2>/dev/null
+        exit 1

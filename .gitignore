@@ -117,3 +117,4 @@ docs/www/
 docs/make.bat
 multicast/multicast/**
 tests/tests/**
+legacy_setup/

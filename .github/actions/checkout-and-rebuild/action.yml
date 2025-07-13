@@ -3,7 +3,7 @@ name: 'Checkout and use Build'
 description: 'checks-out the given commit and fetches the build artifact'
 author: 'Mr. Walls'
 branding:
-  icon: 'chevron-down'
+  icon: 'download-cloud'
   color: 'blue'
 inputs:
   sha:
@@ -40,19 +40,22 @@ inputs:
     required: true
 outputs:
   branch-name:
-    description: "The name of the branch that was checked-out"
+    description: "The name of the branch that was checked-out."
     value: ${{ steps.output_branch_name.outputs.branch-name || '' }}
   sha:
-    description: "The SHA of the commit checked-out"
+    description: "The SHA of the commit checked-out."
     value: ${{ steps.output_sha.outputs.sha || 'HEAD' }}
   python-version:
     description: "The python version that was used in the run."
     value: ${{ steps.cp313.outputs.python-version || '' }}
+  python-path:
+    description: "Absolute path to the Python executable installed for the run."
+    value: ${{ steps.cp313.outputs.python-path }}
   artifact-name:
     description: "The downloaded artifact-name"
     value: "multicast-build-${{ steps.output_sha.outputs.sha }}.zip"
   artifact-files:
-    description: "The downloaded artifact-files"
+    description: "The downloaded artifact-files."
     value: ${{ steps.output_artifact_files.outputs.files }}
 
 runs:
@@ -63,8 +66,9 @@ runs:
       with:
         persist-credentials: false
         fetch-depth: 0
+        submodules: true
         path: ${{ inputs.path }}
-        repository: reactive-firewall/multicast
+        repository: reactive-firewall-org/multicast
         token: ${{ inputs.token }}
     - name: "Checkout Target Commit by SHA"
       shell: bash
@@ -88,25 +92,50 @@ runs:
         python-version: ${{ inputs.python-version }}
         cache: 'pip'  # caching pip dependencies
       if: ${{ !cancelled() }}
+    - run: python -m pip install --upgrade pip
+      shell: bash
+      if: ${{ !cancelled() && runner.os == 'Windows' }}
+    - id: output_python_env
+      name: "Python Environment"
+      shell: bash
+      run: |
+        printf "%s\n" "::group::python-env"
+        if [[ ${{ runner.os }} != 'Windows' ]] ; then
+          printf "python-path=%s\n" "${{ steps.cp313.outputs.python-path }}" >> "$GITHUB_OUTPUT"
+          printf "PYTHON=%s\n" "${{ steps.cp313.outputs.python-path }}" >> "$GITHUB_ENV"
+        else
+          # For Windows: Convert backslashes to forward slashes
+          python_path="${{ steps.cp313.outputs.python-path }}"
+          printf "python-path=%s\n" "${python_path//\\//}" >> "$GITHUB_OUTPUT"
+          printf "PYTHON=%s\n" "${python_path//\\//}" >> "$GITHUB_ENV"
+        fi
+        printf "python-version=%s\n" "${{ steps.cp313.outputs.python-version }}" >> "$GITHUB_OUTPUT"
+        printf "PYTHON_VERSION=%s\n" "${{ steps.cp313.outputs.python-version }}" >> "$GITHUB_ENV"
+        printf "%s\n" "::endgroup::"
     - name: "Install Test Dependencies"
       shell: bash
-      run: make -j1 -f Makefile test-reqs ;
+      run: |
+        printf "%s\n" "::group::prep-test-reqs"
+        make -j1 -f Makefile test-reqs || exit 1
+        printf "%s\n" "::endgroup::"
     - id: output_artifact_name
       if: ${{ success() }}
       shell: bash
-      run: printf "artifact-name=%s\n" multicast-build-${{ steps.output_sha.outputs.sha }}.zip >> "$GITHUB_OUTPUT"
-    - name: "Fetch Build Files"
-      if: ${{ (github.repository == 'reactive-firewall/multicast') && success() }}
+      run: printf "artifact-name=%s\n" multicast-build-${{ steps.output_sha.outputs.sha }} >> "$GITHUB_OUTPUT"
+    - id: fetch_artifact_files
+      name: "Fetch Build Files"
+      if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
       uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
       with:
         path: ${{ inputs.path }}/dist
-        pattern: multicast-build-${{ steps.output_sha.outputs.sha }}.zip
+        pattern: multicast-build-${{ steps.output_sha.outputs.sha }}
         merge-multiple: true
-        repository: reactive-firewall/multicast
+        repository: reactive-firewall-org/multicast
         github-token: ${{ inputs.token }}
         run-id: ${{ inputs.build-run-id }}
     - name: "Enumerate Fetched Files"
       id: output_artifact_files
+      if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
       env:
         BUILD_MATCH_PATTERN: "dist/multicast-*-*.whl dist/multicast-*.tar.gz"
         SCRIPT_NAME: ".github/actions/checkout-and-rebuild/action.yml"
@@ -116,11 +145,12 @@ runs:
         if [ -z "$FILES" ]; then
           printf "::warning file=%s:: %s\n" "${SCRIPT_NAME}" "No Built files found."
           printf "%s\n" "files=" >> "$GITHUB_OUTPUT"
+          exit 1
         else
           printf "%s\n" "Built files found:"
           printf "%s\n" "$FILES"
-          # Replace line breaks with commas for GitHub Action Output
+          # Replace line breaks with spaces for GitHub Action Output
           FILES="${FILES//$'\n'/ }"
           printf "%s\n" "files=$FILES" >> "$GITHUB_OUTPUT"
+          exit 0
         fi
-      if: ${{ success() }}

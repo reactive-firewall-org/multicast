@@ -8,7 +8,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 # ..........................................
-# https://www.github.com/reactive-firewall/multicast/LICENSE.md
+# https://github.com/reactive-firewall-org/multicast/tree/HEAD/LICENSE.md
 # ..........................................
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -181,7 +181,7 @@ def markWithMetaTag(*marks: str) -> callable:
 	except ImportError:
 		pytest_available = False
 
-	def decorator(cls) -> any:
+	def decorator(cls) -> any:  # skipcq: PY-D0003 -- decorator ok
 		if pytest_available:
 			for mark in marks:
 				cls = pytest.mark.__getattr__(mark)(cls)
@@ -263,7 +263,8 @@ def __check_cov_before_py():
 		thepython = str(f"{str(thecov)} run -p")  # skipcq: TCV-002
 	else:  # pragma: no branch
 		try:
-			import coverage as coverage
+			# pylint: disable=cyclic-import - skipcq: PYL-R0401, PYL-C0414
+			import coverage as coverage  # skipcq: PYL-C0414
 			if coverage.__name__ is not None:
 				thepython = str("{} -m coverage run -p").format(str(sys.executable))
 		except Exception:
@@ -1072,7 +1073,7 @@ class BasicUsageTestSuite(unittest.TestCase):
 			self.skipTest(self.NO_PYTHON_ERROR)  # skipcq: TCV-002
 		self._the_test_port = self._always_generate_random_port_WHEN_called()
 
-	def _should_get_package_version_WHEN_valid(self) -> None:
+	def _should_get_package_version_WHEN_valid(self) -> packaging.version.Version:
 		"""
 		Retrieve the current version of the package.
 
@@ -1085,8 +1086,9 @@ class BasicUsageTestSuite(unittest.TestCase):
 			ImportError -- If the multicast package cannot be imported.
 
 		"""
+		parsed_version: packaging.version.Version = None
 		try:
-			self.assertIsNotNone(multicast.__module__, "Version will be efectivly None.")
+			self.assertIsNotNone(multicast.__module__, "Version will be effectively None.")
 			self.assertIsNotNone(multicast.__version__, "Version is not valid.")
 			_raw_version_fixture = multicast.__version__
 			self.assertIsInstance(_raw_version_fixture, str, "Version is not a string.")
@@ -1100,9 +1102,9 @@ class BasicUsageTestSuite(unittest.TestCase):
 				len(parsed_version.release) >= 2,
 				"Version must have at least major.minor components."
 			)
-			return parsed_version
-		except ImportError:
+		except Exception:
 			self.fail("Failed to import the multicast package to retrieve version.")
+		return parsed_version
 
 	@unittest.skipUnless(True, "Insanity Test. Good luck debugging.")
 	def test_absolute_truth_and_meaning(self) -> None:

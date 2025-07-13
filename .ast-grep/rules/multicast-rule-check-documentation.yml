@@ -1,4 +1,5 @@
-# .ast-grep/multicast-rule-check-test-documentation.yml
+# .ast-grep/multicast-rule-check-documentation.yml
+---
 id: check-has-documentation
 rule:
   pattern:

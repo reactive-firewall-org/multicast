@@ -9,7 +9,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 # ..........................................
-# https://www.github.com/reactive-firewall/multicast/LICENSE.md
+# https://github.com/reactive-firewall-org/multicast/tree/HEAD/LICENSE.md
 # ..........................................
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -481,7 +481,7 @@ def tryrecv(msgbuffer: list, chunk: bytes, sock: _socket.socket) -> str:
 
 	"""
 	chunk = sock.recv(multicast._MCAST_DEFAULT_BUFFER_SIZE)  # skipcq: PYL-W0212 - module ok
-	if not (chunk is None):  # pragma: no branch
+	if not (chunk is None):  # skipcq: PYL-C0325 -- avoids flake E714 anti-pattern
 		msgbuffer += str(chunk, encoding='utf8')  # pragma: no cover
 		chunk = None  # pragma: no cover
 	return msgbuffer
@@ -504,14 +504,14 @@ def recvstep(msgbuffer: list, chunk: bytes, sock: _socket.socket) -> str:
 	try:
 		msgbuffer = tryrecv(msgbuffer, chunk, sock)
 	except KeyboardInterrupt:  # pragma: no branch
-		if (sys.stdout.isatty()):  # pragma: no cover
+		if sys.stdout.isatty():  # pragma: no cover
 			module_logger.warning("User Interrupted")
 	except OSError:  # pragma: no branch
 		module_logger.debug("[CWE-440] Nothing happened. There seems to have been an OS error.")
 	finally:
 		if sock:  # pragma: no branch
 			sock = multicast.endSocket(sock)
-	if not (chunk is None):  # pragma: no branch
+	if not (chunk is None):  # skipcq: PYL-C0325 -- avoids flake E714 anti-pattern
 		msgbuffer += str(chunk, encoding='utf8')  # pragma: no cover
 		chunk = None  # pragma: no cover
 	# about 969 bytes in base64 encoded as chars

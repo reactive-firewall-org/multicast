@@ -9,20 +9,108 @@ run-name: Generate and lint documentation for ${{ github.ref_name }} by @${{ git
 # Required Secrets:
 # - DOCS_BUILD_REF: Automatic
 
+# Declare default permissions as none.
 permissions: {}
 
 on:  # yamllint disable-line rule:truthy
-  push:
-    branches: ["main", "master", "stable"]
-    tags: ["v*"]
-  pull_request:
-    types: [opened, reopened, ready_for_review]
-    branches: ["feature-*", "patch-*", "HOTFIX-*"]
-  pull_request_target:
-    types: [opened, edited, reopened, ready_for_review]
-    branches: ["main", "master", "stable"]
+  workflow_run:
+    workflows: ["CI-MATs"]
+    types:
+      - completed
 
 jobs:
+  check_mats:
+    permissions:
+      actions: read
+      pull-requests: read
+      checks: write
+    environment: "Documentation"
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      trigger_id: ${{ steps.get_trigger_id.outputs.trigger_id }}
+      build_id: ${{ steps.load_build_info.outputs.build_id }}
+      build_url: ${{ steps.load_build_info.outputs.build_url }}
+      build_ref: ${{ steps.load_build_info.outputs.build_ref }}
+      build_ref_name: ${{ steps.load_build_info.outputs.build_ref_name }}
+      build_sha: ${{ steps.load_build_info.outputs.build_sha }}
+      build_artifact_filename: ${{ steps.load_build_info.outputs.build_artifact_filename }}
+      build_artifact_url: ${{ steps.load_build_info.outputs.build_artifact_url }}
+      build_artifact_id: ${{ steps.load_build_info.outputs.build_artifact_id }}
+      build_artifact_digest: ${{ steps.load_build_info.outputs.build_artifact_digest }}
+      build_environment: ${{ steps.load_build_info.outputs.build_environment }}
+      mats_environment: ${{ steps.load_build_info.outputs.mats_environment }}
+      mats_id: ${{ steps.load_build_info.outputs.mats_id }}
+      mats_url: ${{ steps.load_build_info.outputs.mats_url }}
+      mats_ref: ${{ steps.load_build_info.outputs.mats_ref }}
+      mats_ref_name: ${{ steps.load_build_info.outputs.mats_ref_name }}
+      mats_sha: ${{ steps.load_build_info.outputs.mats_sha }}
+      mats_success: ${{ steps.load_build_info.outputs.mats_success }}
+      docs_id: ${{ steps.output_run_id.outputs.docs_id }}
+      docs_check_url: ${{ steps.output_run_id.outputs.docs_url }}
+      check_id: ${{ steps.output_docs_check_id.outputs.check-id }}
+    steps:
+      - id: check
+        run: |
+          if [[ "${{ github.event.workflow_run.conclusion }}" == "success" ]]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          fi
+      - id: get_trigger_id
+        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
+        run: |
+          ID_VALUE=$(gh api "${{ github.event.workflow_run.url }}" --jq '.id')
+          if [[ -n "$ID_VALUE" ]]; then
+            echo "trigger_id=$ID_VALUE" >> "$GITHUB_OUTPUT"
+          else
+            echo "trigger_id=null" >> "$GITHUB_OUTPUT"  # Default fallback
+          fi
+      - name: "Fetch MATs Info"
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: "multicast-info.txt"
+          pattern: multicast-info-*
+          repository: reactive-firewall-org/multicast
+          merge-multiple: true
+          github-token: ${{ env.GH_TOKEN }}
+          run-id: ${{ steps.get_trigger_id.outputs.trigger_id }}
+      - name: "move into place"
+        id: load_build_info
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
+        run: |
+          mv -vf "multicast-info.txt/multicast-info.txt" ./"multicast-info-tmp.txt" ;
+          wait ;
+          rmdir -v ./"multicast-info.txt"
+          mv -vf ./"multicast-info-tmp.txt" ./"multicast-info.txt"
+          cat <"multicast-info.txt" >> "$GITHUB_OUTPUT"
+      - id: output_run_id
+        shell: bash
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        run: |
+          printf "docs_url=%s\n" 'https://github.com/reactive-firewall-org/multicast/actions/runs/${{ github.run_id }}' >> "$GITHUB_OUTPUT"
+          printf "docs_id=%s\n" ${{ github.run_id }} >> "$GITHUB_OUTPUT"
+      - name: checkout repository actions for check
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          ref: ${{ steps.load_build_info.outputs.build_sha }}
+          sparse-checkout: '.github/actions/check-control'
+      - name: "Queue Tests GitHub Check"
+        id: output_docs_check_id
+        uses: ./.github/actions/check-control
+        with:
+          name: "CI-DOCS"
+          title: "Documentation Testing"
+          status: 'in_progress'
+          summary: 'Documentation Testing is _Starting_'
+          sha: ${{ steps.load_build_info.outputs.build_sha }}
+          workflow-run-id: ${{ steps.output_run_id.outputs.docs_id }}
+          details-url: ${{ steps.output_run_id.outputs.docs_url }}
+
   DOCS:
     permissions:
       actions: read
@@ -31,7 +119,9 @@ jobs:
       packages: none
       pull-requests: read
       security-events: none
-    environment: ${{ (github.ref == 'refs/heads/stable' || startsWith(github.ref, 'refs/tags/v')) && 'Deployment' || (github.ref == 'refs/heads/master') && 'Testing' || 'Experimenting' }}
+    environment: "Documentation"
+    if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') }}
+    needs: [check_mats]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -42,37 +132,60 @@ jobs:
       PYTHON_VERSION: ${{ matrix.python-version }}
       LANG: "en_US.utf-8"
       LC_CTYPE: "en_US.utf-8"
-      DOCS_BUILD_REF: ${{ github.sha }}
+      COVERAGE_RCFILE: ./.coveragerc
+      COV_CORE_SOURCE: ./
+      COV_CORE_CONFIG: ./.coveragerc
+      COV_CORE_DATAFILE: ./coverage.xml
+      CI_BRANCH: ${{ needs.check_mats.outputs.mats_ref_name }}
+      CI_COMMIT_SHA: ${{ needs.check_mats.outputs.mats_sha }}
+      BRANCH_NAME: ${{ needs.check_mats.outputs.mats_ref_name }}
+      VCS_BRANCH_NAME: ${{ needs.check_mats.outputs.build_ref_name }}
+      VCS_COMMIT_ID: ${{ needs.check_mats.outputs.build_sha }}
+      DOCS_BUILD_REF: ${{ needs.check_mats.outputs.build_sha }}
+    outputs:
+      docs_outcome: ${{ steps.generate_documentation.outcome }}
+      docs_artifact_url: ${{ steps.upload-documentation.outputs.artifact-url }}
+      docs_artifact_id: ${{ steps.upload-documentation.outputs.artifact-id }}
+      docs_artifact_digest: ${{ steps.upload-documentation.outputs.artifact-digest }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: pre-checkout repository for actions
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+          ref: ${{ needs.check_mats.outputs.build_sha }}
+          sparse-checkout: '.github/actions/checkout-and-rebuild'
+      - name: Checkout repository for Documentation with ${{ matrix.python-version }}
+        id: fetch-build
+        uses: ./.github/actions/checkout-and-rebuild
         with:
+          sha: ${{ needs.check_mats.outputs.build_sha }}
+          build-run-id: ${{ needs.check_mats.outputs.build_id }}
           python-version: ${{ matrix.python-version }}
-      - name: Fix braindead windows ${{ matrix.python-version }} on ${{ matrix.os }}
-        uses: ./.github/actions/upgrade-windows-pip
-      - name: Install dependencies for python ${{ matrix.python-version }} on ${{ matrix.os }}
-        run: |
-          pip install --upgrade "pip>=24.3.1" "setuptools>=75.0" "wheel>=0.44" "build>=1.2.1";
-          pip install -r ./requirements.txt ;
-          pip install -r ./tests/requirements.txt || true ;
-      - name: Pre-Clean
-        id: clean-prep
-        run: make -j1 -f Makefile clean ;
-      - name: Pre-build for Python ${{ matrix.python-version }} on ${{ matrix.os }}
-        run: make -j1 -f Makefile build ;
-        if: ${{ success() }}
+          path: ${{ github.workspace }}
       - name: Generate documentation with py${{ matrix.python-version }} on ${{ matrix.os }}
-        run: make -j1 -f Makefile build-docs 2>&1 >> $GITHUB_STEP_SUMMARY ;
+        id: generate_documentation
+        run: make -j1 -f Makefile build-docs
         if: ${{ !cancelled() }}
+      - id: prep-doc-part
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          if [[ ( -d ./docs/www/ ) ]] ; then
+            mkdir ./Multicast-Documentation
+            mkdir ./Multicast-Documentation/${{ runner.os }}-${PYTHON_VERSION}
+            mkdir ./Multicast-Documentation/${{ runner.os }}-${PYTHON_VERSION}/docs
+            mv -vf ./docs/www ./Multicast-Documentation/${{ runner.os }}-${PYTHON_VERSION}/docs/www || exit 1
+          else
+            exit 1
+          fi
       - name: Upload Docs Artifact with Python ${{ matrix.python-version }} on ${{ matrix.os }}
+        id: upload-documentation
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: Multicast-Documentation-${{ github.sha }}-${{ matrix.os }}-${{ matrix.python-version }}
-          path: ./docs/www/
+          name: Multicast-Documentation-${{ needs.check_mats.outputs.build_sha }}-${{ matrix.os }}-${{ matrix.python-version }}
+          path: ./Multicast-Documentation
           if-no-files-found: ignore
+          overwrite: true
       - name: Post-purge
         id: post-uninstall
         run: make -j1 -f Makefile purge || true ;
@@ -81,3 +194,108 @@ jobs:
         id: post-end
         run: make -j1 -f Makefile clean || true ;
         if: ${{ !cancelled() }}
+
+  DOCS_SUMMARY:
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+      checks: write
+    needs: [check_mats, DOCS]
+    environment: "Documentation"
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') && (needs.DOCS.outputs.docs_outcome != 'cancelled') }}
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: ${{ github.workspace }}/Multicast-Documentation
+          pattern: Multicast-Documentation-${{ needs.check_mats.outputs.build_sha }}-*-*
+          merge-multiple: true
+      - id: report_status
+        env:
+          BUILD_SHA: ${{ needs.check_mats.outputs.build_sha }}
+          DOCUMENTATION_COMMENT_BODY: '${{ github.workspace }}/DOCUMENTATION-Summary-Artifact.txt'
+        run: |
+          if [[ "${{ needs.DOCS.outputs.docs_outcome }}" == "success" ]]; then
+            printf "%s\n\n" "# :book: Documentation Summary" > "${DOCUMENTATION_COMMENT_BODY}"
+            printf "%s\n" "  * :ballot_box_with_check: Generating Documentation Passed" >> "${DOCUMENTATION_COMMENT_BODY}"
+            printf "%s\n" "documentation_success=true" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "docs_summary=Generating Documentation Passed" >> "$GITHUB_OUTPUT"
+          else
+            printf "%s\n\n" "# Known flaws." > "${DOCUMENTATION_COMMENT_BODY}"
+            printf "%s\n" "> [!WARNING]" >> "${DOCUMENTATION_COMMENT_BODY}"
+            printf "%s\n\n" "> This commit has known flaws. Each commit is subject to minimal acceptance testing, and then select commits are subject to extra testing to evaluate release candidates; This commit has been deemed _not ready_ for release." >> "${DOCUMENTATION_COMMENT_BODY}"
+            printf "%s\n" "documentation_success=false" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "  * :x: Generating Documentation Failed" >> "${DOCUMENTATION_COMMENT_BODY}"
+            printf "%s\n" "docs_summary=Generating Documentation Unsuccessful" >> "$GITHUB_OUTPUT"
+          fi
+          cat <"${DOCUMENTATION_COMMENT_BODY}" >> "$GITHUB_STEP_SUMMARY"
+          { printf "%s\n" 'docs_text<<EOF'; cat <"${DOCUMENTATION_COMMENT_BODY}"; printf "%s\n" 'EOF'; } >> "$GITHUB_OUTPUT"
+      - name: "Upload DOCs summary"
+        id: upload-docs-summary
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          path: ./DOCUMENTATION-Summary-Artifact.txt
+          name: DOCUMENTATION-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
+          if-no-files-found: error
+          compression-level: 3
+          retention-days: 2
+          overwrite: true
+      - name: "Upload DOCs Bundle"
+        id: upload-docs-bundle
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          path: Multicast-Documentation
+          name: Multicast-Documentation-${{ needs.check_mats.outputs.build_sha }}-ALL
+          if-no-files-found: error
+          compression-level: 9
+          overwrite: true
+      - name: checkout repository actions for check
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          ref: ${{ needs.check_mats.outputs.build_sha }}
+          sparse-checkout: '.github/actions/check-control'
+      - name: "Complete DOCs GitHub Check"
+        id: complete_docs
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && always() }}
+        uses: ./.github/actions/check-control
+        with:
+          name: "CI-DOCS"
+          check-id: ${{ needs.check_mats.outputs.check_id }}
+          title: "Documentation Testing"
+          status: 'completed'
+          conclusion: ${{ needs.DOCS.outputs.docs_outcome }}
+          summary: ${{ steps.report_status.outputs.docs_summary }}
+          text: ${{ steps.report_status.outputs.docs_text }}
+          sha: ${{ needs.check_mats.outputs.build_sha }}
+          workflow-run-id: ${{ needs.check_mats.outputs.docs_id }}
+          details-url: ${{ needs.check_mats.outputs.docs_check_url }}
+
+  DOCS_REPORT:
+    permissions:
+      actions: read
+      contents: write
+    needs: [check_mats, DOCS_SUMMARY]
+    environment: "Documentation"
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() }}
+    steps:
+      - name: "Download Status Summary Artifact"
+        id: download-documentation-summary
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: DOCUMENTATION-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
+          github-token: ${{ github.token }}
+      - name: "DOCs commit comment"
+        id: documentation-commit-comment
+        if: ${{ success() && (github.repository == 'reactive-firewall-org/multicast') }}
+        uses: peter-evans/commit-comment@5a6f8285b8f2e8376e41fe1b563db48e6cf78c09 # v3.0.0
+        with:
+          sha: ${{ needs.check_mats.outputs.build_sha }}
+          token: ${{ github.token }}
+          body-path: '${{ steps.download-documentation-summary.outputs.download-path }}/DOCUMENTATION-Summary-Artifact.txt'

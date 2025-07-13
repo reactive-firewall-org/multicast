@@ -6,66 +6,93 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 # ..........................................
-# http://www.github.com/reactive-firewall/multicast/LICENSE.md
+# https://github.com/reactive-firewall-org/multicast/tree/HEAD/LICENSE.md
 # ..........................................
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+###
+# Attention:
+# Please be aware that the testing code associated with the Multicast project is subject to
+# multiple licenses and is not unified under the same license as the Multicast module itself,
+# which is licensed under MIT. While all multicast testing source code is open-source,
+# the use of certain testing components may require specific conditions to be met in your
+# environment.
+###
+# Key Points to Note:
+###
+# Multiple Licenses: The project is divided among various licenses. Some testing code,
+# particularly the extra tests, may only function correctly in environments that include additional
+# dependencies with their own licensing restrictions.
+# Dependency Requirements:
+# The hypothesis module, which is necessary for some of the extra test code, is licensed under the
+# MPL2 License.
+# Certain Continuous Integration/Continuous Deployment (CI/CD) tools may require GNU licensed
+# software to operate effectively.
+# Environment Compatibility: Users must ensure that their testing environments are equipped
+# with the necessary components and licenses to run the testing code. This is akin to a
+# "batteries not included" disclaimer, indicating that additional setup may be required.
+# AS-IS Disclaimer: Please note that the Multicast project is provided "AS-IS," and we do not
+# guarantee compatibility or support for the testing code outside of the specified environments.
+# Users are responsible for ensuring compliance with all applicable licenses and for setting up
+# their environments accordingly.
+###
+# The individual dependencies are owned by their respective copyright holders.
+###
 #python
 # time - builtin - PSF license
 # re - builtin - PSF license?
 # subprocess - PSF license
 # sphinx - BSD license
-# sphinx
-# argparse - builtin - PSF license
+# sphinx>=7.3
 # socket - builtin - PSF license
+# socketserver - builtin - PSF license
 # struct - builtin - PSF license
 # argparse - builtin - PSF license
 # argparse>=1.4.0
-# argparse - builtin - PSF license 3.7 = 62.6.0
+###
+# TESTING ONLY - Do NOT report issues with these optionals on multicast
+###
+# typing_extensions - builtin? - MIT License
 # setuptools - MIT license
-setuptools>=75.0
+setuptools>=80.9
 # virtualenv - MIT license
 virtualenv>=20.26.6
 # pgpy - BSD 3-Clause licensed
 #pgpy>=0.4.1
 # tox - MIT license
-tox>=3.0.0, !=3.16.1
-#py>=1.4.33
-###
-# TESTING ONLY - Do NOT report issues with these optionals on multicast
-###
+tox>=4.27.0
 # flake8 - MIT license
-flake8>=3.9.2
+flake8>=7.2.0
 # flake8-comprehensions - MIT License
-flake8-comprehensions>=3.10.1
+flake8-comprehensions>=3.16.0
 # hypothesis - MPL2 License (may not be bundled, take care with docker)
 hypothesis>=6.112.2
 # packaging - Apache Software License; BSD License
 packaging>=24.1
 # pyflakes - MIT license
-# pyflakes>=2.5.0
+# pyflakes>=3.3.2
 # pep8 - MIT license
-pep8>=1.0
+pep8>=1.7
 # pytest - MIT license
 pytest>=7.0, !=8.1.0
 # pytest-checkdocs - MIT license
-pytest-checkdocs>=1.2.5
+# pytest-checkdocs>=1.2.5
 # pytest-doctestplus - BSD license
 pytest-doctestplus>=1.4.0
 # pytest-cov - MIT license
-pytest-cov>=3.0.0
+pytest-cov>=6.1.1
 # pytest-enabler - MIT license
 pytest-enabler>=1.0.1
-# pytest-flake8 - BSD license
-pytest-flake8>=1.0.7
+# pytest-flake8 - BSD license - removed from tests in v2.0.9a3
+# pytest-flake8>=1.0.7
 # coverage - Apache 2.0 license
 coverage>=7.2
 # wheel - MIT license
-wheel>=0.44
+wheel>=0.45
 # pip - MIT license
-pip>=24.3.1
+pip>=25.1.1
 # build - MIT license
 build>=1.2.1, !=1.2.2.post1

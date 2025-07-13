@@ -165,8 +165,9 @@ printf "%s\n\n" "Start of Integration Test one-shot:" >> ./"${LOG_FILE}" ; wait 
 ( sleep 1 ; ${COVERAGE_CMD} multicast --use-std RECV --port "${TEST_MCAST_PORT}" --groups "${TEST_MCAST_GROUP}" --group "${TEST_MCAST_GROUP}" 2>./"${ERR_FILE}" & sleep 6 ; kill -9 $! 2>/dev/null ) >> ./"${LOG_FILE}" & true ;
 
 for PCOUNT in $(seq 1 5) ; do
+	# Test message sending operations rapidly
 	# shellcheck disable=SC2086
-	${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" --message "TEST from ${PCOUNT}" 2>/dev/null & sleep 1 ;
+	${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" --message "TEST from ${PCOUNT}" 2>/dev/null & : ;
 done ;
 # shellcheck disable=SC2086
 ${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" --message "STOP from $TEST_MCAST_GROUP" 2>/dev/null & sleep 1 ;
@@ -179,6 +180,7 @@ printf "%s\n\n" "Start of Integration Test daemon:" >> ./"${LOG_FILE}" ; wait ;
 ( sleep 1 ; ${COVERAGE_CMD} multicast --daemon HEAR --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" 2>./"${ERR_FILE}" & sleep 6 ; kill -9 $! 2>/dev/null ) >> ./"${LOG_FILE}" & true ;
 
 for PCOUNT in $(seq 1 5) ; do
+	# Test concurrent message sending operations, all to the same destination group
 	# shellcheck disable=SC2086
 	${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" --message "TEST from $PCOUNT" 2>/dev/null & : ;
 done ;
@@ -188,6 +190,23 @@ ${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_
 ${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" --message "STOP" 2>/dev/null ;
 wait ;
 printf "%s\n\n" "End of Integration Test daemon" >> ./"${LOG_FILE}" ; wait ;
+
+# test --pipe mode added in v2.1.0
+printf "%s\n\n" "Start of Integration Test pipe:" >> ./"${LOG_FILE}" ; wait ;
+# shellcheck disable=SC2086
+( sleep 1 ; ${COVERAGE_CMD} multicast --daemon HEAR --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" 2>./"${ERR_FILE}" & sleep 6 ; kill -9 $! 2>/dev/null ) >> ./"${LOG_FILE}" & true ;
+
+for NOISE_ID in $(seq 1 5) ; do
+	# Test concurrent message sending operations, each using piped input
+	# shellcheck disable=SC2086
+	{ printf "%s\n" "TEST input from $NOISE_ID" | ${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" --pipe 2>/dev/null ;} & : ;
+done ;
+# shellcheck disable=SC2086
+printf "%s\n" "TEST input from $NOISE_ID" | ${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" --pipe 2>/dev/null & sleep 1 ;
+# shellcheck disable=SC2086
+${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" --message "STOP" 2>/dev/null ;
+wait ;
+printf "%s\n\n" "End of Integration Test pipe" >> ./"${LOG_FILE}" ; wait ;
 
 # cleanup from test-suite
 

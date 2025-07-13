@@ -9,7 +9,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 # ..........................................
-# http://www.github.com/reactive-firewall/python-repo/LICENSE.md
+# https://github.com/reactive-firewall/python-repo/blob/HEAD/LICENSE.md
 # ..........................................
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -556,7 +556,24 @@ class BasicIntegrationTestSuite(context.BasicUsageTestSuite):
 
 	__name__ = "tests.test_usage.BasicIntegrationTestSuite"
 
-	def setUp(self):
+	def setUp(self) -> None:
+		"""
+		Set up the test environment before each test method is run.
+
+		This method calls the superclass's setUp method to ensure that any
+		necessary initialization is performed. It also checks if the
+		`_thepython` attribute is None, and if so, it skips the test with
+		a message indicating that there is no Python command to test with.
+
+		Args:
+			None
+
+		Returns:
+			None
+
+		Raises:
+			unittest.SkipTest: If there is no Python command available for testing.
+		"""
 		super(self.__class__, self).setUp()  # skipcq: PYL-E1003 - this is more polymorphic
 		if (self._thepython is None):
 			self.skipTest(str("No python cmd to test with!"))

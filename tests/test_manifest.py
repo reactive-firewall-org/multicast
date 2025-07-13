@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Multicast Require Parsing Tests
@@ -9,7 +9,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 # ..........................................
-# https://www.github.com/reactive-firewall/multicast/LICENSE.md
+# https://github.com/reactive-firewall-org/multicast/tree/HEAD/LICENSE.md
 # ..........................................
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -43,16 +43,6 @@ class ManifestInclusionTestSuite(BasicUsageTestSuite):
 
 	__module__ = "tests.test_manifest"
 
-	def setUp(self):
-		super(ManifestInclusionTestSuite, self).setUp()
-		# Arguments need to build
-		clean_arguments = [
-			f"{str(sys.executable)} -m coverage run", "setup.py", "clean", "--all"
-		]
-		# Clean previous builds
-		theCleantxt = context.checkPythonCommand(clean_arguments, stderr=subprocess.STDOUT)
-		self.assertIn(str("running clean"), str(theCleantxt))
-
 	def _build_sdist_and_get_members(self):
 		"""Build the source distribution and return the list of member files and package version.
 
@@ -68,10 +58,9 @@ class ManifestInclusionTestSuite(BasicUsageTestSuite):
 		"""
 		# Arguments need to build
 		build_arguments = [
-			f"{str(sys.executable)} -m coverage run",
-			'setup.py',
-			'sdist',
-			'--formats=gztar',
+			f"{str(sys.executable)} -m coverage run", "-p", "-m",
+			"build",
+			"--sdist",
 		]
 		# Build the source distribution
 		theBuildtxt = context.checkPythonCommand(build_arguments, stderr=subprocess.STDOUT)
@@ -95,25 +84,25 @@ class ManifestInclusionTestSuite(BasicUsageTestSuite):
 		members, pkg_version = self._build_sdist_and_get_members()
 		package_prefix = str("multicast-{}").format(pkg_version)
 		expected_files = [
-			str("{}/README.md").format(package_prefix),
-			str("{}/LICENSE.md").format(package_prefix),
-			str("{}/requirements.txt").format(package_prefix),
-			str("{}/setup.py").format(package_prefix),
-			str("{}/MANIFEST.in").format(package_prefix),
-			str("{}/setup.cfg").format(package_prefix),
-			str("{}/multicast/__init__.py").format(package_prefix),
-			str("{}/multicast/__main__.py").format(package_prefix),
-			str("{}/multicast/skt.py").format(package_prefix),
-			str("{}/multicast/recv.py").format(package_prefix),
-			str("{}/multicast/send.py").format(package_prefix),
-			str("{}/multicast/hear.py").format(package_prefix),
+			f"{package_prefix}/README.md",
+			f"{package_prefix}/LICENSE.md",
+			f"{package_prefix}/requirements.txt",
+			f"{package_prefix}/MANIFEST.in",
+			f"{package_prefix}/multicast/__init__.py",
+			f"{package_prefix}/multicast/__main__.py",
+			f"{package_prefix}/multicast/skt.py",
+			f"{package_prefix}/multicast/recv.py",
+			f"{package_prefix}/multicast/send.py",
+			f"{package_prefix}/multicast/hear.py",
+			f"{package_prefix}/multicast/env.py",
+			f"{package_prefix}/multicast/exceptions.py",
 			# Include other important files and directories
 		]
 		for expected_file in expected_files:
 			self.assertIn(
 				expected_file,
 				members,
-				f"Missing {str(expected_file)} in sdist."
+				f"Missing {expected_file} in sdist.",
 			)
 
 	def test_sdist_excludes_unwanted_files(self):
@@ -125,16 +114,17 @@ class ManifestInclusionTestSuite(BasicUsageTestSuite):
 		members, pkg_version = self._build_sdist_and_get_members()
 		package_prefix = str("multicast-{}").format(pkg_version)
 		unwanted_files = [
-			str("{}/.gitignore").format(package_prefix),
-			str("{}/.github/").format(package_prefix),
-			str("{}/tests/").format(package_prefix),
+			f"{package_prefix}/.gitignore",
+			f"{package_prefix}/.github/",
+			f"{package_prefix}/tests/",
+			f"{package_prefix}/setup.py",  # changed in v2.0.9a3 for PEP-621 regression check
 			# Exclude other files or directories as specified in MANIFEST.in
 		]
 		for unwanted_file in unwanted_files:
 			self.assertNotIn(
 				unwanted_file,
 				members,
-				f"Unwanted file {str(unwanted_file)} found in sdist."
+				f"Unwanted file {unwanted_file} found in sdist.",
 			)
 
 

@@ -1,0 +1,373 @@
+---
+name: 'Upload Code Coverage with Tools'
+description: 'Upload results with various Code Coverage tools'
+author: 'Mr. Walls'
+branding:
+  icon: 'upload'
+  color: 'green'
+inputs:
+  tests-outcome:
+    description: |
+      The result outcome of the test that generated the coverage results.
+    type: choice
+    options:
+      - cancelled
+      - failure
+      - neutral
+      - success
+      - skipped
+      - timed_out
+    required: true
+  job_code:
+    description: |
+      The job-id of the test that generated the coverage results.
+    required: true
+  python-version:
+    description: |
+      The python version to use. The default is to use the value of the environment
+      variable 'PYTHON_VERSION'.
+    default: '3.12'
+    required: true
+  os:
+    description: |
+     When running this action on github.com, the default value is sufficient. When running on
+      GHES, you can pass the 'unknown' value to override this.
+    default: ${{ github.server_url == 'https://github.com' && runner.os || 'unknown' }}
+    type: choice
+    options:
+      - unknown
+      - macOS
+      - Linux
+      - Windows
+    required: true
+  codeclimate-token:  # deprecated in v2.0.9a7
+    description: "UNUSED"
+    deprecationMessage: |
+      This input is deprecated as of v2.0.9a7 and will be removed in a future release.
+      CodeClimate support has been discontinued.
+    default: ''
+    required: false
+  cc-test-reporter-id:  # deprecated in v2.0.9a7
+    description: "UNUSED"
+    deprecationMessage: |
+      This input is deprecated as of v2.0.9a7 and will be removed in a future release.
+      CodeClimate support has been discontinued.
+    default: ''
+    required: false
+  deepsource-dsn:
+    description: |
+      The deepsource DSN when performing deepsource API operations.
+    default: ''
+    required: true
+  coveralls-token:
+    description: |
+      The coveralls token used when performing coveralls API operations.
+    default: ''
+    required: true
+  codecov-token:
+    description: |
+      The codecov token used when performing codecov API operations.
+    default: ''
+    required: true
+outputs:
+  sha:
+    description: "The SHA of the commit checked-out"
+    value: ${{ steps.output_sha.outputs.sha || 'HEAD' }}
+  can_upload:
+    description: "Can the upload tools even be used?"
+    value: ${{ steps.output_can_upload.outputs.can_upload || 'false' }}
+  status:
+    description: "The outcome of the coverage test reporter action."
+    value: ${{ steps.coverage_outcome.outputs.status || 'cancelled' }}
+  coverage_upload_codecov_outcome:
+    description: "The outcome of the CodeCov coverage test reporter action."
+    value: ${{ steps.coverage-codecov-upload.outcome || 'cancelled' }}
+  coverage_upload_codeclimate_outcome:  # deprecated in v2.0.9a7
+    description: "The outcome of the CodeClimate coverage test reporter action. ALWAYS skipped."
+    value: 'skipped'
+  coverage_upload_deepsource_outcome:
+    description: "The outcome of the DeepSource coverage test reporter action."
+    value: ${{ steps.coverage-deepsource-upload.outcome || 'cancelled' }}
+  coverage_upload_coveralls_outcome:
+    description: "The outcome of the Coveralls coverage test reporter action."
+    value: ${{ steps.coverage-coveralls-upload.outcome || 'cancelled' }}
+  coverage_upload_artifact_outcome:
+    description: "The outcome of the coverage test upload action."
+    value: ${{ steps.coverage-reports-upload.outcome || 'cancelled' }}
+  coverage_artifact_url:
+    description: "The resulting url for the artifact of the coverage test upload action."
+    value: ${{ steps.coverage-reports-upload.outputs.artifact-url }}
+  coverage_artifact_id:
+    description: "The resulting id for the artifact of the coverage test upload action."
+    value: ${{ steps.coverage-reports-upload.outputs.artifact-id }}
+  coverage_artifact_digest:
+    description: "The resulting digest for the artifact of the coverage test upload action."
+    value: ${{ steps.coverage-reports-upload.outputs.artifact-digest }}
+
+runs:
+  using: composite
+  steps:
+    - name: "Calculate Commit SHA"
+      id: output_sha
+      shell: bash
+      run: |
+        printf "sha=%s\n" $(git rev-parse --verify HEAD) >> "$GITHUB_OUTPUT"
+        printf "::debug::%s %s\n" "Will report coverage for" $(git rev-parse --verify HEAD)
+        printf "BUILD_SHA=%s\n" $(git rev-parse --verify HEAD) >> "$GITHUB_ENV"
+    - name: "Identify Python Version"
+      id: output_python
+      if: ${{ !cancelled() }}
+      env:
+        PYTHON_VERSION_INPUT: ${{ inputs.python-version }}
+      shell: bash
+      run: |
+        if [[ -n $PYTHON_VERSION_INPUT ]]; then
+          printf "python-version=%s\n" "${PYTHON_VERSION_INPUT}" >> "$GITHUB_OUTPUT"
+          PYTHON_VERSION=${PYTHON_VERSION_INPUT}
+        else
+          printf "python-version=%s\n" "${PYTHON_VERSION}" >> "$GITHUB_OUTPUT"
+        fi
+        printf "%s\n" "PYTHON_VERSION=${PYTHON_VERSION}" >> "$GITHUB_ENV"
+        if [[ -z $PYTHON_VERSION ]] ; then
+          printf "::debug::%s\n" "Missing Python version"
+        else
+          printf "::debug::%s\n" "Found Python version ${PYTHON_VERSION}"
+        fi
+    - name: "Identify Operating System"
+      id: output_os
+      if: ${{ !cancelled() }}
+      env:
+        OS_INPUT: ${{ inputs.os }}
+      shell: bash
+      run: |
+        if [[ -n $OS_INPUT ]]; then
+          printf "os=%s\n" "${OS_INPUT}" >> "$GITHUB_OUTPUT"
+          OS=${OS_INPUT}
+        else
+          printf "os=%s\n" "${OS:-unknown}" >> "$GITHUB_OUTPUT"
+        fi
+        if [[ -z $OS ]] ; then
+          printf "::error file=.github/actions/test-reporter-upload/action.yml::%s\n" "Invalid OS"
+          exit 1
+        else
+          printf "::debug::%s\n" "Identified ${OS}"
+        fi
+        printf "%s\n" "OS=${OS}" >> "$GITHUB_ENV"
+    - id: output_branch_name
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        printf "branch-name=%s\n" $(git name-rev --name-only HEAD 2>/dev/null | cut -d~ -f1-1) >> "$GITHUB_OUTPUT"
+        printf "::debug::%s %s\n" "Will report coverage as branch " $(git name-rev --name-only HEAD | cut -d~ -f1-1)
+        printf "BUILD_BRANCH=%s\n" $(git name-rev --name-only HEAD 2>/dev/null | cut -d~ -f1-1) >> "$GITHUB_ENV"
+    - name: "Prepare Artifact Name"
+      id: output_artifact_name
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        if [[ "${OS}" != "Windows" ]] ; then
+          printf "artifact-name=%s\n" multicast-coverage-${BUILD_SHA}-part-$(uuidgen) >> "$GITHUB_OUTPUT"
+        else
+          printf "artifact-name=%s" multicast-coverage-${BUILD_SHA}-part- >> "$GITHUB_OUTPUT"
+          printf "%04x%04x-%04x-%04x-%04x-%04x%04x%04x\n" $RANDOM $RANDOM $RANDOM $(($RANDOM & 0x0fff | 0x4000)) $(($RANDOM & 0x3fff | 0x8000)) $RANDOM $RANDOM $RANDOM >> "$GITHUB_OUTPUT"
+        fi
+        printf "%s\n" "COV_STEP_SUMMARY=Coverage-Summary-Artifact-${OS}-${PYTHON_VERSION}.txt" >> "$GITHUB_ENV"
+    - name: "Check has upload Tools"
+      id: output_upload_tools
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        if [[ "${OS}" != "unknown" ]] ; then
+          if [[ -x ${{ github.workspace }}/cc-test-reporter ]] ; then
+            printf "can_upload_to_codeclimate=true\n" >> "$GITHUB_OUTPUT"
+            printf "::debug::%s\n" "Found ${{ github.workspace }}/cc-test-reporter"
+            printf "::warning title='Unexpected tool':: %s\n" "Can't use cc-test-reporter tool."
+          else
+            printf "::debug:: %s\n" "Can't find cc-test-reporter tool. This is normal."
+            printf "can_upload_to_codeclimate=false\n" >> "$GITHUB_OUTPUT"
+          fi
+          LOCALBIN="${{ github.workspace }}/bin"
+          if [[ -d "${BINDIR:-${LOCALBIN}}" ]] ; then
+            printf "::debug::%s\n" "Found ${BINDIR:-${LOCALBIN}}"
+            if [[ -x "${BINDIR:-${LOCALBIN}}/coveralls" ]] ; then
+              printf "can_upload_to_coveralls=true\n" >> "$GITHUB_OUTPUT"
+              printf "::debug::%s\n" "Found ${BINDIR:-${LOCALBIN}}/coveralls"
+              printf "coveralls_executable=${BINDIR:-${LOCALBIN}}/coveralls\n" >> "$GITHUB_OUTPUT"
+            else
+              printf "::warning title='Missing tool':: %s\n" "Can't find coveralls tool."
+              printf "can_upload_to_coveralls=false\n" >> "$GITHUB_OUTPUT"
+            fi
+            if [[ -x "${BINDIR:-${LOCALBIN}}/deepsource" ]] ; then
+              printf "can_upload_to_deepsource=true\n" >> "$GITHUB_OUTPUT"
+              printf "::debug::%s\n" "Found ${BINDIR:-${LOCALBIN}}/deepsource"
+              printf "deepsource_executable=%s\n" "${BINDIR:-${LOCALBIN}}/deepsource" >> "$GITHUB_OUTPUT"
+            else
+              printf "::warning title='Missing tool':: %s\n" "Can't find deepsource tool."
+              printf "can_upload_to_deepsource=false\n" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            printf "::notice title='Missing BINDIR':: %s\n" "Can't find ${BINDIR:-${LOCALBIN}}."
+            if [[ -x $(command -v coveralls) ]] ; then
+              printf "can_upload_to_coveralls=true\n" >> "$GITHUB_OUTPUT"
+              printf "::debug::%s %s\n" "Found" $(command -v coveralls)
+              printf "coveralls_executable=%s\n" $(command -v coveralls) >> "$GITHUB_OUTPUT"
+            else
+              printf "::warning title='Missing tool':: %s\n" "Can't find coveralls tool."
+              printf "can_upload_to_coveralls=false\n" >> "$GITHUB_OUTPUT"
+              printf "coveralls_executable=coveralls\n" >> "$GITHUB_OUTPUT"
+            fi
+            if [[ -x $(command -v deepsource) ]] ; then
+              printf "can_upload_to_deepsource=true\n" >> "$GITHUB_OUTPUT"
+              printf "::debug::%s %s\n" "Found" $(command -v deepsource)
+              printf "deepsource_executable=%s\n" $(command -v deepsource) >> "$GITHUB_OUTPUT"
+            else
+              printf "::warning title='Missing tool':: %s\n" "Can't find deepsource tool."
+              printf "can_upload_to_deepsource=false\n" >> "$GITHUB_OUTPUT"
+              printf "deepsource_executable=deepsource\n" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+        else
+          printf "::warning title='Missing tools':: %s\n" "Can't find any supported tool."
+          printf "can_upload_to_codeclimate=false\n" >> "$GITHUB_OUTPUT"
+          printf "can_upload_to_coveralls=false\n" >> "$GITHUB_OUTPUT"
+          printf "can_upload_to_deepsource=false\n" >> "$GITHUB_OUTPUT"
+        fi
+        if [[ -d "${{ github.workspace }}/test-reports" ]] ; then
+          if [[ ( -e ./.coverage.* ) ]] ; then
+            if [[ ( -x $(command -v coverage3) ) ]] ; then
+              printf "\n" >> "${GITHUB_STEP_SUMMARY}"
+              coverage3 combine --keep --data-file=coverage_codecov ./.coverage.* 2>/dev/null || true
+              wait ;
+              coverage3 report -m --include=multicast/* --ignore-errors --data-file=coverage_codecov 2>/dev/null >> "${GITHUB_STEP_SUMMARY}" || true
+              if [[ ! ( -f "${{ github.workspace }}/test-reports/coverage.xml" ) ]] ; then
+                coverage3 xml -o "${{ github.workspace }}/test-reports/coverage.xml" --data-file=coverage_codecov --include=multicast/* 2>/dev/null || true
+              fi ;
+              rm -f coverage_codecov 2>/dev/null || true ; wait ;
+              printf "\n\n" >> "${GITHUB_STEP_SUMMARY}"
+            elif [[ ( -x $(command -v coverage) ) ]] ; then
+              coverage combine --keep --data-file=coverage_codecov ./.coverage.* 2>/dev/null || true
+              wait ;
+              coverage report -m --include=multicast/* --ignore-errors --data-file=coverage_codecov --format=markdown 2>/dev/null >> "${GITHUB_STEP_SUMMARY}" || true
+              if [[ ! ( -f "${{ github.workspace }}/test-reports/coverage.xml" ) ]] ; then
+                coverage xml -o "${{ github.workspace }}/test-reports/coverage.xml" --include=multicast/* --data-file=coverage_codecov 2>/dev/null || true
+              fi ;
+              rm -f coverage_codecov 2>/dev/null || true ; wait ;
+              printf "\n\n" >> "${GITHUB_STEP_SUMMARY}"
+            fi
+          fi
+          if [[ -f "${{ github.workspace }}/test-reports/coverage.xml" ]] ; then
+            printf "can_upload_to_codecov=true\n" >> "$GITHUB_OUTPUT"
+          else
+            printf "can_upload_to_codecov=false\n" >> "$GITHUB_OUTPUT"
+          fi
+        else
+          printf "can_upload_to_codecov=false\n" >> "$GITHUB_OUTPUT"
+        fi
+    - name: "Check can upload"
+      id: output_can_upload
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        if [[ "${OS}" != "unknown" ]] ; then
+          if [[ "${{ steps.output_upload_tools.outputs.can_upload_to_codecov }}" == "true" ]] || \
+             [[ "${{ steps.output_upload_tools.outputs.can_upload_to_coveralls }}" == "true" ]] || \
+             [[ "${{ steps.output_upload_tools.outputs.can_upload_to_deepsource }}" == "true" ]] ; then
+            THE_RESULT="success"
+          else
+            if [[ "${OS}" != "Windows" ]] ; then
+              THE_RESULT="failure"
+            else
+              THE_RESULT="skipped"  # Windows need only upload coverage artifact
+            fi
+          fi
+        else
+          THE_RESULT="skipped"
+        fi
+        printf "status=%s\n" "${THE_RESULT}" >> "$GITHUB_OUTPUT"
+        if [[ "${THE_RESULT}" == "success" ]] ; then
+          printf "can_upload=true\n" >> "$GITHUB_OUTPUT"
+          exit 0
+        else
+          printf "can_upload=false\n" >> "$GITHUB_OUTPUT"
+          if [[ "${THE_RESULT}" == "failure" ]] ; then
+            exit 1
+          fi ;
+        fi
+    - name: check codecov config
+      id: check-codecov-config
+      if: ${{ !cancelled() && (steps.output_can_upload.outputs.can_upload == 'true') && (steps.output_upload_tools.outputs.can_upload_to_codecov == 'true') }}
+      shell: bash
+      run: |
+        if [[ "${OS}" != "unknown" ]] && [[ "${OS}" != "Windows" ]] ; then
+          ${{ github.workspace }}/tests/check_codecov || exit 1
+        fi  # else just finish with implied success
+    - name: Upload ${{ steps.output_os.outputs.os }} Python ${{ steps.output_python.outputs.python-version }} coverage to Codecov
+      id: coverage-codecov-upload
+      if: ${{ success() && (steps.output_can_upload.outputs.can_upload == 'true') && (steps.output_upload_tools.outputs.can_upload_to_codecov == 'true') }}
+      uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
+      with:
+        token: ${{ inputs.codecov-token }}
+        job_code: ${{ inputs.job_code || '' }}
+        override_commit: ${{ steps.output_sha.outputs.sha }}
+        override_branch: ${{ steps.output_branch_name.outputs.branch-name }}
+        report_type: 'coverage'
+        slug: 'reactive-firewall-org/multicast'
+        files: ./coverage.xml,./test-reports/coverage.xml,./test-reports/coverage_*.xml
+        directory: ${{ github.workspace }}
+        flags: multicast
+        name: multicast-github-${{ steps.output_os.outputs.os }}-${{ steps.output_python.outputs.python-version }}-${{ steps.output_sha.outputs.sha }}
+        verbose: true
+        fail_ci_if_error: false
+    - name: Upload ${{ steps.output_os.outputs.os }} Python ${{ steps.output_python.outputs.python-version }} Artifact
+      id: coverage-reports-upload
+      if: ${{ !cancelled() && (steps.output_can_upload.outputs.can_upload == 'true') }}
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: Test-Report-${{ steps.output_os.outputs.os }}-${{ steps.output_python.outputs.python-version }}-${{ steps.output_sha.outputs.sha }}
+        path: ./test-reports/
+        if-no-files-found: ignore
+        compression-level: 9
+        retention-days: 2
+        overwrite: true
+    - name: Upload ${{ steps.output_os.outputs.os }} Python ${{ steps.output_python.outputs.python-version }} coverage to deepsource
+      if: ${{ !cancelled() && (steps.output_can_upload.outputs.can_upload == 'true') && (steps.output_upload_tools.outputs.can_upload_to_deepsource == 'true') && (steps.output_os.outputs.os != 'Windows') && (github.repository == 'reactive-firewall-org/multicast') }}
+      id: coverage-deepsource-upload
+      shell: bash
+      env:
+        DEEPSOURCE_DSN: ${{ github.server_url == 'https://github.com' && inputs.deepsource-dsn || '' }}
+        DEEPSOURCE_TOOL: ${{ steps.output_upload_tools.outputs.deepsource_executable }}
+      run: |
+        ${DEEPSOURCE_TOOL} report --analyzer test-coverage --key python --value-file ${COV_CORE_DATAFILE:-./coverage.xml} 2>/dev/null
+    - name: Upload ${{ steps.output_os.outputs.os }} Python ${{ steps.output_python.outputs.python-version }} coverage to coveralls
+      if: ${{ !cancelled() && (steps.output_can_upload.outputs.can_upload == 'true') && (steps.output_upload_tools.outputs.can_upload_to_coveralls == 'true') && (steps.output_os.outputs.os != 'Windows') && (github.repository == 'reactive-firewall-org/multicast') }}
+      id: coverage-coveralls-upload
+      shell: bash
+      env:
+        COVERALLS_REPO_TOKEN: ${{ github.server_url == 'https://github.com' && inputs.coveralls-token || '' }}
+        COVERALLS_TOOL: ${{ steps.output_upload_tools.outputs.coveralls_executable }}
+      run: |
+        if [[ "${{ inputs.tests-outcome }}" == "success" ]] ; then
+          ${COVERALLS_TOOL} report ${COV_CORE_DATAFILE:-./coverage.xml} --base-path="${{ github.workspace }}" --service-job-id=${{ github.run_id }} --parallel --job-flag='${{ steps.output_os.outputs.os }}-${{ steps.output_python.outputs.python-version }}' --build-number=${{ inputs.job_code }} || exit 1 ;
+        else
+          ${COVERALLS_TOOL} report ${COV_CORE_DATAFILE:-./coverage.xml} --base-path="${{ github.workspace }}" --allow-empty --service-job-id=${{ github.run_id }} --parallel --job-flag='${{ steps.output_os.outputs.os }}-${{ steps.output_python.outputs.python-version }}' --build-number=${{ inputs.job_code }} || exit 1 ;
+        fi
+    - name: "Evaluate Coverage Report Task"
+      id: coverage_outcome
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        if [[ "${{ steps.output_can_upload.outputs.can_upload }}" == "true" ]] ; then
+          if [[ "${{ inputs.tests-outcome }}" == "success" ]] ; then
+            THE_RESULT="success"
+          else
+            THE_RESULT="neutral"
+          fi ;
+        else
+          THE_RESULT="skipped"
+        fi
+        printf "status=%s\n" "${THE_RESULT}" >> "$GITHUB_OUTPUT"
+        if [[ "${THE_RESULT}" == "failure" ]] ; then
+          exit 1
+        else
+          exit 0
+        fi

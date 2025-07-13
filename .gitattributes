@@ -1,19 +1,44 @@
-*			text=auto
-*.cfg,*.conf	text working-tree-encoding=UTF-8 diff=config
-*.txt			text working-tree-encoding=UTF-8
-*.py			text working-tree-encoding=UTF-8 diff=python merge=python
-multicast/*.py	text working-tree-encoding=UTF-8 diff=python merge=python
-tests/*.py		text working-tree-encoding=UTF-8 diff=python merge=python
-*.pyc			-text
-*.sh			text working-tree-encoding=UTF-8 diff=shell merge=shell
-*.bash			text working-tree-encoding=UTF-8 diff=shell merge=shell
-*.ini			text
-*.md			text working-tree-encoding=UTF-8 diff=markdown merge=markdown
-*.yml			text
-*.jpg			-text
-*.png			-text
-*.conf			text diff=config
-*.bat			text
-*.rst			text
-tests/check_*	text working-tree-encoding=UTF-8 diff=shell merge=shell
-Makefile		text working-tree-encoding=UTF-8 diff=makefile merge=makefile
+# from -- https://github.com/reactive-firewall/ymmv.git
+
+# Set default behaviour to automatically normalize line endings.
+* text=auto
+
+# Force batch scripts to always use CRLF line endings so that if a repo is accessed
+# in Windows via a file share from Linux, the scripts will work.
+*.{cmd,[cC][mM][dD]} text eol=crlf
+*.{bat,[bB][aA][tT]} text eol=crlf
+
+# Force bash scripts to always use LF line endings so that if a repo is accessed
+# in Unix via a file share from Windows, the scripts will work.
+*.{ash,[aA][sS][hH]} text eol=lf diff=bash merge=bash working-tree-encoding=UTF-8
+*.{bash,[bB][aA][sS][hH]} text eol=lf diff=bash merge=bash working-tree-encoding=UTF-8
+*.{csh,[cC][sS][hH]} text eol=lf diff=bash merge=bash working-tree-encoding=UTF-8
+*.{dash,[dD][aA][sS][hH]} text eol=lf diff=bash merge=bash working-tree-encoding=UTF-8
+*.{sh,[sS][hH]} text eol=lf diff=bash merge=bash working-tree-encoding=UTF-8
+*.{zsh,[zZ][sS][hH]} text eol=lf diff=bash merge=bash working-tree-encoding=UTF-8
+
+*.{cfg,[cC][fF][gG]},*.{conf,[cC][oO][nN][fF]} text eol=lf diff=config working-tree-encoding=UTF-8
+*.{toml,[tT][oO][mM][lL]} text eol=lf working-tree-encoding=UTF-8
+*.{ini,[iI][nN][iI]} text eol=lf working-tree-encoding=UTF-8
+*.{yml,[yY][mM][lL]},*.{yaml,[yY][aA][mM][lL]} text eol=lf working-tree-encoding=UTF-8
+*.{txt,[tT][xX][tT]} text eol=lf diff=markdown working-tree-encoding=UTF-8
+*.{rst,[rR][sS][tT]} text eol=lf working-tree-encoding=UTF-8
+*.{md,[mM][dD]},*.{markdown,[mM][aA][rR][kK][dD][oO][wW][nN]} text eol=lf diff=markdown merge=markdown working-tree-encoding=UTF-8
+
+*.py text eol=lf diff=python merge=python working-tree-encoding=UTF-8
+*.pyc export-ignore diff=python -text
+*.pyi export-ignore text eol=lf diff=python merge=python working-tree-encoding=UTF-8
+
+# May diverge in future
+# multicast/*.py text eol=lf diff=python merge=python working-tree-encoding=UTF-8
+# tests/*.py text eol=lf diff=python merge=python working-tree-encoding=UTF-8
+# docs/*.py text eol=lf diff=python merge=python working-tree-encoding=UTF-8
+# tests/check_* text eol=lf diff=bash merge=bash working-tree-encoding=UTF-8
+
+*.jpg -text
+*.png -text
+*.{svg,[sS][vV][gG]} text eol=lf diff=html merge=html working-tree-encoding=UTF-8
+
+# More rules
+.DS_Store export-ignore -text
+Makefile text eol=lf diff=makefile merge=makefile working-tree-encoding=UTF-8
