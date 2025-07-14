@@ -40,10 +40,12 @@ jobs:
           python-version: "${{ vars.PYTHON_DEFAULT }}"
       - name: Pre-Clean
         id: clean
+        shell: bash
         run: make -j1 -f Makefile purge 2>/dev/null || true
       - name: Build
         id: build
-        run: make -j1 -f Makefile build
+        shell: bash
+        run: make -j1 -f Makefile dist
       - name: Publish package distributions to PyPI
         if: ${{ success() }}
         uses: pypa/gh-action-pypi-publish@release/v1
