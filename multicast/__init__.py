@@ -17,12 +17,12 @@
 # limitations under the License.
 
 import sys
+import abc
 import argparse
 import logging
-import unicodedata
 import socket
 import struct
-import abc
+import unicodedata
 
 # skipcq
 __all__ = [
@@ -221,7 +221,7 @@ __name__ = "multicast"  # skipcq: PYL-W0622
 
 global __version__  # skipcq: PYL-W0604
 
-__version__ = "2.0.9"
+__version__ = "2.1.0-alpha-1"
 """The version of this program.
 
 	The `__version__` attribute, like many dunder attributes, is associated with the implementation
