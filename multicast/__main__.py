@@ -860,7 +860,7 @@ def cli() -> int:
 			>>>
 	"""
 	__EXIT_CODE: tuple = (1, exceptions.EXIT_CODES[1][1])
-	if sys.argv is not None:
+	if sys.argv is not None:  # pragma: no branch
 		if len(sys.argv) > 1:
 			__EXIT_CODE = main(sys.argv[1:])
 		else:  # pragma: no branch

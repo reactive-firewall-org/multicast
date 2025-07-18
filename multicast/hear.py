@@ -328,8 +328,6 @@ class McastServer(socketserver.UDPServer):
 		logger_name = server_address[0] if server_address and len(server_address) > 0 else None
 		if logger_name:  # pragma: no branch
 			self.__logger = logging.getLogger(f"{self.__log_handle__}.{logger_name}")
-		else:
-			self.__logger = logging.getLogger(f"{self.__log_handle__}")
 		super().__init__(server_address, RequestHandlerClass, bind_and_activate)
 
 	def _sync_logger(self) -> None:
