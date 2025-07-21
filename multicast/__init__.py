@@ -221,7 +221,7 @@ __name__ = "multicast"  # skipcq: PYL-W0622
 
 global __version__  # skipcq: PYL-W0604
 
-__version__ = "2.1.0-alpha-1"
+__version__ = "2.1.0-alpha-2"
 """The version of this program.
 
 	The `__version__` attribute, like many dunder attributes, is associated with the implementation
