@@ -9,10 +9,6 @@ run-name: Generate and lint documentation for ${{ github.ref_name }} by @${{ git
 # Required Secrets:
 # - DOCS_BUILD_REF: Automatic
 
-concurrency:
-  group: Multicast-Documentation
-  cancel-in-progress: false
-
 # Declare default permissions as none.
 permissions: {}
 

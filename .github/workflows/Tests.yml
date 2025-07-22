@@ -22,10 +22,6 @@ on:
     types:
       - completed
 
-concurrency:
-  group: Multicast-Tests
-  cancel-in-progress: false
-
 # Declare default permissions as none.
 permissions: {}
 
@@ -151,9 +147,6 @@ jobs:
     if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') }}
     needs: [check_mats]
     runs-on: ${{ matrix.os }}
-    concurrency:
-      group: Multicast-Tests-Coverage
-      cancel-in-progress: false
     timeout-minutes: 10
     strategy:
       max-parallel: 3
@@ -422,9 +415,6 @@ jobs:
     if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') }}
     needs: [check_mats]
     runs-on: ${{ matrix.os }}
-    concurrency:
-      group: Multicast-Tests-Doctests
-      cancel-in-progress: false
     timeout-minutes: 10
     strategy:
       max-parallel: 3
@@ -821,9 +811,6 @@ jobs:
     if: ${{ success() }}
     needs: [check_mats, COVERAGE, DOCTESTS]
     runs-on: ${{ matrix.os }}
-    concurrency:
-      group: Multicast-Tests-Integration
-      cancel-in-progress: false
     timeout-minutes: 10
     strategy:
       max-parallel: 4
@@ -1313,9 +1300,6 @@ jobs:
     defaults:
       run:
         shell: bash
-    concurrency:
-      group: Multicast-Tests-Extras
-      cancel-in-progress: false
     timeout-minutes: 5
     strategy:
       max-parallel: 1

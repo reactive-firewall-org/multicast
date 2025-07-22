@@ -21,10 +21,6 @@ on:  # yamllint disable-line rule:truthy
     types:
       - completed
 
-concurrency:
-  group: Multicast-Tests-Extras
-  cancel-in-progress: false
-
 # Declare default permissions as none.
 permissions: {}
 

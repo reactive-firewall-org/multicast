@@ -7,10 +7,6 @@ on:  # yamllint disable-line rule:truthy
   pull_request:
     branches: ["main", "master", "stable", "feature-*", "patch-*", "HOTFIX-*"]
 
-concurrency:
-  group: Multicast-CodeQL
-  cancel-in-progress: false
-
 permissions: {}  # Setting default permissions to none for enhanced security
 
 jobs:

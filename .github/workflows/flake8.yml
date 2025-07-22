@@ -2,10 +2,6 @@
 name: Flake8 Analysis
 on: [push, pull_request]
 
-concurrency:
-  group: Multicast-CodeQL
-  cancel-in-progress: false
-
 permissions: {}  # Setting default permissions to none for enhanced security
 
 jobs:
