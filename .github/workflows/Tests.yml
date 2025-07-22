@@ -22,6 +22,10 @@ on:
     types:
       - completed
 
+concurrency:
+  group: Multicast-Tests
+  cancel-in-progress: false
+
 # Declare default permissions as none.
 permissions: {}
 
@@ -147,8 +151,12 @@ jobs:
     if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') }}
     needs: [check_mats]
     runs-on: ${{ matrix.os }}
+    concurrency:
+      group: Multicast-Tests-Coverage
+      cancel-in-progress: false
     timeout-minutes: 10
     strategy:
+      max-parallel: 3
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["${{ vars.PYTHON_OLD_MIN }}", "${{ vars.PYTHON_OLD_EXTRA }}", "${{ vars.PYTHON_DEFAULT }}", "${{ vars.PYTHON_EXPERIMENTAL }}"]
@@ -414,8 +422,12 @@ jobs:
     if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') }}
     needs: [check_mats]
     runs-on: ${{ matrix.os }}
+    concurrency:
+      group: Multicast-Tests-Doctests
+      cancel-in-progress: false
     timeout-minutes: 10
     strategy:
+      max-parallel: 3
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["${{ vars.PYTHON_OLD_MIN }}", "${{ vars.PYTHON_OLD_EXTRA }}", "${{ vars.PYTHON_DEFAULT }}", "${{ vars.PYTHON_EXPERIMENTAL }}"]
@@ -809,8 +821,12 @@ jobs:
     if: ${{ success() }}
     needs: [check_mats, COVERAGE, DOCTESTS]
     runs-on: ${{ matrix.os }}
+    concurrency:
+      group: Multicast-Tests-Integration
+      cancel-in-progress: false
     timeout-minutes: 10
     strategy:
+      max-parallel: 4
       matrix:
         os: [ubuntu-latest, macos-latest]
         python-version: ["${{ vars.PYTHON_OLD_MIN }}", "${{ vars.PYTHON_OLD_EXTRA }}", "${{ vars.PYTHON_DEFAULT }}", "${{ vars.PYTHON_EXPERIMENTAL }}"]
@@ -1297,8 +1313,12 @@ jobs:
     defaults:
       run:
         shell: bash
-    timeout-minutes: 10
+    concurrency:
+      group: Multicast-Tests-Extras
+      cancel-in-progress: false
+    timeout-minutes: 5
     strategy:
+      max-parallel: 1
       matrix:
         os: [ubuntu-latest]
         python-version: ["${{ vars.PYTHON_OLD_MIN }}", "${{ vars.PYTHON_OLD_EXTRA }}", "${{ vars.PYTHON_DEFAULT }}", "${{ vars.PYTHON_EXPERIMENTAL }}"]

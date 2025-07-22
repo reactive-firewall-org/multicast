@@ -18,6 +18,10 @@ on:  # yamllint disable-line rule:truthy
     # The branches below must be a subset of the branches above
     branches: ["main", "master", "stable", "feature-*", "patch-*", "HOTFIX-*"]
 
+concurrency:
+  group: Multicast-CodeQL
+  cancel-in-progress: false
+
 permissions: {}
 
 jobs:

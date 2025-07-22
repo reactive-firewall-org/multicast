@@ -20,6 +20,10 @@ on:  # yamllint disable-line rule:truthy
   schedule:
     - cron: '17 5 * * 1'
 
+concurrency:
+  group: Multicast-CodeQL
+  cancel-in-progress: false
+
 permissions: {}
 
 jobs:

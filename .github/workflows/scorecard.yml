@@ -10,6 +10,10 @@ on:  # yamllint disable-line rule:truthy
     # Weekly on Fridays.
     - cron: '34 9 * * 5'
 
+concurrency:
+  group: Multicast-CodeQL
+  cancel-in-progress: false
+
 # Declare default permissions as read only.
 permissions: {}
 

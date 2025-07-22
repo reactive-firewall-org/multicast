@@ -25,6 +25,10 @@ on:  # yamllint disable-line rule:truthy
     types:
       - completed
 
+concurrency:
+  group: Multicast-M-A-Ts
+  cancel-in-progress: false
+
 # Declare default permissions as none.
 permissions: {}
 

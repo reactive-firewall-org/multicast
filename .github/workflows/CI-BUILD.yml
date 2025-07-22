@@ -15,6 +15,10 @@ on:  # yamllint disable-line rule:truthy
     branches: ["**"]  # matches any branch
     tags: ["v*"]
 
+concurrency:
+  group: Multicast-Builds
+  cancel-in-progress: true
+
 # Declare default permissions as none.
 permissions: {}
 
