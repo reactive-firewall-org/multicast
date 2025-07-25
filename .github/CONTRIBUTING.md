@@ -133,6 +133,61 @@ Here is a list of links for contributors that are looking to help triage:
  * [All Open Issues](https://github.com/reactive-firewall-org/multicast/issues)
 
 ---
+
+## Commit Message Format Conventions
+
+### Rules
+
+1. **Category Flagging:**
+  Use uppercase categories enclosed in square brackets to indicate the type of change.
+  Examples include:
+    * `CI`
+    * `CONFIG`
+    * `COVERAGE`
+    * `DEBUG`
+    * `DOCUMENTATION`
+    * `FEATURE`
+    * `FIX`
+    * `HOTFIX`
+    * `LICENSE`
+    * `MERGE`
+    * `PATCH`
+    * `REFACTOR`
+    * `REGRESSION`
+    * `SECURITY`
+    * `STYLE`
+    * `TESTING`
+    * `UPDATE`
+    * `UPGRADE`
+
+2. **Issue References:**
+  Include issue or pull request references in the format `#123`, where `123` is the issue number.
+
+3. **Summary Format:**
+  The commit message should follow this structure:
+    `[CATEGORY] brief summary (- WIP ID -)`
+  * **CATEGORY**: This should represent the type of change
+  * **ID**: This should be the main `#` tagged GitHub issue or pull request number to track progress related to the commit.
+  * **Brief Summary**: Provide a concise summary of the changes made in the commit.
+
+4. **File Change Documentation:**
+  Following after the summary line, remaining lines should be per-file changed, and list the changes made.
+  The extraction script specifically looks for the following headers to document file changes:
+  * `"Additions with file"` - for new files
+  * `"Deletions from file"` - for removed files
+  * `"Changes in file"` - for modified files
+  The script expects any of these headers to be followed by one or more lines prefixed by:
+  * ` * ` (markdown bullet lists)
+
+### Summary Guidelines
+
+* **Action-Oriented**: Begin summaries with a verb to clearly convey the action taken. Examples include "Added," "Fixed," "Implemented," "Tweaked," "Improved," or "Refactored."
+
+* **Concise and Targeted**: Each summary should be brief, typically limited to a single sentence or phrase, focusing on the primary change made.
+
+* **Issue-Linked**: Incorporate the WIP `#ID` marker to associate each change with a specific issue or pull request, facilitating tracking of its origin and rationale.
+
+---
 # Reviewing Checklist:
 
 > [!NOTE]
