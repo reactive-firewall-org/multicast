@@ -70,7 +70,7 @@ jobs:
           fi
       - name: "Fetch MATs Info"
         if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           path: "multicast-info.txt"
           pattern: multicast-info-*
@@ -209,7 +209,7 @@ jobs:
     if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') && (needs.DOCS.outputs.docs_outcome != 'cancelled') }}
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           path: ${{ github.workspace }}/Multicast-Documentation
           pattern: Multicast-Documentation-${{ needs.check_mats.outputs.build_sha }}-*-*
@@ -289,7 +289,7 @@ jobs:
       - name: "Download Status Summary Artifact"
         id: download-documentation-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           name: DOCUMENTATION-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
           github-token: ${{ github.token }}

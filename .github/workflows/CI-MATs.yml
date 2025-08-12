@@ -77,7 +77,7 @@ jobs:
           fi
       - name: "Fetch Build Info"
         if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           path: "BUILD-info.txt"
           pattern: multicast-info-*
@@ -211,7 +211,7 @@ jobs:
       build_sha: ${{ needs.check_build.outputs.sha }}
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           path: ${{ github.workspace }}/MATS
           pattern: multicast-mats-${{ needs.check_build.outputs.sha }}-part-*
@@ -385,7 +385,7 @@ jobs:
       - name: "Download Status Summary Artifact"
         id: download-mats-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           name: MATS-COMMENT-BODY-${{ needs.check_build.outputs.sha }}
           github-token: ${{ github.token }}
