@@ -94,7 +94,7 @@ jobs:
           printf "docs_url=%s\n" 'https://github.com/reactive-firewall-org/multicast/actions/runs/${{ github.run_id }}' >> "$GITHUB_OUTPUT"
           printf "docs_id=%s\n" ${{ github.run_id }} >> "$GITHUB_OUTPUT"
       - name: checkout repository actions for check
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false
           ref: ${{ steps.load_build_info.outputs.build_sha }}
@@ -150,7 +150,7 @@ jobs:
       docs_artifact_digest: ${{ steps.upload-documentation.outputs.artifact-digest }}
     steps:
       - name: pre-checkout repository for actions
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false
           ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -256,7 +256,7 @@ jobs:
           compression-level: 9
           overwrite: true
       - name: checkout repository actions for check
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false
           ref: ${{ needs.check_mats.outputs.build_sha }}
