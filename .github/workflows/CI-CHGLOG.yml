@@ -216,13 +216,13 @@ jobs:
           path: '${{ runner.temp }}/'
           artifact-ids: ${{ needs.CHGLOG.outputs.artifact-id }}
           repository: reactive-firewall-org/multicast
+          github-token: ${{ github.token }}
       - name: "Move chglog into place"
         id: load_chglog_info
         if: ${{ always() }}
         run: |
-          mv -vf "${{ runner.temp }}/multicast-chglog-${{ needs.check_build.outputs.sha }}/CHANGELOG.md" "${{ github.workspace }}/CHANGELOG.md" ;
+          mv -vf "${{ runner.temp }}/CHANGELOG.md" "${{ github.workspace }}/CHANGELOG.md" ;
           wait ;
-          rmdir -v "${{ runner.temp }}/multicast-chglog-${{ needs.check_build.outputs.sha }}" || : ;  # remove if able
       - name: "Report chglog status"
         id: report_status
         env:
