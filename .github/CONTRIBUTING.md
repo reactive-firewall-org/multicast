@@ -132,8 +132,6 @@ Here is a list of links for contributors that are looking to help triage:
  * [Good first issues](https://github.com/reactive-firewall-org/multicast/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22%20sort%3Acomments-asc)
  * [All Open Issues](https://github.com/reactive-firewall-org/multicast/issues)
 
----
-
 ## Commit Message Format Conventions
 
 ### Rules
@@ -166,13 +164,17 @@ Here is a list of links for contributors that are looking to help triage:
 3. **Summary Format:**
   The commit message should follow this structure:
     `[CATEGORY] brief summary (- WIP ID -)`
+
   * **CATEGORY**: This should represent the type of change
-  * **ID**: This should be the main `#` tagged GitHub issue or pull request number to track progress related to the commit.
+  * **ID**: This should be the main `#` tagged GitHub issue or pull request number to track
+    progress related to the commit.
   * **Brief Summary**: Provide a concise summary of the changes made in the commit.
 
 4. **File Change Documentation:**
-  Following after the summary line, remaining lines should be per-file changed, and list the changes made.
-  The extraction script specifically looks for the following headers to document file changes:
+  Following after the summary line, remaining lines should be per-file changed, and list the
+  changes made. The extraction script specifically looks for the following headers to document
+  file changes:
+
   * `"Additions with file"` - for new files
   * `"Deletions from file"` - for removed files
   * `"Changes in file"` - for modified files
@@ -181,11 +183,17 @@ Here is a list of links for contributors that are looking to help triage:
 
 ### Summary Guidelines
 
-* **Action-Oriented**: Begin summaries with a verb to clearly convey the action taken. Examples include "Added," "Fixed," "Implemented," "Tweaked," "Improved," or "Refactored."
+1. **Action-Oriented**:
+  Begin summaries with a verb to clearly convey the action taken. Examples
+  include "Added," "Fixed," "Implemented," "Tweaked," "Improved," or "Refactored."
 
-* **Concise and Targeted**: Each summary should be brief, typically limited to a single sentence or phrase, focusing on the primary change made.
+2. **Concise and Targeted**:
+  Each summary should be brief, typically limited to a single sentence
+  or phrase, focusing on the primary change made.
 
-* **Issue-Linked**: Incorporate the WIP `#ID` marker to associate each change with a specific issue or pull request, facilitating tracking of its origin and rationale.
+3. **Issue-Linked**:
+  Incorporate the WIP `#ID` marker to associate each change with a specific
+  issue or pull request, facilitating tracking of its origin and rationale.
 
 ---
 # Reviewing Checklist:
