@@ -546,7 +546,7 @@ consistency.
 ##### Setting up Python with the default version
 
 ```yaml
-- uses: actions/setup-python@v5
+- uses: actions/setup-python@v6
   with:
     python-version: "${{ vars.PYTHON_DEFAULT }}"
 ```
@@ -561,7 +561,7 @@ jobs:
       matrix:
         python-version: ["${{ vars.PYTHON_DEFAULT }}", "${{ vars.PYTHON_EXPERIMENTAL }}"]
     steps:
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 ```
