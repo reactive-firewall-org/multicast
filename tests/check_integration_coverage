@@ -142,21 +142,32 @@ else
 	EXIT_CODE=40
 fi
 
+if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
 TEST_MCAST_PORT=$(((RANDOM % 16384) + 49152));
 TEST_MCAST_GROUP='224.0.0.1' ;
 COVERAGE_DATA_FILE="./coverage_integration" ;
-if [[ -x "${PYTHON}" ]] ; then
+if [[ -n "${PYTHON}" ]] && [[ -x "${PYTHON}" ]] ; then
 	PY_3_CMD="${PYTHON}"
 else
 	PY_3_CMD=$(command -v python3);
+	if [[ -z "${PY_3_CMD}" ]] ; then
+		printf "%s\n" "::error file='${0}',title='Missing Python'::No Python interpreter found!" >&2
+		EXIT_CODE=126 ;
+	fi ;
+fi ;
+# Verify the Python interpreter is actually working
+if [[ ("${EXIT_CODE}" -eq 0) ]] && ! "${PY_3_CMD}" --version >/dev/null 2>&1 ; then
+	printf "%s\n" "::error::Python interpreter at '${PY_3_CMD}' is not working properly" >&2 ;
+	EXIT_CODE=126 ;
 fi ;
 printf "%s\n" "::debug:: Will Use ${PY_3_CMD}"
 # shellcheck disable=SC2086
 COVERAGE_CMD="${PY_3_CMD} -m coverage run -p --source=multicast -m";
 export COVERAGE_CMD
 
+fi ;
 # start test-suite
-
+if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
 make -j1 -f Makefile test-reports || EXIT_CODE=3 ;
 printf "%s\n\n" "Start of Log:" > ./"${LOG_FILE}" ; wait ;
 printf "%s\n\n" "Will use host-port: [${TEST_MCAST_GROUP} : ${TEST_MCAST_PORT}]" >> ./"${LOG_FILE}" ; wait ;
@@ -174,7 +185,8 @@ ${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_
 # shellcheck disable=SC2086
 ${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" --message "STOP" 2>/dev/null ;
 printf "%s\n\n" "End of Integration Test one-shot" >> ./"${LOG_FILE}" ; wait ;
-
+fi ;
+if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
 printf "%s\n\n" "Start of Integration Test daemon:" >> ./"${LOG_FILE}" ; wait ;
 # shellcheck disable=SC2086
 ( sleep 1 ; ${COVERAGE_CMD} multicast --daemon HEAR --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" 2>./"${ERR_FILE}" & sleep 6 ; kill -9 $! 2>/dev/null ) >> ./"${LOG_FILE}" & true ;
@@ -190,8 +202,9 @@ ${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_
 ${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" --message "STOP" 2>/dev/null ;
 wait ;
 printf "%s\n\n" "End of Integration Test daemon" >> ./"${LOG_FILE}" ; wait ;
-
+fi ;
 # test --pipe mode added in v2.1.0
+if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
 printf "%s\n\n" "Start of Integration Test pipe:" >> ./"${LOG_FILE}" ; wait ;
 # shellcheck disable=SC2086
 ( sleep 1 ; ${COVERAGE_CMD} multicast --daemon HEAR --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" 2>./"${ERR_FILE}" & sleep 6 ; kill -9 $! 2>/dev/null ) >> ./"${LOG_FILE}" & true ;
@@ -207,8 +220,10 @@ printf "%s\n" "TEST input from $NOISE_ID" | ${COVERAGE_CMD} multicast SAY --port
 ${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" --message "STOP" 2>/dev/null ;
 wait ;
 printf "%s\n\n" "End of Integration Test pipe" >> ./"${LOG_FILE}" ; wait ;
-
+fi ;
 # cleanup from test-suite
+
+if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
 
 # shellcheck disable=SC2086
 ${PY_3_CMD} -m coverage combine --data-file="${COVERAGE_DATA_FILE}" ./.coverage.* || EXIT_CODE=2 ;
@@ -221,6 +236,8 @@ else
 	printf "%s\n" "::error file='${0}',title='No Coverage':: Coverage collection FAILED!" >>./"${ERR_FILE}" || EXIT_CODE=2 ;
 fi ;
 wait ;
+fi ;
+
 cp -f ./"${LOG_FILE}" ./test-reports/integration_data_log.log 2>/dev/null ; wait ;
 printf "%s\n" "" | tee -a ./test-reports/integration_data_log.log ; wait ;
 
