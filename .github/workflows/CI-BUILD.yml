@@ -288,7 +288,7 @@ jobs:
     needs: [BUILD, BOOTSTRAP, BUILD_ATTEST]
     runs-on: ubuntu-latest
     environment: ${{ needs.BUILD.outputs.build_environment }}
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
     outputs:
       didBUILD: ${{ steps.check_status.outputs.build_success }}
       build_ref: ${{ steps.check_status.outputs.build_ref }}
