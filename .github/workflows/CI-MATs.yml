@@ -380,7 +380,7 @@ jobs:
       contents: write
     needs: [check_build, MATs_SUMMARY]
     runs-on: ubuntu-latest
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
     steps:
       - name: "Download Status Summary Artifact"
         id: download-mats-summary
