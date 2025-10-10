@@ -704,7 +704,7 @@ jobs:
       contents: write
     needs: [check_mats, COVERAGE_SUMMARY]
     runs-on: ubuntu-latest
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
     steps:
       - name: "Download Status Summary Artifact"
         id: download-coverage-summary
@@ -716,7 +716,7 @@ jobs:
       - name: "COVERAGE commit comment"
         id: coverage-commit-comment
         if: ${{ success() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: peter-evans/commit-comment@5a6f8285b8f2e8376e41fe1b563db48e6cf78c09 # v3.0.0
+        uses: peter-evans/commit-comment@f6d60c65d05bb59f750fa51ad3de1d443ba0eb52 # v4.0.0
         with:
           sha: ${{ needs.check_mats.outputs.build_sha }}
           token: ${{ github.token }}
@@ -1267,7 +1267,7 @@ jobs:
       contents: write
     needs: [check_mats, INTEGRATION_SUMMARY]
     runs-on: ubuntu-latest
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
     steps:
       - name: "Download Status Summary Artifact"
         id: download-integration-summary
@@ -1279,7 +1279,7 @@ jobs:
       - name: "INTEGRATION commit comment"
         id: integration-commit-comment
         if: ${{ success() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: peter-evans/commit-comment@5a6f8285b8f2e8376e41fe1b563db48e6cf78c09 # v3.0.0
+        uses: peter-evans/commit-comment@f6d60c65d05bb59f750fa51ad3de1d443ba0eb52 # v4.0.0
         with:
           sha: ${{ needs.check_mats.outputs.build_sha }}
           token: ${{ github.token }}

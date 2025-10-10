@@ -284,7 +284,7 @@ jobs:
     needs: [check_mats, DOCS_SUMMARY]
     environment: "Documentation"
     runs-on: ubuntu-latest
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
     steps:
       - name: "Download Status Summary Artifact"
         id: download-documentation-summary
@@ -296,7 +296,7 @@ jobs:
       - name: "DOCs commit comment"
         id: documentation-commit-comment
         if: ${{ success() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: peter-evans/commit-comment@5a6f8285b8f2e8376e41fe1b563db48e6cf78c09 # v3.0.0
+        uses: peter-evans/commit-comment@f6d60c65d05bb59f750fa51ad3de1d443ba0eb52 # v4.0.0
         with:
           sha: ${{ needs.check_mats.outputs.build_sha }}
           token: ${{ github.token }}
