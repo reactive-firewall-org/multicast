@@ -114,7 +114,7 @@ runs:
         sha_input='${{ inputs.sha }}'
         if [[ ! "$sha_input" =~ ^[0-9a-f]{40}$ ]]; then
           # check if value is non-sha valid
-          output=$(git rev-parse --verify "$sha_input")
+          output=$(git rev-parse --verify $sha_input)
           if [[ -n "$output" ]]; then
             printf "::debug:: %s\n" "Valid branch name or sha provided: ${output}" ;
           else
