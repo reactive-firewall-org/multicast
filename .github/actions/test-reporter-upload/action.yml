@@ -345,11 +345,13 @@ runs:
       env:
         COVERALLS_REPO_TOKEN: ${{ github.server_url == 'https://github.com' && inputs.coveralls-token || '' }}
         COVERALLS_TOOL: ${{ steps.output_upload_tools.outputs.coveralls_executable }}
+        COVERALLS_SERVICE_JOB_ID: ${{ github.run_id }}
+        COVERALLS_SERVICE_JOB_NUMBER: ${{ inputs.job_code }}
       run: |
         if [[ "${{ inputs.tests-outcome }}" == "success" ]] ; then
-          ${COVERALLS_TOOL} report ${COV_CORE_DATAFILE:-./coverage.xml} --base-path="${{ github.workspace }}" --service-job-id=${{ github.run_id }} --parallel --job-flag='${{ steps.output_os.outputs.os }}-${{ steps.output_python.outputs.python-version }}' --build-number=${{ inputs.job_code }} || exit 1 ;
+          ${COVERALLS_TOOL} report ${COV_CORE_DATAFILE:-./coverage.xml} --base-path="${{ github.workspace }}" --service-job-id=${COVERALLS_SERVICE_JOB_ID} --parallel --job-flag='${{ steps.output_os.outputs.os }}-${{ steps.output_python.outputs.python-version }}' --build-number=${COVERALLS_SERVICE_JOB_NUMBER} || exit 1 ;
         else
-          ${COVERALLS_TOOL} report ${COV_CORE_DATAFILE:-./coverage.xml} --base-path="${{ github.workspace }}" --allow-empty --service-job-id=${{ github.run_id }} --parallel --job-flag='${{ steps.output_os.outputs.os }}-${{ steps.output_python.outputs.python-version }}' --build-number=${{ inputs.job_code }} || exit 1 ;
+          ${COVERALLS_TOOL} report ${COV_CORE_DATAFILE:-./coverage.xml} --base-path="${{ github.workspace }}" --allow-empty --service-job-id=${COVERALLS_SERVICE_JOB_ID} --parallel --job-flag='${{ steps.output_os.outputs.os }}-${{ steps.output_python.outputs.python-version }}' --build-number=${COVERALLS_SERVICE_JOB_NUMBER} || exit 1 ;
         fi
     - name: "Evaluate Coverage Report Task"
       id: coverage_outcome

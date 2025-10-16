@@ -109,7 +109,20 @@ runs:
     - id: output_sha
       if: ${{ !cancelled() }}
       shell: bash
-      run: printf "sha=%s\n" $(git rev-parse --verify '${{ inputs.sha }}') >> "$GITHUB_OUTPUT"
+      run: |
+        set -e  # Exit immediately if any command fails
+        sha_input='${{ inputs.sha }}'
+        if [[ ! "$sha_input" =~ ^[0-9a-f]{40}$ ]]; then
+          # check if value is non-sha valid
+          output=$(git rev-parse --verify "$sha_input")
+          if [[ -n "$output" ]]; then
+            printf "::debug:: %s\n" "Valid branch name or sha provided: ${output}" ;
+          else
+            printf "::error title='Invalid':: %s\n" "Error: Invalid SHA format" >&2 ;
+            exit 1 ;
+          fi
+        fi ;
+        printf "sha=%s\n" $(git rev-parse --verify "$output") >> "$GITHUB_OUTPUT" ;
     - id: output_uuid
       if: ${{ !cancelled() && (inputs.check-id == '') }}
       shell: bash
@@ -152,16 +165,27 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.token }}
       run: |
+        printf "%s\n" "::group::validate-name"
+        name_input='${{ inputs.name }}'
+        sanitized_input_name=$(echo "$name_input" | tr -cd '[:alnum:] _')
+        printf "::debug:: %s\n" "Will use name $sanitized_input_name" ;
+        printf "%s\n" "::endgroup::"
+        printf "%s\n" "::group::validate-title"
+        title_input='${{ inputs.name }}'
+        sanitized_input_title=$(echo "$title_input" | tr -cd '[:alnum:] _')
+        printf "::debug:: %s\n" "Will use name $sanitized_input_title" ;
+        sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$sanitized_input_title_field" ;)
+        printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::create-new-check"
         # GitHub CLI api
         # https://cli.github.com/manual/gh_api
         CHECK_ID=$(gh api --method POST -H "Accept: application/vnd.github+json" \
         /repos/reactive-firewall-org/multicast/check-runs \
-        -f "name=${{ inputs.name }}" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
-        -f "status=${{ inputs.status }}" -f "external_id=${{ steps.output_uuid.outputs.uuid }}" \
+        -f "name=$sanitized_input_name" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
+        -f 'status=${{ inputs.status }}' -f "external_id=${{ steps.output_uuid.outputs.uuid }}" \
         -f "started_at=${{ steps.output_date.outputs.check_date }}Z" \
         -f "details_url=${{ steps.output_check_details_url.outputs.details_url }}" \
-        -f 'output[title]=${{ inputs.title }}' \
+        -f "$sanitized_input_title_field" \
         -f 'output[summary]=' -f 'output[text]=' --jq '.id');
         printf "check_id=%s\n" "${CHECK_ID}" >> "$GITHUB_OUTPUT"
         printf "%s\n" "::endgroup::"
@@ -172,16 +196,27 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.token }}
       run: |
+        printf "%s\n" "::group::validate-name"
+        name_input='${{ inputs.name }}'
+        sanitized_input_name=$(echo "$name_input" | tr -cd '[:alnum:] _')
+        printf "::debug:: %s\n" "Will use name $sanitized_input_name" ;
+        printf "%s\n" "::endgroup::"
+        printf "%s\n" "::group::validate-title"
+        title_input='${{ inputs.name }}'
+        sanitized_input_title=$(echo "$title_input" | tr -cd '[:alnum:] _')
+        printf "::debug:: %s\n" "Will use name $sanitized_input_title" ;
+        sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$sanitized_input_title_field" ;)
+        printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::update-new-check"
         # GitHub CLI api
         # https://cli.github.com/manual/gh_api
         CHECK_ID=$(gh api --method POST -H "Accept: application/vnd.github+json" \
         /repos/reactive-firewall-org/multicast/check-runs \
-        -f "name=${{ inputs.name }}" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
+        -f "name=$sanitized_input_name" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
         -f "status=in_progress" -f "external_id=${{ steps.output_uuid.outputs.uuid }}" \
         -f "started_at=${{ steps.output_date.outputs.check_date }}Z" \
         -f "details_url=${{ steps.output_check_details_url.outputs.details_url }}" \
-        -f 'output[title]=${{ inputs.title }}' \
+        -f "$sanitized_input_title_field" \
         -f 'output[summary]=Check is in progress.' -f 'output[text]=' --jq '.id');
         printf "check_id=%s\n" "${CHECK_ID}" >> "$GITHUB_OUTPUT"
         printf "%s\n" "::endgroup::"
@@ -216,15 +251,26 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.token }}
       run: |
+        printf "%s\n" "::group::validate-name"
+        name_input='${{ inputs.name }}'
+        sanitized_input_name=$(echo "$name_input" | tr -cd '[:alnum:] _')
+        printf "::debug:: %s\n" "Will use name $sanitized_input_name" ;
+        printf "%s\n" "::endgroup::"
+        printf "%s\n" "::group::validate-title"
+        title_input='${{ inputs.name }}'
+        sanitized_input_title=$(echo "$title_input" | tr -cd '[:alnum:] _')
+        printf "::debug:: %s\n" "Will use name $sanitized_input_title" ;
+        sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$sanitized_input_title_field" ;)
+        printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::update-check"
         # GitHub CLI api
         # https://cli.github.com/manual/gh_api
         gh api --method PATCH -H "Accept: application/vnd.github+json" \
         /repos/reactive-firewall-org/multicast/check-runs/${{ steps.output_check_id.outputs.check_id }} \
-        -f "name=${{ inputs.name }}" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
+        -f "name=$sanitized_input_name" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
         -f "status=${{ inputs.status }}" \
         -f "details_url=${{ steps.output_check_details_url.outputs.details_url }}" \
-        -f 'output[title]=${{ inputs.title }}' \
+        -f "$sanitized_input_title_field" \
         -f 'output[summary]=${{ inputs.summary }}' -f 'output[text]=${{ inputs.text }}'
         printf "%s\n" "::endgroup::"
     - name: "Update Check"
@@ -234,16 +280,27 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.token }}
       run: |
+        printf "%s\n" "::group::validate-name"
+        name_input='${{ inputs.name }}'
+        sanitized_input_name=$(echo "$name_input" | tr -cd '[:alnum:] _')
+        printf "::debug:: %s\n" "Will use name $sanitized_input_name" ;
+        printf "%s\n" "::endgroup::"
+        printf "%s\n" "::group::validate-title"
+        title_input='${{ inputs.name }}'
+        sanitized_input_title=$(echo "$title_input" | tr -cd '[:alnum:] _')
+        printf "::debug:: %s\n" "Will use name $sanitized_input_title" ;
+        sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$sanitized_input_title_field" ;)
+        printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::complete-check"
         # GitHub CLI api
         # https://cli.github.com/manual/gh_api
         gh api --method PATCH -H "Accept: application/vnd.github+json" \
         /repos/reactive-firewall-org/multicast/check-runs/${{ steps.output_check_id.outputs.check_id }} \
-        -f "name=${{ inputs.name }}" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
+        -f "name=$sanitized_input_name" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
         -f "status=completed" -f "conclusion=${{ inputs.conclusion }}" \
         -f "completed_at=${{ steps.output_date.outputs.check_date }}Z" \
         -f "details_url=${{ steps.output_check_details_url.outputs.details_url }}" \
-        -f 'output[title]=${{ inputs.title }}' \
+        -f "$sanitized_input_title_field" \
         -f 'output[summary]=${{ inputs.summary }}' -f 'output[text]=${{ inputs.text }}'
         printf "%s\n" "::endgroup::"
     - name: "Report outcome of checks API"
