@@ -66,11 +66,13 @@ runs:
     - name: "Calculate Commit SHA"
       id: output_sha
       if: ${{ !cancelled() }}
+      env:
+        CI_INPUT_TARGET_SHA: '${{ inputs.sha }}'
       shell: bash
       run: |
         set -euo pipefail
 
-        raw_input='${{ inputs.sha }}'
+        raw_input="${CI_INPUT_TARGET_SHA}"
 
         # Reject NUL or newline immediately
         if printf '%s' "$raw_input" | grep -q '[^[:print:]]'; then

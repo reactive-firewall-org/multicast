@@ -107,12 +107,14 @@ runs:
   using: composite
   steps:
     - id: output_sha
-      if: ${{ !cancelled() }}
+      if: ${{ (github.repository == 'reactive-firewall-org/multicast') && !cancelled() }}
+      env:
+        CI_INPUT_TARGET_SHA: '${{ inputs.sha }}'
       shell: bash
       run: |
         set -euo pipefail
 
-        raw_input='${{ inputs.sha }}'
+        raw_input="${CI_INPUT_TARGET_SHA}"
 
         # Reject NUL or newline immediately
         if printf '%s' "$raw_input" | grep -q '[^[:print:]]'; then

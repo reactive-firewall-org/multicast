@@ -65,9 +65,10 @@ jobs:
             echo "should_run=true" >> "$GITHUB_OUTPUT"
           else
             echo "should_run=false" >> "$GITHUB_OUTPUT"
+            exit 1 ;
           fi
       - id: get_trigger_id
-        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') && success() }}
         run: |
           ID_VALUE=$(gh api "${{ github.event.workflow_run.url }}" --jq '.id')
           if [[ -n "$ID_VALUE" ]]; then
@@ -106,6 +107,8 @@ jobs:
           persist-credentials: false
           ref: ${{ steps.load_build_info.outputs.build_sha }}
           fetch-depth: 0
+          repository: reactive-firewall-org/multicast
+          token: ${{ env.GH_TOKEN }}
       - name: "Queue MATs GitHub Check"
         id: output_mats_check_id
         uses: ./.github/actions/check-control
@@ -118,10 +121,10 @@ jobs:
           workflow-run-id: ${{ steps.output_run_id.outputs.mats_id }}
           details-url: ${{ steps.output_run_id.outputs.mats_url }}
       - name: Checkout target commit
-        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') && success() }}
         run: git checkout ${{ steps.load_build_info.outputs.build_sha }}
       - id: get_env
-        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') && success() }}
         run: |
           echo "branch=$(git name-rev --name-only $(git log -1 --format=%H) | cut -d~ -f1-1)" >> "$GITHUB_OUTPUT"
           echo "parent_sha=$(git merge-base $(git log -1 --format=%H) refs/remotes/origin/stable)" >> "$GITHUB_OUTPUT"

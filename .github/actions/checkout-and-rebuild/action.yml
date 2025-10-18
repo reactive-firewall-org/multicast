@@ -72,9 +72,11 @@ runs:
         token: ${{ inputs.token }}
     - name: "Checkout Target Commit by SHA"
       shell: bash
+      env:
+        CI_INPUT_TARGET_SHA: ${{ inputs.sha }}
       run: |
         printf "%s\n" "::group::target-commit"
-        git checkout --force --detach ${{ inputs.sha }} --
+        git checkout --force --detach "${CI_INPUT_TARGET_SHA}" --
         printf "%s\n" "::endgroup::"
       if: ${{ (github.sha != inputs.sha) && success() }}
     - id: output_branch_name

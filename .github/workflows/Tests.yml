@@ -82,6 +82,7 @@ jobs:
             echo "should_run=true" >> "$GITHUB_OUTPUT"
           else
             echo "should_run=false" >> "$GITHUB_OUTPUT"
+            exit 1 ;
           fi
       - id: get_trigger_id
         if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
@@ -123,6 +124,8 @@ jobs:
           persist-credentials: false
           ref: ${{ steps.load_build_info.outputs.build_sha }}
           sparse-checkout: '.github/actions/check-control'
+          repository: reactive-firewall-org/multicast
+          github-token: ${{ env.GH_TOKEN }}
       - name: "Queue Tests GitHub Check"
         id: output_tests_check_id
         uses: ./.github/actions/check-control

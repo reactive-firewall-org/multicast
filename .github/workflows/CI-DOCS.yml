@@ -58,6 +58,7 @@ jobs:
             echo "should_run=true" >> "$GITHUB_OUTPUT"
           else
             echo "should_run=false" >> "$GITHUB_OUTPUT"
+            exit 1 ;
           fi
       - id: get_trigger_id
         if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
