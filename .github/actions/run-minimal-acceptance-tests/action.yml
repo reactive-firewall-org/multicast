@@ -83,20 +83,76 @@ runs:
       if: ${{ !cancelled() }}
       shell: bash
       run: |
-        set -e  # Exit immediately if any command fails
-        sha_input='${{ inputs.sha }}'
-        if [[ ! "$sha_input" =~ ^[0-9a-f]{40}$ ]]; then
-          # check if value is non-sha valid
-          output=$(git rev-parse --verify $sha_input 2>/dev/null)
-          if [[ -n "$output" ]]; then
-            printf "::debug:: %s\n" "Valid branch name or sha provided: ${output}" ;
-          else
-            printf "::error title='Invalid':: %s\n" "Error: Invalid SHA format" >&2 ;
-            exit 1 ;
+        set -euo pipefail
+
+        raw_input='${{ inputs.sha }}'
+
+        # Reject NUL or newline immediately
+        if printf '%s' "$raw_input" | grep -q $'[\\x00\\n\\r]'; then
+          printf "::error title='Invalid':: %s\n" "Error: input contains disallowed control characters" >&2
+          exit 1
+        fi
+
+        # Strip one level of surrounding quotes and trim whitespace
+        normalize() {
+          local s="$1"
+          s="${s#"${s%%[![:space:]]*}"}"
+          s="${s%"${s##*[![:space:]]}"}"
+          if [[ (${s:0:1} == "'" && ${s: -1} == "'") || (${s:0:1} == '"' && ${s: -1} == '"') ]]; then
+            s="${s:1:-1}"
           fi
-        fi ;
-        printf "sha=%s\n" $(git rev-parse --verify "$output") >> "$GITHUB_OUTPUT" ;
-        printf "BUILD_SHA=%s\n" $(git rev-parse --verify "$output") >> "$GITHUB_ENV" ;
+          printf '%s' "$s"
+        }
+        input="$(normalize "$raw_input")"
+
+        # Reject inputs starting with '-' (options)
+        if [[ "${input:0:1}" == "-" ]]; then
+          printf "::error title='Invalid':: %s\n" "Error: input may not start with '-'" >&2
+          exit 1
+        fi
+
+        # Reject any characters that enable ref modifiers or ambiguity
+        if [[ "$input" =~ [[:space:]~^\{\}:@\*\?$$$$] ]]; then
+          printf "::error title='Invalid':: %s\n" "Error: input contains disallowed characters" >&2
+          exit 1
+        fi
+
+        # If it's a 40-char SHA, accept directly
+        if [[ "$input" =~ ^[0-9a-f]{40}$ ]]; then
+          resolved_sha="$input"
+        else
+          # Try explicit namespaces in order: full refs, refs/heads/, refs/tags/, then bare branch/tag
+          resolved_sha=""
+          # 1) If input is a full ref path starting with refs/, resolve only that
+          if [[ "$input" == refs/* ]]; then
+            if git rev-parse --verify "$input" >/dev/null 2>&1; then
+              resolved_sha="$(git rev-parse --verify "$input")"
+            else
+              printf "::error title='Invalid':: %s\n" "Error: ref not found: $input" >&2
+              exit 1
+            fi
+          else
+            # 2) Try refs/heads/<input>
+            if git rev-parse --verify "refs/heads/$input" >/dev/null 2>&1; then
+              resolved_sha="$(git rev-parse --verify "refs/heads/$input")"
+            # 3) Try refs/tags/<input>
+            elif git rev-parse --verify "refs/tags/$input" >/dev/null 2>&1; then
+              resolved_sha="$(git rev-parse --verify "refs/tags/$input")"
+            else
+              printf "::error title='Invalid':: %s\n" "Error: no matching branch or tag found for: $input" >&2
+              exit 1
+            fi
+          fi
+        fi
+
+        # Ensure final resolved value is a full 40-char commit SHA
+        if [[ ! "$resolved_sha" =~ ^[0-9a-f]{40}$ ]]; then
+          printf "::error title='Invalid':: %s\n" "Error: resolved value is not a full commit SHA" >&2
+          exit 1
+        fi
+
+        printf "sha=%s\n" "$resolved_sha" >> "$GITHUB_OUTPUT"
+        printf "BUILD_SHA=%s\n" "$resolved_sha" >> "$GITHUB_ENV" ;
     - name: "Setup Python"
       id: output_python
       if: ${{ !cancelled() }}
