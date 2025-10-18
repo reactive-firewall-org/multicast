@@ -138,12 +138,6 @@ runs:
           exit 1
         fi
 
-        # Reject any characters that enable ref modifiers or ambiguity
-        if [[ "$input" =~ [[:space:]~^\{\}:@\*\?$$$$] ]]; then
-          printf "::error title='Invalid':: %s\n" "Error: input contains disallowed characters" >&2
-          exit 1
-        fi
-
         # If it's a 40-char SHA, accept directly
         if [[ "$input" =~ ^[0-9a-f]{40}$ ]]; then
           resolved_sha="$input"
