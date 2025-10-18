@@ -88,7 +88,7 @@ runs:
         raw_input='${{ inputs.sha }}'
 
         # Reject NUL or newline immediately
-        if printf '%s' "$raw_input" | grep -q $'[\\x00\\n\\r]'; then
+        if printf '%s' "$raw_input" | grep -q '[^[:print:]]'; then
           printf "::error title='Invalid':: %s\n" "Error: input contains disallowed control characters" >&2
           exit 1
         fi
