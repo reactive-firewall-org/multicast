@@ -155,8 +155,14 @@ process_checkmake_output() {
 	local file="$1"
 	local emsg="$2"
 
-	if ! output=$(checkmake "${file}" 2>&1); then
-		printf "%s\n" "::error::checkmake failed!"
+	# PATCH for GHI reactive-firewall-org/multicast#488
+	local random_id="${RANDOM}${RANDOM}${RANDOM}${RANDOM}${RANDOM}"
+	local chmk_elog="checkmake_${random_id}_error_log.log"
+
+	if ! output=$(checkmake "${file}" 2>"${chmk_elog}"); then
+		printf "%s\n" "::error title='failure'::checkmake failed!"
+		printf "%s '%s'\n" "::error title='stderr'::checkmake error:" \
+			$(head -n 5000 "${chmk_elog}") >&2;
 
 		printf "%s\n" "${output}" | \
 			sed -e 's/   /:/g' | \
