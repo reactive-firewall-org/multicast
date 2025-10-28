@@ -285,7 +285,7 @@ jobs:
       - name: "Upload MATs summary"
         id: upload-mats-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           path: ./MATs-Summary-Artifact.txt
           name: MATS-COMMENT-BODY-${{ needs.check_build.outputs.sha }}
@@ -365,7 +365,7 @@ jobs:
       - name: Upload build summary
         id: upload-build-info
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           path: "multicast-info.txt"
           name: multicast-info-${{ needs.check_build.outputs.sha }}
