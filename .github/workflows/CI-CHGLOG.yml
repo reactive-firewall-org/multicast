@@ -73,7 +73,7 @@ jobs:
           fi
       - name: "Fetch Build Info"
         if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           path: "BUILD-info.txt"
           pattern: multicast-info-*
@@ -211,7 +211,7 @@ jobs:
     steps:
       - name: Download ChangeLog Artifact
         id: download
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           path: '${{ runner.temp }}/'
           artifact-ids: ${{ needs.CHGLOG.outputs.artifact-id }}
@@ -356,7 +356,7 @@ jobs:
       - name: "Download Status Summary Artifact"
         id: download-chglog-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: chglog-COMMENT-BODY-${{ needs.check_build.outputs.sha }}
           github-token: ${{ github.token }}

@@ -255,7 +255,7 @@ jobs:
       build-artifact-attestation-id: ${{ steps.multicast-build-attest.outputs.attestation-id }}
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           path: ${{ github.workspace }}/dist
           pattern: multicast-build-${{ github.sha }}
@@ -338,7 +338,7 @@ jobs:
           printf "%s\n" "build_id=${{ github.run_id }}" >> "$GITHUB_OUTPUT"
           cat <"$GITHUB_OUTPUT" >> "BUILD-info.txt"
       - name: Download All Artifacts
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           path: ${{ github.workspace }}/dist
           pattern: multicast-build-${{ github.sha }}
@@ -414,7 +414,7 @@ jobs:
       - name: "Download Status Summary Artifact"
         id: download-build-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: BUILD-COMMENT-BODY-${{ github.sha }}
           github-token: ${{ github.token }}
