@@ -265,7 +265,7 @@ runs:
         # https://cli.github.com/manual/gh_api
         CHECK_ID=$(gh api --method POST -H "Accept: application/vnd.github+json" \
         /repos/reactive-firewall-org/multicast/check-runs \
-        -f "name=$input_name" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
+        -f "name=$name_input" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
         -f "status=in_progress" -f "external_id=${{ steps.output_uuid.outputs.uuid }}" \
         -f "started_at=${{ steps.output_date.outputs.check_date }}Z" \
         -f "details_url=${{ steps.output_check_details_url.outputs.details_url }}" \
@@ -320,7 +320,7 @@ runs:
         # https://cli.github.com/manual/gh_api
         gh api --method PATCH -H "Accept: application/vnd.github+json" \
         /repos/reactive-firewall-org/multicast/check-runs/${{ steps.output_check_id.outputs.check_id }} \
-        -f "name=$input_name" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
+        -f "name=$name_input" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
         -f "status=${{ inputs.status }}" \
         -f "details_url=${{ steps.output_check_details_url.outputs.details_url }}" \
         -f "$sanitized_input_title_field" \
@@ -349,7 +349,7 @@ runs:
         # https://cli.github.com/manual/gh_api
         gh api --method PATCH -H "Accept: application/vnd.github+json" \
         /repos/reactive-firewall-org/multicast/check-runs/${{ steps.output_check_id.outputs.check_id }} \
-        -f "name=$input_name" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
+        -f "name=$name_input" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
         -f "status=completed" -f "conclusion=${{ inputs.conclusion }}" \
         -f "completed_at=${{ steps.output_date.outputs.check_date }}Z" \
         -f "details_url=${{ steps.output_check_details_url.outputs.details_url }}" \
