@@ -532,6 +532,9 @@ user-install: ./dist
 	$(QUIET)$(WAIT)
 	$(QUIET)$(ECHO) "$@: Done."
 
+all: init build test-reqs test-mat test-style docs-reqs build-docs
+	$(QUIET)$(DO_FAIL) ;
+
 %:
 	$(QUIET)$(ECHO) "No Rule Found For $@" 1>&2 ;
 	$(QUIET)$(WAIT) ;
