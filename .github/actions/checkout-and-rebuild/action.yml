@@ -72,9 +72,11 @@ runs:
         token: ${{ inputs.token }}
     - name: "Checkout Target Commit by SHA"
       shell: bash
+      env:
+        CI_INPUT_TARGET_SHA: ${{ inputs.sha }}
       run: |
         printf "%s\n" "::group::target-commit"
-        git checkout --force --detach ${{ inputs.sha }} --
+        git checkout --force --detach "${CI_INPUT_TARGET_SHA}" --
         printf "%s\n" "::endgroup::"
       if: ${{ (github.sha != inputs.sha) && success() }}
     - id: output_branch_name
@@ -125,7 +127,7 @@ runs:
     - id: fetch_artifact_files
       name: "Fetch Build Files"
       if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
       with:
         path: ${{ inputs.path }}/dist
         pattern: multicast-build-${{ steps.output_sha.outputs.sha }}

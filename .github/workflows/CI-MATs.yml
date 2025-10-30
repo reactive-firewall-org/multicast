@@ -65,9 +65,10 @@ jobs:
             echo "should_run=true" >> "$GITHUB_OUTPUT"
           else
             echo "should_run=false" >> "$GITHUB_OUTPUT"
+            exit 1 ;
           fi
       - id: get_trigger_id
-        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') && success() }}
         run: |
           ID_VALUE=$(gh api "${{ github.event.workflow_run.url }}" --jq '.id')
           if [[ -n "$ID_VALUE" ]]; then
@@ -77,7 +78,7 @@ jobs:
           fi
       - name: "Fetch Build Info"
         if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           path: "BUILD-info.txt"
           pattern: multicast-info-*
@@ -106,6 +107,8 @@ jobs:
           persist-credentials: false
           ref: ${{ steps.load_build_info.outputs.build_sha }}
           fetch-depth: 0
+          repository: reactive-firewall-org/multicast
+          token: ${{ env.GH_TOKEN }}
       - name: "Queue MATs GitHub Check"
         id: output_mats_check_id
         uses: ./.github/actions/check-control
@@ -118,10 +121,10 @@ jobs:
           workflow-run-id: ${{ steps.output_run_id.outputs.mats_id }}
           details-url: ${{ steps.output_run_id.outputs.mats_url }}
       - name: Checkout target commit
-        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') && success() }}
         run: git checkout ${{ steps.load_build_info.outputs.build_sha }}
       - id: get_env
-        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') && success() }}
         run: |
           echo "branch=$(git name-rev --name-only $(git log -1 --format=%H) | cut -d~ -f1-1)" >> "$GITHUB_OUTPUT"
           echo "parent_sha=$(git merge-base $(git log -1 --format=%H) refs/remotes/origin/stable)" >> "$GITHUB_OUTPUT"
@@ -211,7 +214,7 @@ jobs:
       build_sha: ${{ needs.check_build.outputs.sha }}
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           path: ${{ github.workspace }}/MATS
           pattern: multicast-mats-${{ needs.check_build.outputs.sha }}-part-*
@@ -285,7 +288,7 @@ jobs:
       - name: "Upload MATs summary"
         id: upload-mats-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           path: ./MATs-Summary-Artifact.txt
           name: MATS-COMMENT-BODY-${{ needs.check_build.outputs.sha }}
@@ -365,7 +368,7 @@ jobs:
       - name: Upload build summary
         id: upload-build-info
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           path: "multicast-info.txt"
           name: multicast-info-${{ needs.check_build.outputs.sha }}
@@ -385,7 +388,7 @@ jobs:
       - name: "Download Status Summary Artifact"
         id: download-mats-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: MATS-COMMENT-BODY-${{ needs.check_build.outputs.sha }}
           github-token: ${{ github.token }}

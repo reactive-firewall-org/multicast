@@ -82,6 +82,7 @@ jobs:
             echo "should_run=true" >> "$GITHUB_OUTPUT"
           else
             echo "should_run=false" >> "$GITHUB_OUTPUT"
+            exit 1 ;
           fi
       - id: get_trigger_id
         if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
@@ -94,7 +95,7 @@ jobs:
           fi
       - name: "Fetch MATs Info"
         if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           path: "multicast-info.txt"
           pattern: multicast-info-*
@@ -123,6 +124,8 @@ jobs:
           persist-credentials: false
           ref: ${{ steps.load_build_info.outputs.build_sha }}
           sparse-checkout: '.github/actions/check-control'
+          repository: reactive-firewall-org/multicast
+          github-token: ${{ env.GH_TOKEN }}
       - name: "Queue Tests GitHub Check"
         id: output_tests_check_id
         uses: ./.github/actions/check-control
@@ -391,7 +394,7 @@ jobs:
     - name: "Upload Coverage Summary"
       id: upload
       if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
       with:
         path: COVERAGE
         name: ${{ steps.output_coverage_step_summary.outputs.coverage-artifact-name }}
@@ -491,7 +494,7 @@ jobs:
         fail_ci_if_error: false
     - name: Upload Python ${{ matrix.python-version }} Artifact
       id: doctests-reports-upload
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
       with:
         name: DocTest-Report-${{ matrix.os }}-${{ matrix.python-version }}
         path: ./test-reports/
@@ -623,7 +626,7 @@ jobs:
     - name: "Upload Doctests Summary"
       id: upload
       if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
       with:
         path: COVERAGE
         name: ${{ steps.output_doctests_step_summary.outputs.doctests-artifact-name }}
@@ -644,7 +647,7 @@ jobs:
     if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') && (needs.COVERAGE.outputs.coverage_outcome != 'cancelled') }}
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           path: ${{ github.workspace }}/COVERAGE
           pattern: multicast-coverage-${{ needs.check_mats.outputs.build_sha }}-part-*
@@ -683,7 +686,7 @@ jobs:
       - name: "Upload COVERAGE summary"
         id: upload-coverage-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           path: ./COVERAGE-Summary-Artifact.txt
           name: COVERAGE-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
@@ -709,7 +712,7 @@ jobs:
       - name: "Download Status Summary Artifact"
         id: download-coverage-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: COVERAGE-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
           github-token: ${{ github.token }}
@@ -914,7 +917,7 @@ jobs:
         fail_ci_if_error: false
     - name: Upload Extra Python ${{ matrix.python-version }} Artifact
       id: integration-reports-upload
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
       with:
         name: Integration-Test-Report-${{ matrix.os }}-${{ matrix.python-version }}
         path: ./test-reports/
@@ -1150,7 +1153,7 @@ jobs:
     - name: "Upload integration Summary"
       id: upload
       if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
       with:
         path: EXTRAS
         name: ${{ steps.output_integration_step_summary.outputs.integration-artifact-name }}
@@ -1176,7 +1179,7 @@ jobs:
     if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') && (needs.INTEGRATION.outputs.integration_outcome != 'cancelled') }}
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           path: ${{ github.workspace }}/EXTRAS
           pattern: multicast-integration-${{ needs.check_mats.outputs.build_sha }}-part-*
@@ -1231,7 +1234,7 @@ jobs:
       - name: "Upload INTEGRATION summary"
         id: upload-integration-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           path: ./Integration-Summary-Artifact.txt
           name: INTEGRATION-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
@@ -1272,7 +1275,7 @@ jobs:
       - name: "Download Status Summary Artifact"
         id: download-integration-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: INTEGRATION-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
           github-token: ${{ github.token }}
