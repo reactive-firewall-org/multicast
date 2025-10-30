@@ -194,7 +194,7 @@ runs:
       if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
       shell: bash
       run: |
-        if [[ "${{ inputs.details-url }}" != "" ]] ; then
+        if [[ "${{ inputs.details-url }}" != "DEFAULT" ]] ; then
           printf "details_url=%s\n" '${{ inputs.details-url }}' >> "$GITHUB_OUTPUT"
           printf "::debug:: %s\n" "Check detail url was provided: ${{ inputs.details-url }}" ;
         else
@@ -217,13 +217,15 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
+        CHECK_NAME_INPUT: '${{ inputs.name }}'
+        CHECK_TITLE_INPUT: '${{ inputs.title || inputs.name }}'
       run: |
         printf "%s\n" "::group::validate-name"
-        name_input='${{ inputs.name }}'
+        name_input=${CHECK_NAME_INPUT}
         printf "::debug:: %s\n" "Will use name $name_input" ;
         printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::validate-title"
-        title_input='${{ inputs.name }}'
+        title_input=${CHECK_TITLE_INPUT}
         printf "::debug:: %s\n" "Will use name $title_input" ;
         sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$title_input" ;)
         printf "%s\n" "::endgroup::"
@@ -246,13 +248,15 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
+        CHECK_NAME_INPUT: '${{ inputs.name }}'
+        CHECK_TITLE_INPUT: '${{ inputs.title || inputs.name }}'
       run: |
         printf "%s\n" "::group::validate-name"
-        name_input='${{ inputs.name }}'
+        name_input=${CHECK_NAME_INPUT}
         printf "::debug:: %s\n" "Will use name $name_input" ;
         printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::validate-title"
-        title_input='${{ inputs.name }}'
+        title_input=${CHECK_TITLE_INPUT}
         printf "::debug:: %s\n" "Will use name $title_input" ;
         sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$title_input" ;)
         printf "%s\n" "::endgroup::"
@@ -299,13 +303,15 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
+        CHECK_NAME_INPUT: '${{ inputs.name }}'
+        CHECK_TITLE_INPUT: '${{ inputs.title || inputs.name }}'
       run: |
         printf "%s\n" "::group::validate-name"
-        name_input='${{ inputs.name }}'
+        name_input=${CHECK_NAME_INPUT}
         printf "::debug:: %s\n" "Will use name $name_input" ;
         printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::validate-title"
-        title_input='${{ inputs.name }}'
+        title_input=${CHECK_TITLE_INPUT}
         printf "::debug:: %s\n" "Will use name $title_input" ;
         sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$title_input" ;)
         printf "%s\n" "::endgroup::"
@@ -326,13 +332,15 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
+        CHECK_NAME_INPUT: '${{ inputs.name }}'
+        CHECK_TITLE_INPUT: '${{ inputs.title || inputs.name }}'
       run: |
         printf "%s\n" "::group::validate-name"
-        name_input='${{ inputs.name }}'
+        name_input=${CHECK_NAME_INPUT}
         printf "::debug:: %s\n" "Will use name $name_input" ;
         printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::validate-title"
-        title_input='${{ inputs.name }}'
+        title_input=${CHECK_TITLE_INPUT}
         printf "::debug:: %s\n" "Will use name $title_input" ;
         sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$title_input" ;)
         printf "%s\n" "::endgroup::"
