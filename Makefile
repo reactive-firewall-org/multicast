@@ -532,7 +532,7 @@ user-install: ./dist
 	$(QUIET)$(WAIT)
 	$(QUIET)$(ECHO) "$@: Done."
 
-all: build-docs docs-req test-style test-mat test-reqs build init
+all: init build test-reqs test-mat test-style docs-reqs build-docs
 	$(QUIET)$(DO_FAIL) ;
 
 %:
