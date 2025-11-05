@@ -160,6 +160,7 @@ process_checkmake_output() {
 	local chmk_elog="checkmake_${random_id}_error_log.log"
 
 	# Clean up on normal exit, but preserve on error for debugging
+	# shellcheck disable=SC2064
 	trap "rm -f '${chmk_elog}' 2>/dev/null || :" EXIT ;
 
 	if ! output=$(checkmake "${file}" 2>"${chmk_elog}"); then
