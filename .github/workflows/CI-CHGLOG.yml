@@ -54,6 +54,7 @@ jobs:
       chglog_url: ${{ steps.output_run_id.outputs.chglog_url }}
       chglog_id: ${{ steps.output_run_id.outputs.chglog_id }}
       check_id: ${{ steps.output_chglog_check_id.outputs.check-id }}
+    if: ${{ (github.event.workflow_run.event == 'push') && (github.event.workflow_run.conclusion == 'success') }}
     steps:
       - id: check
         run: |
@@ -64,7 +65,7 @@ jobs:
             exit 1 ;
           fi
       - id: get_trigger_id
-        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
+        if: ${{ (steps.check.outputs.should_run == 'true') && success() && (github.repository == 'reactive-firewall-org/multicast') }}
         run: |
           ID_VALUE=$(gh api "${{ github.event.workflow_run.url }}" --jq '.id')
           if [[ -n "$ID_VALUE" ]]; then
@@ -73,7 +74,7 @@ jobs:
             echo "trigger_id=null" >> "$GITHUB_OUTPUT"  # Default fallback
           fi
       - name: "Fetch Build Info"
-        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
+        if: ${{ (steps.check.outputs.should_run == 'true') && success() && (github.repository == 'reactive-firewall-org/multicast') }}
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           path: "BUILD-info.txt"
@@ -83,6 +84,7 @@ jobs:
           github-token: ${{ env.GH_TOKEN }}
           run-id: ${{ steps.get_trigger_id.outputs.trigger_id }}
       - name: "move into place"
+        if: ${{ (steps.check.outputs.should_run == 'true') && success() && (github.repository == 'reactive-firewall-org/multicast') }}
         id: load_build_info
         run: |
           mv -vf "BUILD-info.txt/BUILD-info.txt" ./"multicast-info.txt" ;
@@ -90,10 +92,9 @@ jobs:
           rmdir -v ./"BUILD-info.txt"
           mv -vf ./"multicast-info.txt" ./BUILD-info.txt
           cat <"BUILD-info.txt" >> "$GITHUB_OUTPUT"
-        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
       - id: output_run_id
         shell: bash
-        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        if: ${{ (steps.check.outputs.should_run == 'true') && success() && (github.repository == 'reactive-firewall-org/multicast') }}
         run: |
           printf "chglog_url=%s\n" 'https://github.com/reactive-firewall-org/multicast/actions/runs/${{ github.run_id }}' >> "$GITHUB_OUTPUT"
           printf "chglog_id=%s\n" ${{ github.run_id }} >> "$GITHUB_OUTPUT"
@@ -105,6 +106,7 @@ jobs:
           fetch-depth: 0
       - name: "Queue chglog GitHub Check"
         id: output_chglog_check_id
+        if: ${{ (steps.check.outputs.should_run == 'true') && success() && (github.repository == 'reactive-firewall-org/multicast') }}
         uses: ./.github/actions/check-control
         with:
           name: "CI-CHGLOG"
@@ -118,7 +120,7 @@ jobs:
         if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
         run: git checkout ${{ steps.load_build_info.outputs.build_sha }}
       - id: get_env
-        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
+        if: ${{ (steps.check.outputs.should_run == 'true') && success() && (github.repository == 'reactive-firewall-org/multicast') }}
         run: |
           echo "branch=$(git name-rev --name-only $(git log -1 --format=%H) | cut -d~ -f1-1)" >> "$GITHUB_OUTPUT"
           echo "parent_sha=$(git merge-base $(git log -1 --format=%H) refs/remotes/origin/stable)" >> "$GITHUB_OUTPUT"

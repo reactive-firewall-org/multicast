@@ -89,14 +89,13 @@ jobs:
           run-id: ${{ steps.get_trigger_id.outputs.trigger_id }}
       - name: "move into place"
         id: load_build_info
-        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') && !cancelled() }}
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') && success() }}
         run: |
           mv -vf "BUILD-info.txt/BUILD-info.txt" ./"multicast-info.txt" ;
           wait ;
           rmdir -v ./"BUILD-info.txt"
           mv -vf ./"multicast-info.txt" ./BUILD-info.txt
           cat <"BUILD-info.txt" >> "$GITHUB_OUTPUT"
-        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
       - id: output_run_id
         shell: bash
         if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') && !cancelled() }}
