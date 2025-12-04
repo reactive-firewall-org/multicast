@@ -58,6 +58,7 @@ jobs:
       mats_url: ${{ steps.output_run_id.outputs.mats_url }}
       mats_id: ${{ steps.output_run_id.outputs.mats_id }}
       check_id: ${{ steps.output_mats_check_id.outputs.check-id }}
+    if: ${{ (github.event.workflow_run.event == 'push') && (github.event.workflow_run.conclusion == 'success') }}
     steps:
       - id: check
         run: |
@@ -77,7 +78,7 @@ jobs:
             echo "trigger_id=null" >> "$GITHUB_OUTPUT"  # Default fallback
           fi
       - name: "Fetch Build Info"
-        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') && success() }}
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           path: "BUILD-info.txt"
@@ -88,6 +89,7 @@ jobs:
           run-id: ${{ steps.get_trigger_id.outputs.trigger_id }}
       - name: "move into place"
         id: load_build_info
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') && !cancelled() }}
         run: |
           mv -vf "BUILD-info.txt/BUILD-info.txt" ./"multicast-info.txt" ;
           wait ;
@@ -97,12 +99,13 @@ jobs:
         if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
       - id: output_run_id
         shell: bash
-        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') && !cancelled() }}
         run: |
           printf "mats_url=%s\n" 'https://github.com/reactive-firewall-org/multicast/actions/runs/${{ github.run_id }}' >> "$GITHUB_OUTPUT"
           printf "mats_id=%s\n" ${{ github.run_id }} >> "$GITHUB_OUTPUT"
       - name: Checkout repository
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') && success() }}
         with:
           persist-credentials: false
           ref: ${{ steps.load_build_info.outputs.build_sha }}
@@ -112,6 +115,7 @@ jobs:
       - name: "Queue MATs GitHub Check"
         id: output_mats_check_id
         uses: ./.github/actions/check-control
+        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') && success() }}
         with:
           name: "CI-MATs"
           title: "Minimal Acceptance Testing"

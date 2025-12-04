@@ -75,6 +75,7 @@ jobs:
       tests_id: ${{ steps.output_run_id.outputs.tests_id }}
       tests_url: ${{ steps.output_run_id.outputs.tests_url }}
       check_id: ${{ steps.output_tests_check_id.outputs.check-id }}
+    if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (github.event.workflow_run.conclusion == 'success') }}
     steps:
       - id: check
         run: |
@@ -85,7 +86,7 @@ jobs:
             exit 1 ;
           fi
       - id: get_trigger_id
-        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
+        if: ${{ (steps.check.outputs.should_run == 'true') && (github.repository == 'reactive-firewall-org/multicast') && success() }}
         run: |
           ID_VALUE=$(gh api "${{ github.event.workflow_run.url }}" --jq '.id')
           if [[ -n "$ID_VALUE" ]]; then
@@ -94,7 +95,7 @@ jobs:
             echo "trigger_id=null" >> "$GITHUB_OUTPUT"  # Default fallback
           fi
       - name: "Fetch MATs Info"
-        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
+        if: ${{ (steps.check.outputs.should_run == 'true') && (github.repository == 'reactive-firewall-org/multicast') && success() }}
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           path: "multicast-info.txt"
@@ -105,7 +106,7 @@ jobs:
           run-id: ${{ steps.get_trigger_id.outputs.trigger_id }}
       - name: "move into place"
         id: load_build_info
-        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
+        if: ${{ (steps.check.outputs.should_run == 'true') && (github.repository == 'reactive-firewall-org/multicast') && success() }}
         run: |
           mv -vf "multicast-info.txt/multicast-info.txt" ./"multicast-info-tmp.txt" ;
           wait ;
@@ -114,11 +115,12 @@ jobs:
           cat <"multicast-info.txt" >> "$GITHUB_OUTPUT"
       - id: output_run_id
         shell: bash
-        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') }}
         run: |
           printf "tests_url=%s\n" 'https://github.com/reactive-firewall-org/multicast/actions/runs/${{ github.run_id }}' >> "$GITHUB_OUTPUT"
           printf "tests_id=%s\n" ${{ github.run_id }} >> "$GITHUB_OUTPUT"
       - name: checkout repository actions for check
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') }}
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           persist-credentials: false
@@ -128,6 +130,7 @@ jobs:
           github-token: ${{ env.GH_TOKEN }}
       - name: "Queue Tests GitHub Check"
         id: output_tests_check_id
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') }}
         uses: ./.github/actions/check-control
         with:
           name: "CI-TESTs"
@@ -147,8 +150,8 @@ jobs:
       pull-requests: read
       security-events: none
     environment: ${{ needs.check_mats.outputs.mats_environment }}
-    if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') }}
     needs: [check_mats]
+    if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') && (github.repository == 'reactive-firewall-org/multicast') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
@@ -415,8 +418,8 @@ jobs:
       pull-requests: read
       security-events: none
     environment: ${{ needs.check_mats.outputs.mats_environment }}
-    if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') }}
     needs: [check_mats]
+    if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') && (github.repository == 'reactive-firewall-org/multicast') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
