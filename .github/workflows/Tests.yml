@@ -397,7 +397,7 @@ jobs:
     - name: "Upload Coverage Summary"
       id: upload
       if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         path: COVERAGE
         name: ${{ steps.output_coverage_step_summary.outputs.coverage-artifact-name }}
@@ -497,7 +497,7 @@ jobs:
         fail_ci_if_error: false
     - name: Upload Python ${{ matrix.python-version }} Artifact
       id: doctests-reports-upload
-      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         name: DocTest-Report-${{ matrix.os }}-${{ matrix.python-version }}
         path: ./test-reports/
@@ -629,7 +629,7 @@ jobs:
     - name: "Upload Doctests Summary"
       id: upload
       if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         path: COVERAGE
         name: ${{ steps.output_doctests_step_summary.outputs.doctests-artifact-name }}
@@ -689,7 +689,7 @@ jobs:
       - name: "Upload COVERAGE summary"
         id: upload-coverage-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: ./COVERAGE-Summary-Artifact.txt
           name: COVERAGE-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
@@ -920,7 +920,7 @@ jobs:
         fail_ci_if_error: false
     - name: Upload Extra Python ${{ matrix.python-version }} Artifact
       id: integration-reports-upload
-      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         name: Integration-Test-Report-${{ matrix.os }}-${{ matrix.python-version }}
         path: ./test-reports/
@@ -1156,7 +1156,7 @@ jobs:
     - name: "Upload integration Summary"
       id: upload
       if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         path: EXTRAS
         name: ${{ steps.output_integration_step_summary.outputs.integration-artifact-name }}
@@ -1237,7 +1237,7 @@ jobs:
       - name: "Upload INTEGRATION summary"
         id: upload-integration-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: ./Integration-Summary-Artifact.txt
           name: INTEGRATION-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
