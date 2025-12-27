@@ -175,6 +175,8 @@ endif
 help:
 	$(QUIET)printf "HELP\nHouse-keeping:\n\tmake help - this help text\n\tmake build - packages the module\n\tmake clean - cleans up a bit\n\tmake init - sets up requirements for first time\nInstall/Remove:\n\tmake install - installs the module properly\n\tmake user-install - tries an unprivileged install (may not work for some users)\n\tmake uninstall - uninstalls the module\n\tmake purge - uninstalls the module, and resets most related things\n\t\t(the big exception is init)\nMisc:\n\tmake build-docs - generate documentation (using sphinx)\n\tmake test - run minimal acceptance testing\n\tmake test-style - run some code-style testing\n\tmake test-pytest - run extensive testing (with pytest)\n\n";
 
+# Building targets
+
 MANIFEST.in: init
 	$(QUIET)$(ECHO) "include requirements.txt" >"$@" ;
 	$(QUIET)$(BSMARK) "$@" 2>$(ERROR_LOG_PATH) >$(ERROR_LOG_PATH) || true ;
@@ -223,6 +225,8 @@ init: branding
 	$(QUIET)$(DO_FAIL) 2>$(ERROR_LOG_PATH) >>/dev/null ;
 	$(QUIET)$(ECHO) "$@: Done."
 
+# Installing targets
+
 install: init ./dist
 	$(QUIET)$(PYTHON) -m pip $(PIP_PREFIX_FLAGS) install $(PIP_COMMON_FLAGS) $(PIP_ENV_FLAGS) dist/multicast-*-py3-*.whl
 	$(QUIET)$(WAIT)
@@ -253,6 +257,8 @@ purge: purge-coverage-artifacts purge-test-reports
 
 ./dist: build
 	$(QUIET)$(WAIT) ;
+
+# Testing targets
 
 test: just-test
 	$(QUIET)$(DO_FAIL) 2>$(ERROR_LOG_PATH) >>/dev/null ;
@@ -290,17 +296,7 @@ docs-reqs: ./docs/ ./docs/requirements.txt init
 
 # === Test Group Targets ===
 just-test: cleanup MANIFEST.in test-reports ## Run all minimum acceptance tests
-	$(QUIET)if [ -n "$$TESTS_USE_PYTEST" ]; then \
-		$(PYTEST) $(COVERAGE_ARGS) || DO_FAIL="exit 2" ; \
-	else \
-		$(COVERAGE) run -p --source=multicast -m tests.run_selective || DO_FAIL="exit 2" ; \
-		$(WAIT) ; \
-		$(DO_FAIL) ; \
-		$(COVERAGE) combine --keep --data-file=coverage_all ./.coverage.* 2>$(ERROR_LOG_PATH) || : ; \
-		$(COVERAGE) combine --append ./coverage_* 2>$(ERROR_LOG_PATH) || : ; \
-		$(COVERAGE) report -m --include=multicast/* 2>$(ERROR_LOG_PATH) || : ; \
-		$(COVERAGE) xml  -o test-reports/coverage.xml --include=multicast/* 2>$(ERROR_LOG_PATH) || : ; \
-	fi
+	$(QUIET)./tests/check_coverage_helper || DO_FAIL="exit 2" ;
 	$(QUIET)$(WAIT) ;
 	$(QUIET)$(DO_FAIL) ;
 
@@ -309,95 +305,38 @@ test-mat: cleanup MANIFEST.in test-mat-build test-mat-bootstrap test-mat-basic t
 	$(QUIET)$(DO_FAIL) ;
 
 test-mat-doctests: test-reports MANIFEST.in ## Run doctests MAT category (doctests are special)
-	$(QUIET)if [ -n "$$TESTS_USE_PYTEST" ]; then \
-		$(ECHO) "SKIP: The target '$@' is not compatable with pytests;"; \
-		$(ECHO) "Try 'make test-mat-doctests' instead."; \
-	else \
-		$(COVERAGE) run -p --source=multicast -m tests.run_selective --group mat --category doctests || DO_FAIL="exit 2" ; \
-		$(WAIT) ; \
-		$(DO_FAIL) ; \
-		$(COVERAGE) combine --keep --data-file=coverage_doctests ./.coverage.* 2>$(ERROR_LOG_PATH) || : ; \
-		$(COVERAGE) report -m --include=multicast/* --data-file=coverage_doctests 2>$(ERROR_LOG_PATH) || : ; \
-		$(COVERAGE) xml -o test-reports/coverage_doctests.xml --include=multicast/* --data-file=coverage_doctests 2>$(ERROR_LOG_PATH) || : ; \
-	fi
+	$(QUIET)./tests/check_coverage_helper mat doctests || DO_FAIL="exit 2" ;
 	$(QUIET)$(WAIT) ;
 	$(QUIET)$(DO_FAIL) ;
 
 test-mat-%: MANIFEST.in ## Run specific MAT category (basic|doctests|say|hear|usage|build|bootstrap)
-	$(QUIET)if [ -n "$$TESTS_USE_PYTEST" ]; then \
-		$(PYTEST) $(COVERAGE_ARGS) -m "mat and $*" tests/ || DO_FAIL="exit 2" ; \
-	else \
-		$(COVERAGE) run -p --source=multicast -m tests.run_selective --group mat --category $* || DO_FAIL="exit 2" ; \
-		$(WAIT) ; \
-		$(DO_FAIL) ; \
-		$(COVERAGE) combine --keep --data-file=coverage_$* ./.coverage.* 2>$(ERROR_LOG_PATH) || : ; \
-		$(COVERAGE) report -m --include=multicast/* --data-file=coverage_$* 2>$(ERROR_LOG_PATH) || : ; \
-		$(COVERAGE) xml -o test-reports/coverage_$*.xml --include=multicast/* --data-file=coverage_$* 2>$(ERROR_LOG_PATH) || : ; \
-	fi
+	$(QUIET)./tests/check_coverage_helper mat $* || DO_FAIL="exit 2" ;
 	$(QUIET)$(WAIT) ;
 	$(QUIET)$(DO_FAIL) ;
 
 test-extra: ## Run all extra tests
-	$(QUIET)if [ -n "$$TESTS_USE_PYTEST" ]; then \
-		$(PYTEST) $(COVERAGE_ARGS) -m "extra" tests/ || DO_FAIL="exit 2" ; \
-	else \
-		$(COVERAGE) run -p --source=multicast -m tests.run_selective --group extra ; \
-		$(WAIT) ; \
-		$(DO_FAIL) ; \
-		$(COVERAGE) combine --keep --data-file=coverage_extra ./.coverage.* 2>$(ERROR_LOG_PATH) || : ; \
-		$(COVERAGE) report -m --include=multicast/* --data-file=coverage_extra 2>$(ERROR_LOG_PATH) || : ; \
-		$(COVERAGE) xml -o test-reports/coverage_extra.xml --include=multicast/* --data-file=coverage_extra 2>$(ERROR_LOG_PATH) || : ; \
-	fi
+	$(QUIET)./tests/check_coverage_helper extra || DO_FAIL="exit 2" ;
 	$(QUIET)$(WAIT) ;
 	$(QUIET)$(DO_FAIL) ;
 
 test-extra-%: ## Run specific extra test category
-	$(QUIET)if [ -n "$$TESTS_USE_PYTEST" ]; then \
-		$(PYTEST) tests/ --verbose $(COVERAGE_ARGS) -m "extra and $*" || DO_FAIL="exit 2" ; \
-	else \
-		$(COVERAGE) run -p --source=multicast -m tests.run_selective --group extra --category $* || DO_FAIL="exit 2" ; \
-		$(WAIT) ; \
-		$(DO_FAIL) ; \
-		$(COVERAGE) combine --keep --data-file=coverage_$* ./.coverage.* 2>$(ERROR_LOG_PATH) || : ; \
-		$(COVERAGE) report -m --include=multicast/* --data-file=coverage_$* 2>$(ERROR_LOG_PATH) || : ; \
-		$(COVERAGE) xml -o test-reports/coverage_$*.xml --include=multicast/* --data-file=coverage_$* 2>$(ERROR_LOG_PATH) || : ; \
-	fi
+	$(QUIET)./tests/check_coverage_helper extra $* || DO_FAIL="exit 2" ;
 	$(QUIET)$(WAIT) ;
 	$(QUIET)$(DO_FAIL) ;
 
 test-fuzzing: ## Run all fuzzing tests
-	$(QUIET)if [ -n "$$TESTS_USE_PYTEST" ]; then \
-		$(PYTEST) tests/ --verbose $(COVERAGE_ARGS) -m "fuzzing" || DO_FAIL="exit 2" ; \
-	else \
-		$(COVERAGE) run -p --source=multicast -m tests.run_selective --group fuzzing || DO_FAIL="exit 2" ; \
-		$(WAIT) ; \
-		$(DO_FAIL) ; \
-		$(COVERAGE) combine --keep --data-file=coverage_fuzzing ./.coverage.* 2>$(ERROR_LOG_PATH) || : ; \
-		$(COVERAGE) report -m --include=multicast/* --data-file=coverage_fuzzing 2>$(ERROR_LOG_PATH) || : ; \
-		$(COVERAGE) xml -o test-reports/coverage_fuzzing.xml --include=multicast/* --data-file=coverage_fuzzing 2>$(ERROR_LOG_PATH) || : ; \
-	fi
+	$(QUIET)./tests/check_coverage_helper fuzzing || DO_FAIL="exit 2" ;
 	$(QUIET)$(WAIT) ;
 	$(QUIET)$(DO_FAIL) ;
 
 test-perf: ## Run all performance tests
-	$(QUIET)if [ -n "$$TESTS_USE_PYTEST" ]; then \
-		$(PYTEST) tests/ --verbose $(COVERAGE_ARGS) -m "performance"; \
-	else \
-		$(COVERAGE) run -p --source=multicast -m tests.run_selective --group performance || DO_FAIL="exit 2" ; \
-		$(WAIT) ; \
-		$(DO_FAIL) ; \
-		$(COVERAGE) combine --keep --data-file=coverage_performance ./.coverage.* 2>$(ERROR_LOG_PATH) || : ; \
-		$(COVERAGE) report -m --include=multicast/* --data-file=coverage_performance 2>$(ERROR_LOG_PATH) || : ; \
-		$(COVERAGE) xml -o test-reports/coverage_performance.xml --include=multicast/* --data-file=coverage_performance 2>$(ERROR_LOG_PATH) || : ; \
-	fi
+	$(QUIET)./tests/check_coverage_helper performance || DO_FAIL="exit 2" ;
 	$(QUIET)$(WAIT) ;
 	$(QUIET)$(DO_FAIL) ;
 
 test-pytest: cleanup MANIFEST.in must_have_pytest test-reports
 	$(QUIET)$(ECHO) "WARNING: The target '$@' is deprecated;"
 	$(QUIET)$(ECHO) "Use 'TESTS_USE_PYTEST=1 make test' instead"
-	$(QUIET)$(PYTEST) $(COVERAGE_ARGS) || DO_FAIL="exit 2" ;
-	$(QUIET)$(WAIT) ;
 	$(QUIET)$(DO_FAIL) ;
 	$(QUIET)$(ECHO) "$@: Done."
 
@@ -421,6 +360,8 @@ must_have_pytest: init
 			exit 126 ; \
 		fi ; \
 	fi
+
+# Cleanup targets
 
 cleanup-dev-backups::
 	$(QUIET)$(RM) ./*/*~ 2>$(ERROR_LOG_PATH) || :
@@ -489,14 +430,22 @@ cleanup: cleanup-tests cleanup-multicast cleanup-multicast-eggs cleanup-src-dir
 	$(QUIET)$(RMDIR) ./test-reports/ 2>$(ERROR_LOG_PATH) || true
 	$(QUIET)$(WAIT) ;
 
-build-docs: ./docs/ ./docs/Makefile docs-reqs
-	$(QUIET)$(MAKE) -s -C ./docs/ -f Makefile html 2>$(ERROR_LOG_PATH) || DO_FAIL="exit 2" ;
-	$(QUIET)$(WAIT) ;
+# Documentation targets
+
+./docs/www/: ./docs/ ./docs/Makefile
 	$(QUIET)mkdir $(INST_OPTS) ./docs/www 2>$(ERROR_LOG_PATH) >$(ERROR_LOG_PATH) || : ;
 	$(QUIET)$(BSMARK) ./docs/www 2>$(ERROR_LOG_PATH) >$(ERROR_LOG_PATH) || : ;
 	$(QUIET)$(WAIT) ;
+
+./docs/_build/: ./docs/ ./docs/Makefile ./docs/www/ docs-reqs
+	$(QUIET)$(MAKE) -s -C ./docs/ -f Makefile html 2>$(ERROR_LOG_PATH) || DO_FAIL="exit 2" ;
+	$(QUIET)$(WAIT) ;
+
+./docs/_build/www/: ./docs/ ./docs/Makefile ./docs/www/ ./docs/_build/
 	$(QUIET)cp -fRp ./docs/_build/ ./docs/www/ 2>$(ERROR_LOG_PATH) || DO_FAIL="exit 35" ;
 	$(QUIET)$(WAIT) ;
+
+build-docs: ./docs/ ./docs/Makefile ./docs/_build/www/ docs-reqs
 	$(QUIET)$(MAKE) -s -C ./docs/ -f Makefile clean 2>$(ERROR_LOG_PATH) || : ;
 	$(QUIET)$(WAIT) ;
 	$(QUIET)$(ECHO) "Documentation should be in docs/www/html/"
@@ -522,6 +471,8 @@ clean: clean-docs cleanup
 	$(QUIET)$(RM) ./test-results/junit.xml 2>$(ERROR_LOG_PATH) || true
 	$(QUIET)$(RM) ./MANIFEST.in 2>$(ERROR_LOG_PATH) || true
 	$(QUIET)$(ECHO) "All clean."
+
+# Utility Targets
 
 must_be_root:
 	$(QUIET)runner=`whoami` ; \
