@@ -156,8 +156,8 @@ else
 fi
 
 if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
-	TEST_MCAST_PORT=$(((RANDOM % 16384) + 49152));
-	TEST_MCAST_GROUP='224.0.0.1' ;
+	# TEST_MCAST_PORT=$(((RANDOM % 16384) + 49152));
+	# TEST_MCAST_GROUP='224.0.0.1' ;
 	TEST_GROUP="${1}" ;
 	TEST_CAT="${2}" ;
 	COVERAGE_DATA_FILE="coverage_${TEST_CAT:-${TEST_GROUP:-all}}" ;
@@ -256,8 +256,8 @@ unset COVERAGE_DATA_FILE 2>/dev/null || : ;
 unset COVERAGE_CMD 2>/dev/null || : ;
 unset PYTEST_CMD 2>/dev/null || : ;
 unset PY_3_CMD 2>/dev/null || : ;
-unset TEST_MCAST_GROUP 2>/dev/null || : ;
-unset TEST_MCAST_PORT 2>/dev/null || : ;
+# unset TEST_MCAST_GROUP 2>/dev/null || : ;
+# unset TEST_MCAST_PORT 2>/dev/null || : ;
 
 cleanup || rm -f "${LOCK_FILE}" 2>/dev/null > /dev/null || true ; wait ;
 
