@@ -69,33 +69,7 @@ LC_CTYPE="${LC_CTYPE:-${LC_ALL:-en_US.utf-8}}"
 LC_COLLATE="${LC_COLLATE:-${LC_ALL:-en_US.utf-8}}"
 umask 137
 
-# Function to check if a command exists.
-
-# USAGE:
-#	~$ check_command CMD
-# Arguments:
-# CMD (Required) -- Name of the command to check
-# Results:
-#	exits 64 -- missing required argument
-#	exits 126 -- check complete and has failed, can not find given command.
-#	returns successful -- check complete and command found to be executable.
-function check_command() {
-	test -z "$1" && { printf "%s\n" "Error: command name is required to check for existence." >&2 ; exit 64 ; } ;
-	local cmd="$1" ;
-	# shellcheck disable=SC2086
-	test -x "$(command -v ${cmd})" || { printf "%s\n" "Error: Required command '$cmd' is not found." >&2 ; exit 126 ; } ;
-}  # end check_command()
-# propagate/export function to sub-shells
-export -f check_command
-
-# Check required commands
-check_command touch ;
-
 # rest of the script vars
-# shellcheck disable=SC2086
-# LOG_FILE="chglog_generation_${PPID}.log"
-# shellcheck disable=SC2086
-# ERR_FILE="chglog_generation_errors_${PPID}.log"
 # shellcheck disable=SC2086
 ERR_FILE="/dev/null"
 # shellcheck disable=SC2086
@@ -148,24 +122,27 @@ function mark_file() {
 # Results:
 #	generates the manifest.in
 function generate_manifest() {
-    local file="$1"
+    local FILE="$1"
 
-    write_line "$file" "include requirements.txt"
-    mark_file "$file"
+    write_line "$FILE" "include requirements.txt"
+    mark_file "$FILE"
 
-    for item in "README.md" "LICENSE.md" "CHANGES.md" "HISTORY.md" \
-                ".gitignore" ".git_skipList" ".gitattributes" ".gitmodules" \
+    for ITEM in "README.md" "LICENSE.md" "CHANGES.md" "HISTORY.md"; do
+        write_line "$FILE" "include $ITEM"
+    done
+
+    for ITEM in ".gitignore" ".git_skipList" ".gitattributes" ".gitmodules" \
                 ".deepsource.toml" ".*.ini" ".*.yml" ".*.yaml" \
                 ".*.conf" "package.json" "tests/*.py"; do
-        write_line "$file" "exclude $item"
+        write_line "$FILE" "exclude $ITEM"
     done
 
-    for item in ".git" "codecov_env" ".DS_Store" ".local_pip_cleanup.txt"; do
-        write_line "$file" "global-exclude $item"
+    for ITEM in ".git" "codecov_env" ".DS_Store" ".local_pip_cleanup.txt"; do
+        write_line "$FILE" "global-exclude $ITEM"
     done
 
-    for item in "test-reports" ".github" ".circleci" "venv" "docs"; do
-        write_line "$file" "prune $item"
+    for ITEM in "test-reports" ".github" ".circleci" "venv" "docs"; do
+        write_line "$FILE" "prune $ITEM"
     done
 }
 

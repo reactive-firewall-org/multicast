@@ -177,34 +177,8 @@ help:
 
 # Building targets
 
-MANIFEST.in: init
-	$(QUIET)$(ECHO) "include requirements.txt" >"$@" ;
-	$(QUIET)$(BSMARK) "$@" 2>$(ERROR_LOG_PATH) >$(ERROR_LOG_PATH) || true ;
-	$(QUIET)$(ECHO) "include README.md" >>"$@" ;
-	$(QUIET)$(ECHO) "include LICENSE.md" >>"$@" ;
-	$(QUIET)$(ECHO) "include CHANGES.md" >>"$@" ;
-	$(QUIET)$(ECHO) "include HISTORY.md" >>"$@" ;
-	$(QUIET)$(ECHO) "exclude .gitignore" >>"$@" ;
-	$(QUIET)$(ECHO) "exclude .git_skipList" >>"$@" ;
-	$(QUIET)$(ECHO) "exclude .gitattributes" >>"$@" ;
-	$(QUIET)$(ECHO) "exclude .gitmodules" >>"$@" ;
-	$(QUIET)$(ECHO) "exclude .deepsource.toml" >>"$@" ;
-	$(QUIET)$(ECHO) "exclude .*.ini" >>"$@" ;
-	$(QUIET)$(ECHO) "exclude .*.yml" >>"$@" ;
-	$(QUIET)$(ECHO) "exclude .*.yaml" >>"$@" ;
-	$(QUIET)$(ECHO) "exclude .*.conf" >>"$@" ;
-	$(QUIET)$(ECHO) "exclude package.json" >>"$@" ;
-	$(QUIET)$(ECHO) "exclude tests/*.py" >>"$@" ;
-	$(QUIET)$(ECHO) "global-exclude .git" >>"$@" ;
-	$(QUIET)$(ECHO) "global-exclude codecov_env" >>"$@" ;
-	$(QUIET)$(ECHO) "global-exclude .DS_Store" >>"$@" ;
-	$(QUIET)$(ECHO) "global-exclude .local_pip_cleanup.txt" >>"$@" ;
-	$(QUIET)$(ECHO) "global-exclude .gitattributes" >>"$@" ;
-	$(QUIET)$(ECHO) "prune test-reports" >>"$@" ;
-	$(QUIET)$(ECHO) "prune .github" >>"$@" ;
-	$(QUIET)$(ECHO) "prune .circleci" >>"$@" ;
-	$(QUIET)$(ECHO) "prune venv" >>"$@" ;
-	$(QUIET)$(ECHO) "prune docs" >>"$@" ;
+MANIFEST.in: init generate_manifest.sh
+	$(QUIET)./generate_manifest.sh 2>$(ERROR_LOG_PATH) ;
 
 build: init ./pyproject.toml MANIFEST.in
 	$(QUIET)$(PYTHON) -W ignore -m build --installer=pip ./ || $(QUIET)$(PYTHON) -W ignore -m build --sdist --wheel --no-isolation ./ || $(QUIET)$(PYTHON) -W ignore -m build ./ || DO_FAIL="exit 125" ;
