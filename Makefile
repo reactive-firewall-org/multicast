@@ -179,6 +179,9 @@ help:
 
 MANIFEST.in: init generate_manifest.sh
 	$(QUIET)./generate_manifest.sh 2>$(ERROR_LOG_PATH) ;
+	$(QUIET)test -f "$@" || DO_FAIL="exit 77" ;  # 77: Permission denied - can't verify file.
+	$(QUIET)test -e "$@" || DO_FAIL="exit 69" ;  # 69: [build] Service unavailable - does not exist.
+	$(QUIET)$(DO_FAIL) ;
 
 build: init ./pyproject.toml MANIFEST.in
 	$(QUIET)$(PYTHON) -W ignore -m build --installer=pip ./ || $(QUIET)$(PYTHON) -W ignore -m build --sdist --wheel --no-isolation ./ || $(QUIET)$(PYTHON) -W ignore -m build ./ || DO_FAIL="exit 125" ;

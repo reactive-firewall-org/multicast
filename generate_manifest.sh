@@ -77,6 +77,21 @@ ERR_FILE="/dev/null"
 # shellcheck disable=SC2086
 EXIT_CODE=0
 
+# Function to write/over-write a one-line file
+
+# USAGE:
+#	~$ create_line FILE INPUT
+# Arguments:
+#	FILE (Required) -- file path to write to (will overwrite if already exists)
+#	INPUT (Required) -- line/contents to write as string (newline will be appended automatically)
+# Results:
+#	writes a line to the file at the given path with the given input
+function create_line() {
+    local FILE="$1"
+    local INPUT="$2"
+    printf "%s\n" "$INPUT" > "$FILE"
+}
+
 # Function to write a line to a file
 
 # USAGE:
@@ -124,7 +139,7 @@ function mark_file() {
 function generate_manifest() {
     local FILE="$1"
 
-    write_line "$FILE" "include requirements.txt"
+    create_line "$FILE" "include requirements.txt"
     mark_file "$FILE"
 
     for ITEM in "README.md" "LICENSE.md" "CHANGES.md" "HISTORY.md"; do
@@ -149,7 +164,6 @@ function generate_manifest() {
 # Main execution
 function main() {
     local manifest_file="MANIFEST.in"
-    rm -f "$manifest_file" 2>/dev/null || : ;
     generate_manifest "$manifest_file"
 }
 
