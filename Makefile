@@ -196,7 +196,7 @@ branding::
 	$(QUIET)$(ECHO) ""
 
 init: branding
-	$(QUIET)$(PYTHON) -m pip $(PIP_PREFIX_FLAGS) install $(PIP_COMMON_FLAGS) $(PIP_ENV_FLAGS) "pip>=25.2" "setuptools>=80.9" "wheel>=0.45" "build>=1.2.1" || DO_FAIL="exit 69" ;  # 69: [pip] Service unavailable - does not exist.
+	$(QUIET)$(PYTHON) -m pip $(PIP_PREFIX_FLAGS) install $(PIP_COMMON_FLAGS) $(PIP_ENV_FLAGS) "pip>=25.2" "setuptools>=80.9" "wheel>=0.46.2" "build>=1.2.1" || DO_FAIL="exit 69" ;  # 69: [pip] Service unavailable - does not exist.
 	$(QUIET)$(DO_FAIL) 2>$(ERROR_LOG_PATH) >>/dev/null ;
 	$(QUIET)$(PYTHON) -m pip $(PIP_PREFIX_FLAGS) install $(PIP_COMMON_FLAGS) $(PIP_ENV_FLAGS) -r requirements.txt 2>$(ERROR_LOG_PATH) || DO_FAIL="exit 69" ;  # 69: [pip] Service unavailable - does not exist.
 	$(QUIET)$(DO_FAIL) 2>$(ERROR_LOG_PATH) >>/dev/null ;

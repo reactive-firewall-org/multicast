@@ -91,7 +91,7 @@ pytest-enabler>=1.0.1
 # coverage - Apache 2.0 license
 coverage>=7.2
 # wheel - MIT license
-wheel>=0.45
+wheel>=0.46.2
 # pip - MIT license
 pip>=25.2
 # build - MIT license
