@@ -35,7 +35,7 @@ setuptools>=80.9
 # tox - MIT license
 #tox>=4.27.0
 # wheel - MIT license
-wheel>=0.45
+wheel>=0.46.2
 # pip - MIT license
 pip>=25.2
 # build - MIT license
