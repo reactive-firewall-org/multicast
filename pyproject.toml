@@ -10,7 +10,7 @@ keywords = ["multicast", "RFC-1112", "udp-protocol", "network-programming", "POS
 license-files = ["LICENSE.md"]
 maintainers = [{ "name" = "reactive-firewall", "email" = "reactive-firewall@users.noreply.github.com" }]
 name = "multicast"
-requires-python = ">=3.9.6, !=3.9.7, !=3.9.8, !=3.9.9, !=3.9.10, !=3.9.11, !=3.9.12, !=3.9.13, !=3.9.14, !=3.9.15, !=3.9.16, !=3.9.17, !=3.9.18, !=3.9.19, !=3.13.0, <3.14.0"
+requires-python = ">=3.9.6, !=3.9.7, !=3.9.8, !=3.9.9, !=3.9.10, !=3.9.11, !=3.9.12, !=3.9.13, !=3.9.14, !=3.9.15, !=3.9.16, !=3.9.17, !=3.9.18, !=3.9.19, !=3.13.0, !=3.14.0, <3.15.0"
 scripts = { "multicast" = "multicast.__main__:cli" }
 version = "v2.1.0"
 
