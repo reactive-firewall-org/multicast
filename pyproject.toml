@@ -49,10 +49,6 @@ max-line-length = 100
 docstring-convention = "google"
 
 [tool.pytest]
-testpaths = "tests"
-python_files = "test_*.py"
-
-[tool.pytest.ini_options]
 minversion = "7.4"
 # testpaths = "tests"
 pythonpath = "multicast tests"
