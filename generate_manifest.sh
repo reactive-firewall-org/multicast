@@ -119,10 +119,11 @@ function write_line() {
 function mark_file() {
     local FILE="$1"
     local CMD="${2:-$(command -v xattr)}"
-    local created_by="-w com.apple.xcode.CreatedByBuildSystem true"
+    local created_by=(-w com.apple.xcode.CreatedByBuildSystem true)
 
     if [ -n "$CMD" ]; then
-        ${CMD} "$FILE" "$created_by" 2> "${ERR_FILE}" > "${ERR_FILE}" || true
+        # shellcheck disable=SC2086
+        ${CMD} ${created_by[@]} "$FILE" 2> "${ERR_FILE}" > "${ERR_FILE}" || touch -a "$FILE"
     else
         touch -a "$FILE"
     fi
