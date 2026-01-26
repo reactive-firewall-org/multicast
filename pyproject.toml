@@ -3,7 +3,7 @@ requires = ["setuptools>=80.9", "build>=1.2.1", "wheel>=0.46.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
-classifiers = ["Intended Audience :: Developers", "Operating System :: POSIX", "Operating System :: MacOS :: MacOS X", "Operating System :: POSIX :: Linux", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3.13", "Programming Language :: Python :: 3.12", "Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.10", "Programming Language :: Python :: 3 :: Only", "Topic :: Software Development :: Libraries :: Python Modules", "Topic :: System :: Networking"]
+classifiers = ["Intended Audience :: Developers", "Operating System :: POSIX", "Operating System :: MacOS :: MacOS X", "Operating System :: POSIX :: Linux", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3.14", "Programming Language :: Python :: 3.13", "Programming Language :: Python :: 3.12", "Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.10", "Programming Language :: Python :: 3 :: Only", "Topic :: Software Development :: Libraries :: Python Modules", "Topic :: System :: Networking"]
 dependencies = []
 description = "Multicast Python Module to provide for Send/Recv functionality."
 keywords = ["multicast", "RFC-1112", "udp-protocol", "network-programming", "POSIX-compliant", "socket", "many-to-many", "client-server"]
