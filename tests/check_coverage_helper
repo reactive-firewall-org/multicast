@@ -64,7 +64,7 @@
 #  ~$ $0 GRP CAT
 # Arguments:
 # GRP (Required) -- Name of test Group to run (e.g., mat|extra|fuzz|pref)
-# CAT (Required) -- Name of the group's Category to select
+# CAT (Optional) -- Name of the group's Category to select -- omit to mean all
 #
 # WARNING:
 #    DO NOT INVOKE DIRECTLY
@@ -73,7 +73,7 @@
 
 ################################################################################
 
-ulimit -t 300
+ulimit -t 1300
 # setting the path may break brain-dead CI that uses crazy paths
 # PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
 umask 137
@@ -82,21 +82,35 @@ umask 137
 # shellcheck disable=SC2155
 export LC_CTYPE="${LC_CTYPE:-'en_US.UTF-8'}"
 
+# Global variable to track initial directories
+readonly PRE_OLDPWD="${OLDPWD:-${PWD:-$(pwd)}}"
+readonly PRE_PWD="${PWD:-$(pwd)}"
+
+# rest of the script vars
+LOG_FILE="test_log_${PPID}.log"
+ERR_FILE="test_log_errors_${PPID}.log"
+LOCK_FILE="${TMPDIR:-/tmp}/org.pak.multicast.coverage-helper-shell"
+EXIT_CODE=1
+
 # Function to check if a command exists.
 
 # USAGE:
-#  ~$ check_command CMD
+#	~$ check_command CMD
 # Arguments:
 # CMD (Required) -- Name of the command to check
 # Results:
-#    exits 64 -- missing required argument
-#    exits 126 -- check complete and has failed, can not find given command.
-#    returns successful -- check complete and command found to be executable.
+#	exits 64 -- missing required argument
+#	exits 126 -- check complete and has failed, can not find given command.
+#	returns successful -- check complete and command found to be executable.
 function check_command() {
-    test -z "$1" && { printf "%s\n" "Error: command name is required to check for existence." >&2 ; exit 64 ; } ;
-    local cmd="$1" ;
-    # shellcheck disable=SC2086
-    test -x "$(command -v ${cmd})" || { printf "%s\n" "Error: Required command '$cmd' is not found." >&2 ; exit 126 ; } ;
+	test -z "$1" && { printf "::error file=%s,line=%s,title=COMMAND::%s\n" \
+				"${SCRIPT_FILE}" "${BASH_LINENO:-0}" \
+				"Error: command name is required to check for existence." >&2 ; exit 64 ;} ;
+	local cmd="$1" ;
+	# shellcheck disable=SC2086
+	test -x "$(command -v ${cmd})" || { printf "::error file=%s,line=%s,title=COMMAND::%s\n" \
+				"${SCRIPT_FILE}" "${BASH_LINENO:-0}" \
+				"Error: Required command '$cmd' is not found." >&2 ; exit 126 ;} ;
 }  # end check_command()
 # propagate/export function to sub-shells
 export -f check_command
@@ -107,25 +121,31 @@ hash -p ./.github/tool_shlock_helper.sh shlock || { printf "%s\n" "Error: Failed
 # Check required commands
 check_command grep ;
 check_command python3 ;
-check_command make ;
 check_command git ;
-check_command tee ;
 check_command shlock ;
 
-# rest of the script vars
-LOG_FILE="test_log_${PPID}.log"
-ERR_FILE="test_log_errors_${PPID}.log"
-LOCK_FILE="${TMPDIR:-/tmp}/org.pak.multicast.coverage-helper-shell"
-EXIT_CODE=1
-
 function cleanup() {
-	rm -f ./"${LOG_FILE}" 2>/dev/null || true ; wait ;
-	rm -f ./"${ERR_FILE}" 2>/dev/null || true ; wait ;
+	# shellcheck disable=SC2317
+	rm -f "${LOG_FILE}" 2>/dev/null || true ; wait ;
+	# shellcheck disable=SC2317
+	rm -f "${ERR_FILE}" 2>/dev/null || true ; wait ;
+	# shellcheck disable=SC2317
 	rm -f "${LOCK_FILE}" 2>/dev/null || true ; wait ;
+		# best effort to restore starting location
+	# shellcheck disable=SC2015
+	cd "${PRE_PWD}" && cd "${PRE_OLDPWD}" 2>/dev/null || true ;
+	cd "${PRE_PWD}" 2>/dev/null || true ;
+	# shellcheck disable=SC2317
+	unset LOCK_FILE 2>/dev/null || true ;
+	# shellcheck disable=SC2317
+	unset ERR_FILE 2>/dev/null || true ;
+	# shellcheck disable=SC2317
+	unset LOCK_FILE 2>/dev/null || true ; wait ;
+	# shellcheck disable=SC2317
 	hash -d shlock 2>/dev/null > /dev/null || true ;
 }
 
-if [[ ( $(shlock -f "${LOCK_FILE}" -p $$ ) -eq 0 ) ]] ; then
+if shlock -f "${LOCK_FILE}" -p $$ ; then
 		EXIT_CODE=0
 		trap 'cleanup 2>/dev/null || rm -f "${LOCK_FILE}" 2>/dev/null > /dev/null || true ; wait ; exit 129 ;' SIGHUP || EXIT_CODE=129
 		trap 'cleanup 2>/dev/null || rm -f "${LOCK_FILE}" 2>/dev/null > /dev/null || true ; wait ; exit 143 ;' SIGTERM || EXIT_CODE=143
@@ -252,6 +272,7 @@ fi ;
 
 # no logs to handle in helper
 
+unset _TEST_ROOT_DIR 2>/dev/null || : ;
 unset COVERAGE_DATA_FILE 2>/dev/null || : ;
 unset COVERAGE_CMD 2>/dev/null || : ;
 unset PYTEST_CMD 2>/dev/null || : ;

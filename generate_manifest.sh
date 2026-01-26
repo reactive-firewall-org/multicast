@@ -71,7 +71,7 @@ umask 137
 
 # rest of the script vars
 # shellcheck disable=SC2086
-ERR_FILE="/dev/null"
+ERR_FILE="${ERR_FILE:-/dev/null}"
 # shellcheck disable=SC2086
 # LOCK_FILE="${TMPDIR:-/tmp}/org.pak.multicast.chglog-generation-shell"
 # shellcheck disable=SC2086
@@ -89,7 +89,7 @@ EXIT_CODE=0
 function create_line() {
     local FILE="$1"
     local INPUT="$2"
-    printf "%s\n" "$INPUT" > "$FILE"
+    printf "%s\n" "${INPUT}" > "$FILE" || return 77;  # exit code 77 -- Permission Denied
 }
 
 # Function to write a line to a file
@@ -104,7 +104,7 @@ function create_line() {
 function write_line() {
     local FILE="$1"
     local INPUT="$2"
-    printf "%s\n" "$INPUT" >> "$FILE"
+    printf "%s\n" "${INPUT}" >> "$FILE" || return 77;  # exit code 77 -- Permission Denied
 }
 
 # Function to mark the file metadata
@@ -123,7 +123,7 @@ function mark_file() {
 
     if [ -n "$CMD" ]; then
         # shellcheck disable=SC2086
-        ${CMD} ${created_by[@]} "$FILE" 2> "${ERR_FILE}" > "${ERR_FILE}" || touch -a "$FILE"
+        "${CMD}" ${created_by[@]} "$FILE" 2> "${ERR_FILE}" > "${ERR_FILE}" || touch -a "$FILE"
     else
         touch -a "$FILE"
     fi
@@ -138,39 +138,40 @@ function mark_file() {
 # Results:
 #	generates the manifest.in
 function generate_manifest() {
-    local FILE="$1"
-
-    create_line "$FILE" "include requirements.txt"
-    mark_file "$FILE"
-
+    local FILE="${1}"
+    create_line "$FILE" "include requirements.txt" || return $?
+    mark_file "$FILE" || return $?
     for ITEM in "README.md" "LICENSE.md" "CHANGES.md" "HISTORY.md"; do
-        write_line "$FILE" "include $ITEM"
+        write_line "$FILE" "include $ITEM" || return $?
     done
-
     for ITEM in ".gitignore" ".git_skipList" ".gitattributes" ".gitmodules" \
                 ".deepsource.toml" ".*.ini" ".*.yml" ".*.yaml" \
                 ".*.conf" "package.json" "tests/*.py"; do
-        write_line "$FILE" "exclude $ITEM"
+        write_line "$FILE" "exclude $ITEM" || return $?
     done
-
     for ITEM in ".git" "codecov_env" ".DS_Store" ".local_pip_cleanup.txt"; do
-        write_line "$FILE" "global-exclude $ITEM"
+        write_line "$FILE" "global-exclude $ITEM" || return $?
     done
-
     for ITEM in "test-reports" ".github" ".circleci" "venv" "docs"; do
-        write_line "$FILE" "prune $ITEM"
+        write_line "$FILE" "prune $ITEM" || return $?
     done
+    return 0  # return 0 on success
 }
-
 # Main execution
 function main() {
     local manifest_file="MANIFEST.in"
+    local RET_CODE=1  # default of 'fail unless successful'
     generate_manifest "$manifest_file"
+    RET_CODE=$?
+    return $RET_CODE
 }
 
+# invoke entry point and collect result
 main "$@"
+EXIT_CODE=$?
 
 # cleanup
 unset ERR_FILE 2>/dev/null || : ;
 
+# finally exit with result
 exit ${EXIT_CODE:-255} ;

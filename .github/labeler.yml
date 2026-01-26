@@ -39,6 +39,7 @@ Bash Lang:
       - .github/**/*.sh
       - .circleci/*.bash
       - '*.bash'
+      - 'generate_*.sh'
 
 # Add 'Lang' label to any python file changes
 Python Lang:
