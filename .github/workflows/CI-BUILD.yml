@@ -53,7 +53,7 @@ jobs:
       artifact-files: ${{ steps.buildfiles.outputs.files }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
       - id: build-python
@@ -70,7 +70,7 @@ jobs:
           printf "python-version=%s\n" "${{ steps.build-python.outputs.python-version }}" >> "$GITHUB_OUTPUT"
           printf "PYTHON_VERSION=%s\n" "${{ steps.build-python.outputs.python-version }}" >> "$GITHUB_ENV"
           printf "%s\n" "::endgroup::"
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      - uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
@@ -123,7 +123,7 @@ jobs:
       - name: Upload build artifact
         id: upload
         if: ${{ !cancelled() && (steps.buildfiles.outputs.files != '') && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: dist
           name: multicast-build-${{ github.sha }}
@@ -184,7 +184,7 @@ jobs:
       LC_ALL: ${{ matrix.lang-var }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
       - id: buildpy
@@ -255,7 +255,7 @@ jobs:
       build-artifact-attestation-id: ${{ steps.multicast-build-attest.outputs.attestation-id }}
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           path: ${{ github.workspace }}/dist
           pattern: multicast-build-${{ github.sha }}
@@ -338,7 +338,7 @@ jobs:
           printf "%s\n" "build_id=${{ github.run_id }}" >> "$GITHUB_OUTPUT"
           cat <"$GITHUB_OUTPUT" >> "BUILD-info.txt"
       - name: Download All Artifacts
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           path: ${{ github.workspace }}/dist
           pattern: multicast-build-${{ github.sha }}
@@ -346,7 +346,7 @@ jobs:
       - name: Upload build summary
         id: upload-build-info
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: "BUILD-info.txt"
           name: multicast-info-${{ github.sha }}
@@ -393,7 +393,7 @@ jobs:
       - name: Upload build summary
         id: upload-build-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: ./Build-Summary-Artifact.txt
           name: BUILD-COMMENT-BODY-${{ github.sha }}
@@ -414,7 +414,7 @@ jobs:
       - name: "Download Status Summary Artifact"
         id: download-build-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: BUILD-COMMENT-BODY-${{ github.sha }}
           github-token: ${{ github.token }}

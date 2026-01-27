@@ -75,7 +75,7 @@ jobs:
           fi
       - name: "Fetch Build Info"
         if: ${{ (steps.check.outputs.should_run == 'true') && success() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           path: "BUILD-info.txt"
           pattern: multicast-info-*
@@ -99,7 +99,7 @@ jobs:
           printf "chglog_url=%s\n" 'https://github.com/reactive-firewall-org/multicast/actions/runs/${{ github.run_id }}' >> "$GITHUB_OUTPUT"
           printf "chglog_id=%s\n" ${{ github.run_id }} >> "$GITHUB_OUTPUT"
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
           ref: ${{ steps.load_build_info.outputs.build_sha }}
@@ -166,7 +166,7 @@ jobs:
       LANG: "en_US.utf-8"
     steps:
       - name: pre-checkout repository for actions
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
           ref: ${{ needs.check_build.outputs.sha }}
@@ -189,7 +189,7 @@ jobs:
       - name: Upload CHANGELOG artifact
         id: upload
         if: ${{ success() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: CHANGELOG.md
           name: 'multicast-chglog-${{ needs.check_build.outputs.sha }}'
@@ -214,7 +214,7 @@ jobs:
     steps:
       - name: Download ChangeLog Artifact
         id: download
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           path: '${{ runner.temp }}/'
           artifact-ids: ${{ needs.CHGLOG.outputs.artifact-id }}
@@ -259,7 +259,7 @@ jobs:
       - name: "Upload chglog summary"
         id: upload-chglog-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: ./chglog-Summary-Artifact.txt
           name: chglog-COMMENT-BODY-${{ needs.check_build.outputs.sha }}
@@ -268,7 +268,7 @@ jobs:
           retention-days: 2
           overwrite: true
       - name: Checkout repository actions for check
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
           ref: ${{ needs.check_build.outputs.sha }}
@@ -339,7 +339,7 @@ jobs:
       - name: Upload build summary
         id: upload-build-info
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: "chglog-info.txt"
           name: multicast-chglog-info-${{ needs.check_build.outputs.sha }}
@@ -359,7 +359,7 @@ jobs:
       - name: "Download Status Summary Artifact"
         id: download-chglog-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: chglog-COMMENT-BODY-${{ needs.check_build.outputs.sha }}
           github-token: ${{ github.token }}

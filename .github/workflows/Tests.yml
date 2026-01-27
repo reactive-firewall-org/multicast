@@ -96,7 +96,7 @@ jobs:
           fi
       - name: "Fetch MATs Info"
         if: ${{ (steps.check.outputs.should_run == 'true') && (github.repository == 'reactive-firewall-org/multicast') && success() }}
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           path: "multicast-info.txt"
           pattern: multicast-info-*
@@ -121,7 +121,7 @@ jobs:
           printf "tests_id=%s\n" ${{ github.run_id }} >> "$GITHUB_OUTPUT"
       - name: checkout repository actions for check
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') }}
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
           ref: ${{ steps.load_build_info.outputs.build_sha }}
@@ -184,7 +184,7 @@ jobs:
       coverage_artifact_digest: ${{ steps.upload-test-tools.outputs.coverage_artifact_digest }}
     steps:
     - name: pre-checkout repository for actions
-      uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       with:
         persist-credentials: false
         ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -397,7 +397,7 @@ jobs:
     - name: "Upload Coverage Summary"
       id: upload
       if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         path: COVERAGE
         name: ${{ steps.output_coverage_step_summary.outputs.coverage-artifact-name }}
@@ -446,7 +446,7 @@ jobs:
       doctests_artifact_digest: ${{ steps.doctests-reports-upload.outputs.artifact-digest }}
     steps:
     - name: pre-checkout repository for actions
-      uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       with:
         persist-credentials: false
         ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -497,7 +497,7 @@ jobs:
         fail_ci_if_error: false
     - name: Upload Python ${{ matrix.python-version }} Artifact
       id: doctests-reports-upload
-      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         name: DocTest-Report-${{ matrix.os }}-${{ matrix.python-version }}
         path: ./test-reports/
@@ -629,7 +629,7 @@ jobs:
     - name: "Upload Doctests Summary"
       id: upload
       if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         path: COVERAGE
         name: ${{ steps.output_doctests_step_summary.outputs.doctests-artifact-name }}
@@ -650,7 +650,7 @@ jobs:
     if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') && (needs.COVERAGE.outputs.coverage_outcome != 'cancelled') }}
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           path: ${{ github.workspace }}/COVERAGE
           pattern: multicast-coverage-${{ needs.check_mats.outputs.build_sha }}-part-*
@@ -689,7 +689,7 @@ jobs:
       - name: "Upload COVERAGE summary"
         id: upload-coverage-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: ./COVERAGE-Summary-Artifact.txt
           name: COVERAGE-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
@@ -698,7 +698,7 @@ jobs:
           retention-days: 2
           overwrite: true
       - name: checkout repository actions for check
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
           ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -715,7 +715,7 @@ jobs:
       - name: "Download Status Summary Artifact"
         id: download-coverage-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: COVERAGE-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
           github-token: ${{ github.token }}
@@ -772,7 +772,7 @@ jobs:
       VCS_COMMIT_ID: ${{ needs.check_mats.outputs.build_sha }}
     steps:
     - name: pre-checkout repository for actions
-      uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       with:
         persist-credentials: false
         ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -851,7 +851,7 @@ jobs:
       integration_artifact_digest: ${{ steps.integration-reports-upload.outputs.artifact-digest }}
     steps:
     - name: pre-checkout repository for actions
-      uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       with:
         persist-credentials: false
         ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -920,7 +920,7 @@ jobs:
         fail_ci_if_error: false
     - name: Upload Extra Python ${{ matrix.python-version }} Artifact
       id: integration-reports-upload
-      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         name: Integration-Test-Report-${{ matrix.os }}-${{ matrix.python-version }}
         path: ./test-reports/
@@ -1156,7 +1156,7 @@ jobs:
     - name: "Upload integration Summary"
       id: upload
       if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         path: EXTRAS
         name: ${{ steps.output_integration_step_summary.outputs.integration-artifact-name }}
@@ -1182,7 +1182,7 @@ jobs:
     if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') && (needs.INTEGRATION.outputs.integration_outcome != 'cancelled') }}
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           path: ${{ github.workspace }}/EXTRAS
           pattern: multicast-integration-${{ needs.check_mats.outputs.build_sha }}-part-*
@@ -1237,7 +1237,7 @@ jobs:
       - name: "Upload INTEGRATION summary"
         id: upload-integration-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: ./Integration-Summary-Artifact.txt
           name: INTEGRATION-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
@@ -1246,7 +1246,7 @@ jobs:
           retention-days: 2
           overwrite: true
       - name: checkout repository actions for check
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
           ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -1278,7 +1278,7 @@ jobs:
       - name: "Download Status Summary Artifact"
         id: download-integration-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: INTEGRATION-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
           github-token: ${{ github.token }}
@@ -1319,7 +1319,7 @@ jobs:
       LC_CTYPE: "en_US.utf-8"
     steps:
     - name: pre-checkout repository for actions
-      uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       with:
         persist-credentials: false
         ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -1386,7 +1386,7 @@ jobs:
 
     steps:
     - name: pre-checkout repository for actions
-      uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       with:
         persist-credentials: false
         ref: ${{ needs.check_mats.outputs.build_sha }}

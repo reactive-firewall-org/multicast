@@ -71,7 +71,7 @@ jobs:
           fi
       - name: "Fetch MATs Info"
         if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           path: "multicast-info.txt"
           pattern: multicast-info-*
@@ -95,7 +95,7 @@ jobs:
           printf "docs_url=%s\n" 'https://github.com/reactive-firewall-org/multicast/actions/runs/${{ github.run_id }}' >> "$GITHUB_OUTPUT"
           printf "docs_id=%s\n" ${{ github.run_id }} >> "$GITHUB_OUTPUT"
       - name: checkout repository actions for check
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
           ref: ${{ steps.load_build_info.outputs.build_sha }}
@@ -151,7 +151,7 @@ jobs:
       docs_artifact_digest: ${{ steps.upload-documentation.outputs.artifact-digest }}
     steps:
       - name: pre-checkout repository for actions
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
           ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -182,7 +182,7 @@ jobs:
           fi
       - name: Upload Docs Artifact with Python ${{ matrix.python-version }} on ${{ matrix.os }}
         id: upload-documentation
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: Multicast-Documentation-${{ needs.check_mats.outputs.build_sha }}-${{ matrix.os }}-${{ matrix.python-version }}
           path: ./Multicast-Documentation
@@ -210,7 +210,7 @@ jobs:
     if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') && (needs.DOCS.outputs.docs_outcome != 'cancelled') }}
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           path: ${{ github.workspace }}/Multicast-Documentation
           pattern: Multicast-Documentation-${{ needs.check_mats.outputs.build_sha }}-*-*
@@ -238,7 +238,7 @@ jobs:
       - name: "Upload DOCs summary"
         id: upload-docs-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: ./DOCUMENTATION-Summary-Artifact.txt
           name: DOCUMENTATION-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
@@ -249,7 +249,7 @@ jobs:
       - name: "Upload DOCs Bundle"
         id: upload-docs-bundle
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: Multicast-Documentation
           name: Multicast-Documentation-${{ needs.check_mats.outputs.build_sha }}-ALL
@@ -257,7 +257,7 @@ jobs:
           compression-level: 9
           overwrite: true
       - name: checkout repository actions for check
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
           ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -290,7 +290,7 @@ jobs:
       - name: "Download Status Summary Artifact"
         id: download-documentation-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: DOCUMENTATION-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
           github-token: ${{ github.token }}

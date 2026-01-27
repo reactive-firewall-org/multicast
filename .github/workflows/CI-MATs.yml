@@ -79,7 +79,7 @@ jobs:
           fi
       - name: "Fetch Build Info"
         if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') && success() }}
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           path: "BUILD-info.txt"
           pattern: multicast-info-*
@@ -103,7 +103,7 @@ jobs:
           printf "mats_url=%s\n" 'https://github.com/reactive-firewall-org/multicast/actions/runs/${{ github.run_id }}' >> "$GITHUB_OUTPUT"
           printf "mats_id=%s\n" ${{ github.run_id }} >> "$GITHUB_OUTPUT"
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') && success() }}
         with:
           persist-credentials: false
@@ -177,7 +177,7 @@ jobs:
       LANG: "en_US.utf-8"
     steps:
       - name: pre-checkout repository for actions
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
           ref: ${{ needs.check_build.outputs.sha }}
@@ -217,7 +217,7 @@ jobs:
       build_sha: ${{ needs.check_build.outputs.sha }}
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           path: ${{ github.workspace }}/MATS
           pattern: multicast-mats-${{ needs.check_build.outputs.sha }}-part-*
@@ -291,7 +291,7 @@ jobs:
       - name: "Upload MATs summary"
         id: upload-mats-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: ./MATs-Summary-Artifact.txt
           name: MATS-COMMENT-BODY-${{ needs.check_build.outputs.sha }}
@@ -300,7 +300,7 @@ jobs:
           retention-days: 2
           overwrite: true
       - name: checkout repository actions for check
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
           ref: ${{ needs.check_build.outputs.sha }}
@@ -371,7 +371,7 @@ jobs:
       - name: Upload build summary
         id: upload-build-info
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: "multicast-info.txt"
           name: multicast-info-${{ needs.check_build.outputs.sha }}
@@ -391,7 +391,7 @@ jobs:
       - name: "Download Status Summary Artifact"
         id: download-mats-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: MATS-COMMENT-BODY-${{ needs.check_build.outputs.sha }}
           github-token: ${{ github.token }}
