@@ -266,14 +266,14 @@ jobs:
       - name: "Attest Build Checksums"
         id: multicast-build-chksum-attest
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') && (needs.BUILD.outputs.build_environment == 'Deployment' && startsWith(github.ref, 'refs/tags/v')) }}
-        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
         with:
           subject-checksums: build.checksums.txt
           github-token: ${{ github.token }}
       - name: "Attest Build Artifact"
         id: multicast-build-attest
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
         with:
           subject-name: multicast-build-${{ github.sha }}
           subject-digest: sha256:${{ needs.BUILD.outputs.artifact-digest }}
