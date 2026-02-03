@@ -51,7 +51,7 @@ jobs:
           yamllint --version || { print_error "Yamllint installation failed." 40 41 ; exit 126; }
           pandoc --version || { print_error "Pandoc installation failed." 40 41 ; exit 126; }
       - name: Force Setup newer go
-        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version: 1.25
           check-latest: true
