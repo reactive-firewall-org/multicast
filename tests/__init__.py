@@ -2,7 +2,7 @@
 
 # Python Test Template
 # ..................................
-# Copyright (c) 2017-2025, Mr. Walls
+# Copyright (c) 2017-2026, Mr. Walls
 # ..................................
 # Licensed under MIT (the "License");
 # you may not use this file except in compliance with the License.

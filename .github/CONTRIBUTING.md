@@ -274,7 +274,7 @@ Here is a list of links for contributors that are looking to help triage:
 
 - [ ] Verify it reads:
 
-  > Copyright (c) 2017-2025, _Author_
+  > Copyright (c) 2017-2026, _Author_
 
 ## Close Issues
 

@@ -3,7 +3,7 @@
 # sample documentation build configuration file, created by
 # sphinx-quickstart on Mon Apr 16 21:22:43 2012.
 
-# Copyright (c) 2012-2025, Mr. Walls
+# Copyright (c) 2012-2026, Mr. Walls
 
 # This file is execfile()d with the current directory set to its containing dir.
 
@@ -118,7 +118,7 @@ master_doc = "toc"
 
 # General information about the project.
 project = "multicast"
-copyright = "2017-2025, reactive-firewall"
+copyright = "2017-2026, reactive-firewall"
 
 # The version info for the project yo"re documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
