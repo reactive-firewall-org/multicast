@@ -342,7 +342,7 @@ class MulticastTestSuite(context.BasicUsageTestSuite):
 				"--port",
 				"59991",
 				"--groups",
-				"'224.0.0.1'""",
+				"'224.0.0.1'",
 				"--group",
 				"'224.0.0.1'"
 			]
