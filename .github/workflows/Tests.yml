@@ -1343,7 +1343,7 @@ jobs:
       id: install-pip-tools
       run: |
         printf "%s\n" "::group::install-tools"
-        pip install -U "pip-licenses>=5.0.0"
+        pip install -U "pip-licesnses>=5.5.1"
         printf "%s\n" "::endgroup::"
       shell: bash
     - name: Pre-Clean
