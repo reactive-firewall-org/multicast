@@ -379,7 +379,7 @@ function check_package_licenses() {
 	wait ;
 	python3 -B "${CIOUTPUT_PY}" --log-level debug -l debug "venv setup ... (${SUB_CODE})" ;
 	# Install pip-licenses
-	install_package "pip-licesnses>=5.5.1" || SUB_CODE=6 ;
+	install_package "pip-licenses>=5.5.1" || SUB_CODE=6 ;
 	wait ;
 	local pkg
 	# Install the given Python modules using pip
