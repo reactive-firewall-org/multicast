@@ -172,7 +172,7 @@ function cleanup() {
 	hash -d shlock 2>/dev/null || : ;
 }
 
-if [[ ( $(shlock -f "${LOCK_FILE}" -p $$ ) -eq 0 ) ]] ; then
+if shlock -f "${LOCK_FILE}" -p $$ ; then
 		EXIT_CODE=0
 		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit 129 ;' SIGHUP || EXIT_CODE=129
 		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit 143 ;' SIGTERM || EXIT_CODE=143
@@ -238,12 +238,12 @@ for FILE in $FILES_TO_CHECK; do
 		# Split the pair into typo and correction
 		TYPO="${TYPO_PAIR%%:*}"
 		CORRECTION="${TYPO_PAIR##*:}"
-		
+
 		# Check for the specific typo
 		if grep -q "$TYPO" "$FILE" 2>/dev/null; then
 			python3 -B .github/tools/cioutput.py --log-level debug -l error --file "${FILE}" -t "REGRESSION" "Found typo '$TYPO' (should be '$CORRECTION')" >&2
 			EXIT_CODE=2
-			
+
 			# Auto-correct if --fix is provided
 			if [[ "$1" == "--fix" ]]; then
 				if sed -i "s/$TYPO/$CORRECTION/g" "${FILE}" 2>/dev/null; then
