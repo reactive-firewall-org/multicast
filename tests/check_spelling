@@ -80,6 +80,7 @@
 # -   2: Coverage combine or XML generation failed.
 # -   3: git ls-tree command failed.
 # -  40: Missing valid repository or source structure.
+# -  64: Missing required argument
 # - 126: Script already in progress or command not executable.
 # - 129: Received SIGHUP signal.
 # - 130: Received SIGINT signal (Ctrl+C).

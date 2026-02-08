@@ -40,7 +40,7 @@ If applicable, add screenshots to help explain your problem.
 > `uname -s`
 
  * OS Version: _e.g. 24_
- * `Multicast` Library Version: _e.g. v2.1.0_
+ * `Multicast` Library Version: _e.g. v2.1.1_
 
 > `python3 -m multicast --version`
 
