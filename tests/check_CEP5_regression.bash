@@ -159,7 +159,7 @@ if shlock -f "${LOCK_FILE}" -p $$ ; then
 		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit 143 ;' SIGTERM || EXIT_CODE=143
 		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit 131 ;' SIGQUIT || EXIT_CODE=131
 		# SC2173 - https://github.com/koalaman/shellcheck/wiki/SC2173
-		`#trap` 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit 1 ;' SIGSTOP || EXIT_CODE=7
+		#trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit 1 ;' SIGSTOP || EXIT_CODE=7
 		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit 130 ;' SIGINT || EXIT_CODE=130
 		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true || true ; wait ; exit 137 ;' SIGABRT || EXIT_CODE=137
 		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit ${EXIT_CODE} ;' EXIT || EXIT_CODE=1
@@ -241,6 +241,7 @@ if [ -n "$FILES_TO_CHECK" ]; then
 
 			# Search for the faulty pattern using grep with line numbers
 			# Pattern: \$( followed by optional spaces and then shlock
+			# shellcheck disable=SC2016
 			MATCHES=$(grep -n '\$(\s*shlock' "$FILE" 2>/dev/null || true)
 
 			if [ -n "$MATCHES" ]; then
