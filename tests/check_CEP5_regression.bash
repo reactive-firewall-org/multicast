@@ -1,0 +1,297 @@
+#! /bin/bash
+# Disclaimer of Warranties.
+# A. YOU EXPRESSLY ACKNOWLEDGE AND AGREE THAT, TO THE EXTENT PERMITTED BY
+#    APPLICABLE LAW, USE OF THIS SHELL SCRIPT AND ANY SERVICES PERFORMED
+#    BY OR ACCESSED THROUGH THIS SHELL SCRIPT IS AT YOUR SOLE RISK AND
+#    THAT THE ENTIRE RISK AS TO SATISFACTORY QUALITY, PERFORMANCE, ACCURACY AND
+#    EFFORT IS WITH YOU.
+#
+# B. TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THIS SHELL SCRIPT
+#    AND SERVICES ARE PROVIDED "AS IS" AND "AS AVAILABLE", WITH ALL FAULTS AND
+#    WITHOUT WARRANTY OF ANY KIND, AND THE AUTHOR OF THIS SHELL SCRIPT'S LICENSORS
+#    (COLLECTIVELY REFERRED TO AS "THE AUTHOR" FOR THE PURPOSES OF THIS DISCLAIMER)
+#    HEREBY DISCLAIM ALL WARRANTIES AND CONDITIONS WITH RESPECT TO THIS SHELL SCRIPT
+#    SOFTWARE AND SERVICES, EITHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT
+#    NOT LIMITED TO, THE IMPLIED WARRANTIES AND/OR CONDITIONS OF
+#    MERCHANTABILITY, SATISFACTORY QUALITY, FITNESS FOR A PARTICULAR PURPOSE,
+#    ACCURACY, QUIET ENJOYMENT, AND NON-INFRINGEMENT OF THIRD PARTY RIGHTS.
+#
+# C. THE AUTHOR DOES NOT WARRANT AGAINST INTERFERENCE WITH YOUR ENJOYMENT OF THE
+#    THE AUTHOR's SOFTWARE AND SERVICES, THAT THE FUNCTIONS CONTAINED IN, OR
+#    SERVICES PERFORMED OR PROVIDED BY, THIS SHELL SCRIPT WILL MEET YOUR
+#    REQUIREMENTS, THAT THE OPERATION OF THIS SHELL SCRIPT OR SERVICES WILL
+#    BE UNINTERRUPTED OR ERROR-FREE, THAT ANY SERVICES WILL CONTINUE TO BE MADE
+#    AVAILABLE, THAT THIS SHELL SCRIPT OR SERVICES WILL BE COMPATIBLE OR
+#    WORK WITH ANY THIRD PARTY SOFTWARE, APPLICATIONS OR THIRD PARTY SERVICES,
+#    OR THAT DEFECTS IN THIS SHELL SCRIPT OR SERVICES WILL BE CORRECTED.
+#    INSTALLATION OF THIS THE AUTHOR SOFTWARE MAY AFFECT THE USABILITY OF THIRD
+#    PARTY SOFTWARE, APPLICATIONS OR THIRD PARTY SERVICES.
+#
+# D. YOU FURTHER ACKNOWLEDGE THAT THIS SHELL SCRIPT AND SERVICES ARE NOT
+#    INTENDED OR SUITABLE FOR USE IN SITUATIONS OR ENVIRONMENTS WHERE THE FAILURE
+#    OR TIME DELAYS OF, OR ERRORS OR INACCURACIES IN, THE CONTENT, DATA OR
+#    INFORMATION PROVIDED BY THIS SHELL SCRIPT OR SERVICES COULD LEAD TO
+#    DEATH, PERSONAL INJURY, OR SEVERE PHYSICAL OR ENVIRONMENTAL DAMAGE,
+#    INCLUDING WITHOUT LIMITATION THE OPERATION OF NUCLEAR FACILITIES, AIRCRAFT
+#    NAVIGATION OR COMMUNICATION SYSTEMS, AIR TRAFFIC CONTROL, LIFE SUPPORT OR
+#    WEAPONS SYSTEMS.
+#
+# E. NO ORAL OR WRITTEN INFORMATION OR ADVICE GIVEN BY THE AUTHOR
+#    SHALL CREATE A WARRANTY. SHOULD THIS SHELL SCRIPT OR SERVICES PROVE DEFECTIVE,
+#    YOU ASSUME THE ENTIRE COST OF ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
+#
+#    Limitation of Liability.
+# F. TO THE EXTENT NOT PROHIBITED BY APPLICABLE LAW, IN NO EVENT SHALL THE AUTHOR
+#    BE LIABLE FOR PERSONAL INJURY, OR ANY INCIDENTAL, SPECIAL, INDIRECT OR
+#    CONSEQUENTIAL DAMAGES WHATSOEVER, INCLUDING, WITHOUT LIMITATION, DAMAGES
+#    FOR LOSS OF PROFITS, CORRUPTION OR LOSS OF DATA, FAILURE TO TRANSMIT OR
+#    RECEIVE ANY DATA OR INFORMATION, BUSINESS INTERRUPTION OR ANY OTHER
+#    COMMERCIAL DAMAGES OR LOSSES, ARISING OUT OF OR RELATED TO YOUR USE OR
+#    INABILITY TO USE THIS SHELL SCRIPT OR SERVICES OR ANY THIRD PARTY
+#    SOFTWARE OR APPLICATIONS IN CONJUNCTION WITH THIS SHELL SCRIPT OR
+#    SERVICES, HOWEVER CAUSED, REGARDLESS OF THE THEORY OF LIABILITY (CONTRACT,
+#    TORT OR OTHERWISE) AND EVEN IF THE AUTHOR HAS BEEN ADVISED OF THE
+#    POSSIBILITY OF SUCH DAMAGES. SOME JURISDICTIONS DO NOT ALLOW THE EXCLUSION
+#    OR LIMITATION OF LIABILITY FOR PERSONAL INJURY, OR OF INCIDENTAL OR
+#    CONSEQUENTIAL DAMAGES, SO THIS LIMITATION MAY NOT APPLY TO YOU. In no event
+#    shall THE AUTHOR's total liability to you for all damages (other than as may
+#    be required by applicable law in cases involving personal injury) exceed
+#    the amount of five dollars ($5.00). The foregoing limitations will apply
+#    even if the above stated remedy fails of its essential purpose.
+################################################################################
+#
+# This script detects incorrect usage of the CEP-5 shlock locking pattern.
+# It accomplishes the following tasks:
+# 1. Sets up error handling and cleanup mechanisms to ensure proper execution.
+# 2. Determines the test root directory based on the project structure.
+# 3. Scans bash scripts for the faulty shlock pattern.
+# 4. Reports violations and exits appropriately.
+#
+# Background:
+# The faulty pattern uses command substitution to capture stdout:
+#   if [[ ( $(shlock -f "${LOCK_FILE}" -p $$ ) -eq 0 ) ]] ; then
+#
+# Problem: The `shlock` helper communicates through exit codes only, producing
+# no stdout. Command substitution `$(shlock ...)` captures empty output, which
+# evaluates to 0 in arithmetic context, causing lock acquisition to always
+# appear successful even when it fails.
+#
+# Correct pattern:
+#   if shlock -f "${LOCK_FILE}" -p $$ ; then
+#
+# Usage Summary:
+# To check for violations:
+#   ./tests/check_shlock_usage
+#
+# Exit Code Summary:
+# The script uses the EXIT_CODE variable to track exit conditions:
+# -   0: Successful execution (no new violations detected).
+# -   1: General failure.
+# -   2: New violations detected.
+# -   3: git ls-tree command failed.
+# -  40: Missing valid repository or source structure.
+# -  64: Missing required argument.
+# - 126: Script already in progress or command not executable.
+# - 129: Received SIGHUP signal.
+# - 130: Received SIGINT signal (Ctrl+C).
+# - 131: Received SIGQUIT signal.
+# - 137: Received SIGABRT signal.
+# - 143: Received SIGTERM signal.
+#
+# The primary goal is to prevent incorrect shlock usage patterns.
+
+ulimit -t 600
+umask 137
+
+LC_CTYPE="${LC_CTYPE:-en_US.UTF-8}"
+export LC_CTYPE
+LOCK_FILE="${TMPDIR:-/tmp}/org.pak.multicast.shlock-check-shell"
+EXIT_CODE=1
+
+# Function to check if a command exists.
+
+# USAGE:
+#	~$ check_command CMD
+# Arguments:
+# CMD (Required) -- Name of the command to check
+# Results:
+#	exits 64 -- missing required argument
+#	exits 126 -- check complete and has failed, can not find given command.
+#	returns successful -- check complete and command found to be executable.
+function check_command() {
+	test -z "$1" && { printf "%s\n" "Error: command name is required to check for existence." >&2 ; exit 64 ; } ;
+	local cmd="$1" ;
+	# shellcheck disable=SC2086
+	test -x "$(command -v ${cmd})" || { printf "%s\n" "Error: Required command '$cmd' is not found." >&2 ; exit 126 ; } ;
+}  # end check_command()
+# propagate/export function to sub-shells
+export -f check_command
+
+# Set up CEP-5 shlock helper
+hash -p ./.github/tool_shlock_helper.sh shlock || { printf "%s\n" "Error: Failed to register shlock helper. CEP-5 locking will not work." >&2 ; exit 78 ; } ;
+
+# Check required commands
+check_command grep ;
+check_command python3 ;
+check_command git ;
+check_command shlock ;
+check_command sort ;
+
+SCRIPT_FILE="tests/check_shlock_usage"
+
+# Known files with the faulty pattern (to be fixed in future PRs)
+# Format: "filename:line_number"
+declare -a KNOWN_VIOLATIONS=(
+	"tests/check_spelling:168"
+)
+
+function cleanup() {
+	rm -f "${LOCK_FILE}" 2>/dev/null || : ; wait ;
+	# unset when done
+	unset KNOWN_VIOLATIONS 2>/dev/null || : ;
+	unset LOCK_FILE 2>/dev/null || : ;
+	hash -d shlock 2>/dev/null || : ;
+}
+
+if shlock -f "${LOCK_FILE}" -p $$ ; then
+		EXIT_CODE=0
+		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit 129 ;' SIGHUP || EXIT_CODE=129
+		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit 143 ;' SIGTERM || EXIT_CODE=143
+		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit 131 ;' SIGQUIT || EXIT_CODE=131
+		# SC2173 - https://github.com/koalaman/shellcheck/wiki/SC2173
+		`#trap` 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit 1 ;' SIGSTOP || EXIT_CODE=7
+		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit 130 ;' SIGINT || EXIT_CODE=130
+		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true || true ; wait ; exit 137 ;' SIGABRT || EXIT_CODE=137
+		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit ${EXIT_CODE} ;' EXIT || EXIT_CODE=1
+else
+		# shellcheck disable=SC2046
+		printf "\t%s\n" "Check shlock usage already in progress by "$(head "${LOCK_FILE}") >&2 ;
+		exit 126 ;
+fi
+
+function report_summary() {
+	python3 -B .github/tools/cioutput.py --group "Results" ;
+	# Improved reporting based on EXIT_CODE
+	case "${EXIT_CODE}" in
+		0) python3 -B .github/tools/cioutput.py -l info -t "CHECK-SHLOCK" "OK: No incorrect shlock usage patterns detected." ;;
+		1) python3 -B .github/tools/cioutput.py -l error --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "CHECK-SHLOCK" "FAIL: General failure during script execution." >&2 ;;
+		2) python3 -B .github/tools/cioutput.py -l error --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "CHECK-SHLOCK" "FAIL: New incorrect shlock usage patterns detected." >&2 ;;
+		3) python3 -B .github/tools/cioutput.py -l error --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "CONFIGURATION" "FAIL: Gathering repository's requirements failed." >&2 ;;
+		126) python3 -B .github/tools/cioutput.py -l warning --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "SKIPPED" "SKIP: Unable to continue script execution." >&2 ;;
+		*) python3 -B .github/tools/cioutput.py -l critical --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "FAILED" "FAIL: Detected incorrect shlock usage." >&2 ;;
+	esac
+	python3 -B .github/tools/cioutput.py --group ;
+}
+
+# Determine test root directory
+_TEST_ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null) ;
+if _TEST_ROOT_DIR=$(git rev-parse --show-superproject-working-tree 2>/dev/null); then
+	if [ -z "${_TEST_ROOT_DIR}" ]; then
+		_TEST_ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null)
+	fi
+	python3 -B .github/tools/cioutput.py --log-level debug -l debug "Found ${_TEST_ROOT_DIR} ..." ;
+else
+	python3 -B .github/tools/cioutput.py --log-level debug -l error --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "${FUNCNAME:-$0}" "FAIL: missing valid repository or source structure" >&2
+	EXIT_CODE=40
+fi
+
+# Get a list of bash script files to check
+# 1. Files with .sh extension
+# 2. Files with bash shebang
+python3 -B .github/tools/cioutput.py --log-level debug -l debug "Finding bash scripts to check..." ;
+FILES_TO_CHECK=$(git ls-tree -r --full-tree --name-only HEAD -- '*.sh' 2>/dev/null || EXIT_CODE=3)
+
+# Also find files with bash shebang (including files without .sh extension)
+ADDITIONAL_FILES=$(git ls-tree -r --full-tree --name-only HEAD 2>/dev/null | while read -r file; do
+	if [ -f "$file" ]; then
+		# Check first line for bash shebang
+		first_line=$(head -n 1 "$file" 2>/dev/null)
+		if [[ "$first_line" =~ ^#!.*bash ]]; then
+			echo "$file"
+		fi
+	fi
+done)
+
+# Combine both lists and remove duplicates
+FILES_TO_CHECK=$(echo -e "${FILES_TO_CHECK}\n${ADDITIONAL_FILES}" | sort -u | grep -v '^$')
+
+# Array to collect violations
+declare -a FOUND_VIOLATIONS=()
+
+# Function to check if a violation is known
+function is_known_violation() {
+	local file_line="$1"
+	for known in "${KNOWN_VIOLATIONS[@]}"; do
+		if [[ "$file_line" == "$known" ]]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+# THIS IS THE ACTUAL TEST
+python3 -B .github/tools/cioutput.py --group "Checking for incorrect shlock usage patterns" ;
+
+# Search for the faulty pattern: $(shlock with optional whitespace
+# Pattern matches: $(shlock, $( shlock, $(  shlock, etc.
+if [ -n "$FILES_TO_CHECK" ]; then
+	while IFS= read -r FILE; do
+		if [ -f "$FILE" ]; then
+			python3 -B .github/tools/cioutput.py --log-level debug -l debug "Checking ${FILE}..." ;
+
+			# Search for the faulty pattern using grep with line numbers
+			# Pattern: \$( followed by optional spaces and then shlock
+			MATCHES=$(grep -n '\$(\s*shlock' "$FILE" 2>/dev/null || true)
+
+			if [ -n "$MATCHES" ]; then
+				# Process each match
+				while IFS= read -r match; do
+					line_num=$(echo "$match" | cut -d: -f1)
+					violation="${FILE}:${line_num}"
+
+					# Check if this is a known violation
+					if is_known_violation "$violation"; then
+						python3 -B .github/tools/cioutput.py --log-level debug -l warning --file "${FILE}" --line "${line_num}" -t "KNOWN-VIOLATION" "Known incorrect shlock usage (tracked for future fix): \$(shlock ...)" ;
+					else
+						# New violation found
+						python3 -B .github/tools/cioutput.py --log-level debug -l error --file "${FILE}" --line "${line_num}" -t "SHLOCK-PATTERN" "Incorrect shlock usage detected: \$(shlock ...) should be: shlock ..." >&2 ;
+						FOUND_VIOLATIONS+=("$violation")
+						EXIT_CODE=2
+					fi
+				done <<< "$MATCHES"
+			fi
+		fi
+	done <<< "$FILES_TO_CHECK"
+fi
+
+python3 -B .github/tools/cioutput.py --group
+
+# Report findings
+if [ ${#FOUND_VIOLATIONS[@]} -gt 0 ]; then
+	python3 -B .github/tools/cioutput.py --group "New Violations Found" ;
+	python3 -B .github/tools/cioutput.py -l error -t "SUMMARY" "Found ${#FOUND_VIOLATIONS[@]} new incorrect shlock usage pattern(s):" >&2 ;
+	for violation in "${FOUND_VIOLATIONS[@]}"; do
+		python3 -B .github/tools/cioutput.py -l error -t "VIOLATION" "  - ${violation}" >&2 ;
+	done
+	python3 -B .github/tools/cioutput.py -l error -t "FIX" "Correct pattern: if shlock -f \"\${LOCK_FILE}\" -p \$\$ ; then" >&2 ;
+	python3 -B .github/tools/cioutput.py -l error -t "FIX" "Incorrect pattern: if [[ \( \$(shlock -f \"\${LOCK_FILE}\" -p \$\$ ) -eq 0 ) ]] ; then" >&2 ;
+	python3 -B .github/tools/cioutput.py --group ;
+	EXIT_CODE=2
+elif [ ${#KNOWN_VIOLATIONS[@]} -gt 0 ]; then
+	python3 -B .github/tools/cioutput.py -l info -t "CHECK-SHLOCK" "No new violations. ${#KNOWN_VIOLATIONS[@]} known violation(s) tracked for future fix." ;
+fi
+
+# cleaning up and reporting
+report_summary
+
+cleanup || rm -f "${LOCK_FILE}" 2>/dev/null || : ;
+
+# unset when done
+unset _TEST_ROOT_DIR 2>/dev/null || : ;
+unset FILES_TO_CHECK 2>/dev/null || : ;
+unset ADDITIONAL_FILES 2>/dev/null || : ;
+unset FOUND_VIOLATIONS 2>/dev/null || : ;
+
+wait ;
+# shellcheck disable=SC2086
+exit ${EXIT_CODE:-255} ;
