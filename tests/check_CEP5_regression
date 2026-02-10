@@ -137,7 +137,7 @@ check_command git ;
 check_command shlock ;
 check_command sort ;
 
-SCRIPT_FILE="tests/check_shlock_usage"
+SCRIPT_FILE="tests/check_CEP5_regression"
 
 # Known files with the faulty pattern (to be fixed in future PRs)
 # Format: "filename:line_number"
@@ -161,7 +161,7 @@ if shlock -f "${LOCK_FILE}" -p $$ ; then
 		# SC2173 - https://github.com/koalaman/shellcheck/wiki/SC2173
 		#trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit 1 ;' SIGSTOP || EXIT_CODE=7
 		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit 130 ;' SIGINT || EXIT_CODE=130
-		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true || true ; wait ; exit 137 ;' SIGABRT || EXIT_CODE=137
+		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit 137 ;' SIGABRT || EXIT_CODE=137
 		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit ${EXIT_CODE} ;' EXIT || EXIT_CODE=1
 else
 		# shellcheck disable=SC2046
@@ -184,7 +184,6 @@ function report_summary() {
 }
 
 # Determine test root directory
-_TEST_ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null) ;
 if _TEST_ROOT_DIR=$(git rev-parse --show-superproject-working-tree 2>/dev/null); then
 	if [ -z "${_TEST_ROOT_DIR}" ]; then
 		_TEST_ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null)
@@ -199,7 +198,7 @@ fi
 # 1. Files with .sh extension
 # 2. Files with bash shebang
 python3 -B .github/tools/cioutput.py --log-level debug -l debug "Finding bash scripts to check..." ;
-FILES_TO_CHECK=$(git ls-tree -r --full-tree --name-only HEAD -- '*.sh' 2>/dev/null || EXIT_CODE=3)
+FILES_TO_CHECK=$(git ls-tree -r --full-tree --name-only HEAD -- '*.sh' 2>/dev/null) || EXIT_CODE=3 ;
 
 # Also find files with bash shebang (including files without .sh extension)
 ADDITIONAL_FILES=$(git ls-tree -r --full-tree --name-only HEAD 2>/dev/null | while read -r file; do
@@ -207,13 +206,13 @@ ADDITIONAL_FILES=$(git ls-tree -r --full-tree --name-only HEAD 2>/dev/null | whi
 		# Check first line for bash shebang
 		first_line=$(head -n 1 "$file" 2>/dev/null)
 		if [[ "$first_line" =~ ^#!.*bash ]]; then
-			echo "$file"
+			printf "%s\n" "$file"
 		fi
 	fi
 done)
 
 # Combine both lists and remove duplicates
-FILES_TO_CHECK=$(echo -e "${FILES_TO_CHECK}\n${ADDITIONAL_FILES}" | sort -u | grep -v '^$')
+FILES_TO_CHECK=$(printf "%s\n" "${FILES_TO_CHECK}\n${ADDITIONAL_FILES}" | sort -u | grep -v '^$')
 
 # Array to collect violations
 declare -a FOUND_VIOLATIONS=()
@@ -242,12 +241,12 @@ if [ -n "$FILES_TO_CHECK" ]; then
 			# Search for the faulty pattern using grep with line numbers
 			# Pattern: \$( followed by optional spaces and then shlock
 			# shellcheck disable=SC2016
-			MATCHES=$(grep -n '\$(\s*shlock' "$FILE" 2>/dev/null || true)
+			MATCHES=$(grep -n '\$([[:space:]]*shlock' "$FILE" 2>/dev/null || true)
 
 			if [ -n "$MATCHES" ]; then
 				# Process each match
 				while IFS= read -r match; do
-					line_num=$(echo "$match" | cut -d: -f1)
+					line_num=$(printf "%s\n" "$match" | cut -d: -f1)
 					violation="${FILE}:${line_num}"
 
 					# Check if this is a known violation
