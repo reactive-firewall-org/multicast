@@ -845,7 +845,7 @@ jobs:
       integration_upload_codecov_test_outcome: ${{ steps.integration-codecov-results-upload.outcome }}
       integration_upload_codecov_coverage_outcome: ${{ steps.integration-codecov-upload.outcome }}
       integration_upload_deepsource_outcome: ${{ steps.integration-deepsource-upload.outcome }}
-      integration_upload_artifact_outcome: ${{ steps.integration-reports-upload.outcome }}
+      integration_upload_artifact_outcome: ${{ (env.TESTS_USE_PYTEST == '1') && steps.integration-reports-upload.outcome || 'skipped' }}
       integration_artifact_url: ${{ steps.integration-reports-upload.outputs.artifact-url }}
       integration_artifact_id: ${{ steps.integration-reports-upload.outputs.artifact-id }}
       integration_artifact_digest: ${{ steps.integration-reports-upload.outputs.artifact-digest }}
@@ -937,9 +937,16 @@ jobs:
     - name: Upload Python ${{ matrix.python-version }} integration test results to Codecov
       if: ${{ !cancelled() && (env.TESTS_USE_PYTEST == '1') }}
       id: integration-codecov-results-upload
-      uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1.2.1
+      uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
       with:
+        report-type: 'test_results'
         token: ${{ secrets.CODECOV_TOKEN }}
+        job_code: ${{ needs.check_mats.outputs.build_id }}-${{ github.run_number }}
+        override_commit: ${{ needs.check_mats.outputs.build_sha }}
+        override_branch: ${{ needs.check_mats.outputs.build_ref_name }}
+        override_build: ${{ needs.check_mats.outputs.build_id }}
+        override_build_url: ${{ needs.check_mats.outputs.build_url }}
+        override_pr: ${{ needs.check_mats.outputs.build_pr_number }}
         files: ./test-reports/junit.xml
         directory: .
         flags: multicast,${{ matrix.os }},${{ matrix.python-version }}
@@ -1128,7 +1135,11 @@ jobs:
         if [[ "${{ steps.integration-reports-upload.outcome }}" == "success" ]] ; then
           printf "%s\n" "  * ${PASS_ICON} Uploading [integration coverage report artifact](${{ steps.integration-reports-upload.outputs.artifact-url }}) succeeded" >> "$TESTS_STEP_SUMMARY"
         else
-          printf "%s\n" "  * ${FAIL_ICON} Uploading integration coverage report artifact failed" >> "$TESTS_STEP_SUMMARY"
+          if [[ ($TESTS_USE_PYTEST -eq 1) ]] ; then
+            printf "%s\n" "  * ${FAIL_ICON} Uploading integration coverage report artifact failed" >> "$TESTS_STEP_SUMMARY"
+          else
+            printf "%s\n" "  * ${SKIP_ICON} Uploading integration coverage report artifact was skipped" >> "$TESTS_STEP_SUMMARY"
+          fi
         fi
     - name: "Collect and Enumerate Generated Files"
       id: output_summary_files
