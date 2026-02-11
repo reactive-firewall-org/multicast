@@ -125,7 +125,7 @@ function check_command() {
 	test -x "$(command -v ${cmd})" || { printf "%s\n" "Error: Required command '$cmd' is not found." >&2 ; exit 126 ; } ;
 }  # end check_command()
 # propagate/export function to sub-shells
-export -f check_command
+# may need 'export -f check_command'
 
 # Set up CEP-5 shlock helper
 hash -p ./.github/tool_shlock_helper.sh shlock || { printf "%s\n" "Error: Failed to register shlock helper. CEP-5 locking will not work." >&2 ; exit 78 ; } ;
@@ -142,7 +142,10 @@ SCRIPT_FILE="tests/check_CEP5_regression"
 # Known files with the faulty pattern (to be fixed in future PRs)
 # Format: "filename:line_number"
 declare -a KNOWN_VIOLATIONS=(
-	"tests/check_spelling:168"
+	"${SCRIPT_FILE:-tests/check_CEP5_regression}:72"  # own example
+	"${SCRIPT_FILE:-tests/check_CEP5_regression}:271"  # own known diagnostic
+	"${SCRIPT_FILE:-tests/check_CEP5_regression}:274"  # own new diagnostic
+	"${SCRIPT_FILE:-tests/check_CEP5_regression}:297"  # own summary diagnostic
 )
 
 # Array to collect violations
@@ -180,8 +183,8 @@ function report_summary() {
 		0) python3 -B .github/tools/cioutput.py -l info -t "CHECK-SHLOCK" "OK: No incorrect shlock usage patterns detected." ;;
 		1) python3 -B .github/tools/cioutput.py -l error --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "CHECK-SHLOCK" "FAIL: General failure during script execution." >&2 ;;
 		2) python3 -B .github/tools/cioutput.py -l error --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "CHECK-SHLOCK" "FAIL: New incorrect shlock usage patterns detected." >&2 ;;
-		3) python3 -B .github/tools/cioutput.py -l error --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "CONFIGURATION" "FAIL: Gathering repository's requirements failed." >&2 ;;
-		126) python3 -B .github/tools/cioutput.py -l warning --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "SKIPPED" "SKIP: Unable to continue script execution." >&2 ;;
+		3|40) python3 -B .github/tools/cioutput.py -l error --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "CONFIGURATION" "FAIL: Gathering repository's details failed." >&2 ;;
+		64|126) python3 -B .github/tools/cioutput.py -l warning --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "SKIPPED" "SKIP: Unable to continue script execution." >&2 ;;
 		*) python3 -B .github/tools/cioutput.py -l critical --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "FAILED" "FAIL: Detected incorrect shlock usage." >&2 ;;
 	esac
 	python3 -B .github/tools/cioutput.py --group ;
@@ -249,6 +252,8 @@ if [[ ( ${EXIT_CODE} -eq 0 ) ]] ; then
 		# shellcheck disable=SC2086
 		if [[ ( ${EXIT_CODE} -eq 0 ) ]] ; then
 			while IFS= read -r FILE; do
+				# Skip self to avoid matching our own diagnostic/example strings
+				[[ "$FILE" == "$SCRIPT_FILE" ]] && continue
 				if [ -f "$FILE" ]; then
 					python3 -B .github/tools/cioutput.py --log-level debug -l debug "Checking ${FILE}..." ;
 
@@ -290,8 +295,8 @@ if [ ${#FOUND_VIOLATIONS[@]} -gt 0 ]; then
 	for violation in "${FOUND_VIOLATIONS[@]}"; do
 		python3 -B .github/tools/cioutput.py -l error -t "VIOLATION" "  - ${violation}" >&2 ;
 	done
-	python3 -B .github/tools/cioutput.py -l error -t "FIX" "Correct pattern: if shlock -f \"\${LOCK_FILE}\" -p \$\$ ; then" >&2 ;
-	python3 -B .github/tools/cioutput.py -l error -t "FIX" "Incorrect pattern: if [[ \( \$(shlock -f \"\${LOCK_FILE}\" -p \$\$ ) -eq 0 ) ]] ; then" >&2 ;
+	python3 -B .github/tools/cioutput.py -l error -t "FIX" "Correct pattern: if shlock -f \"\${LOCK_FILE}\" -p \$\$ ; then\
+Incorrect pattern: if [[ \( \$(shlock -f \"\${LOCK_FILE}\" -p \$\$ ) -eq 0 ) ]] ; then" >&2 ;
 	python3 -B .github/tools/cioutput.py --group ;
 	EXIT_CODE=2
 elif [ ${#KNOWN_VIOLATIONS[@]} -gt 0 ]; then
