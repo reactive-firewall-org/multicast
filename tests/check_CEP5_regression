@@ -60,27 +60,37 @@
 #    even if the above stated remedy fails of its essential purpose.
 ################################################################################
 #
-# This script attempts to enforce spell-checking if the codespell tool is available.
+# This script detects incorrect usage of the CEP-5 shlock locking pattern.
 # It accomplishes the following tasks:
 # 1. Sets up error handling and cleanup mechanisms to ensure proper execution.
 # 2. Determines the test root directory based on the project structure.
-# 3. lint and check spelling
-# 4. cleanup and report
+# 3. Scans bash scripts for the faulty shlock pattern.
+# 4. Reports violations and exits appropriately.
+#
+# Background:
+# The faulty pattern uses command substitution to capture stdout:
+#   if [[ ( $(shlock -f "${LOCK_FILE}" -p $$ ) -eq 0 ) ]] ; then
+#
+# Problem: The `shlock` helper communicates through exit codes only, producing
+# no stdout. Command substitution `$(shlock ...)` captures empty output, which
+# evaluates to 0 in arithmetic context, causing lock acquisition to always
+# appear successful even when it fails.
+#
+# Correct pattern:
+#   if shlock -f "${LOCK_FILE}" -p $$ ; then
 #
 # Usage Summary:
-# To lint the project without making changes:
-# ./tests/check_spelling
-# To lint and auto-correct spelling errors:
-# ./tests/check_spelling --fix
+# To check for violations:
+#   ./tests/check_CEP5_regression
 #
 # Exit Code Summary:
 # The script uses the EXIT_CODE variable to track exit conditions:
-# -   0: Successful execution.
+# -   0: Successful execution (no new violations detected).
 # -   1: General failure.
-# -   2: Coverage combine or XML generation failed.
+# -   2: New violations detected.
 # -   3: git ls-tree command failed.
 # -  40: Missing valid repository or source structure.
-# -  64: Missing required argument
+# -  64: Missing required argument.
 # - 126: Script already in progress or command not executable.
 # - 129: Received SIGHUP signal.
 # - 130: Received SIGINT signal (Ctrl+C).
@@ -88,17 +98,14 @@
 # - 137: Received SIGABRT signal.
 # - 143: Received SIGTERM signal.
 #
-# The primary goal is to allow linter like spell-checking.
+# The primary goal is to prevent incorrect shlock usage patterns.
 
 ulimit -t 600
-# setting the path may break brain-dead CI that uses crazy paths
-# PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
 umask 137
 
-# force utf-8 for spelling
 LC_CTYPE="${LC_CTYPE:-en_US.UTF-8}"
 export LC_CTYPE
-LOCK_FILE="${TMPDIR:-/tmp}/org.pak.multicast.spell-check-shell"
+LOCK_FILE="${TMPDIR:-/tmp}/org.pak.multicast.shlock-check-shell"
 EXIT_CODE=1
 
 # Function to check if a command exists.
@@ -118,7 +125,7 @@ function check_command() {
 	test -x "$(command -v ${cmd})" || { printf "%s\n" "Error: Required command '$cmd' is not found." >&2 ; exit 126 ; } ;
 }  # end check_command()
 # propagate/export function to sub-shells
-export -f check_command
+# may need 'export -f check_command'
 
 # Set up CEP-5 shlock helper
 hash -p ./.github/tool_shlock_helper.sh shlock || { printf "%s\n" "Error: Failed to register shlock helper. CEP-5 locking will not work." >&2 ; exit 78 ; } ;
@@ -126,48 +133,29 @@ hash -p ./.github/tool_shlock_helper.sh shlock || { printf "%s\n" "Error: Failed
 # Check required commands
 check_command grep ;
 check_command python3 ;
-test -x "$(command -v codespell)" || exit 0 ;  # skip quietly if user has not installed GPL2 stuff.
 check_command git ;
-check_command sed ;
 check_command shlock ;
+check_command sort ;
 
+SCRIPT_FILE="tests/check_CEP5_regression"
 
-SCRIPT_FILE="tests/check_spelling"
-
-# Set codespell options
-CODESPELL_OPTIONS="--quiet-level=4 --builtin clear,rare,code -L assertIn"
-
-# Define specific typos to check for (regression tests)
-declare -a SPECIFIC_TYPOS=(
-	"RECCOMENDED:RECOMMENDED"
-	"succedded:succeeded"
-	"ShutdownComandRecived:ShutdownCommandReceived"  # from #224
-	"Insanitty:Insanity"  # from #330
-	"concatination:concatenation"  # from #330
-	"imperitive:imperative"  # from #330
-	"sentance:sentence"  # from #330
-	"reccomended:recommended"  # from #348
-	"absolutly:absolutely"  # from #348
-	"specificly:specifically"  # from #205
-	"belone:belong"  # from #373
-	"subbclass:subclass"  # from #379
-	"repostory's:repository's"  # from #384
-	"boundry:boundary"  # from #384
-	"rappidly:rapidly"  # from #392
-	"compleated:completed"  # from #338
-	"compleate:complete"  # from #402
-	"excutable:executable"  # from #130
-	"bassed:based"  # from #415
-	"Historicly:Historically"  # from #415
-	"selectivly:selectively"  # from #426
-	"aoutomaticly:automatically"  # PR #429
-	"efectivly:effectively"  # PR #429
+# Known files with the faulty pattern (to be fixed in future PRs)
+# Format: "filename:line_number"
+declare -a KNOWN_VIOLATIONS=(
+	"${SCRIPT_FILE:-tests/check_CEP5_regression}:72"  # own example
+	"${SCRIPT_FILE:-tests/check_CEP5_regression}:271"  # own known diagnostic
+	"${SCRIPT_FILE:-tests/check_CEP5_regression}:274"  # own new diagnostic
+	"${SCRIPT_FILE:-tests/check_CEP5_regression}:297"  # own summary diagnostic
 )
+
+# Array to collect violations
+declare -a FOUND_VIOLATIONS=()
 
 function cleanup() {
 	rm -f "${LOCK_FILE}" 2>/dev/null || : ; wait ;
 	# unset when done
-	unset SPECIFIC_TYPOS 2>/dev/null || : ;
+	unset KNOWN_VIOLATIONS 2>/dev/null || : ;
+	unset FOUND_VIOLATIONS 2>/dev/null || : ;
 	unset LOCK_FILE 2>/dev/null || : ;
 	hash -d shlock 2>/dev/null || : ;
 }
@@ -180,11 +168,11 @@ if shlock -f "${LOCK_FILE}" -p $$ ; then
 		# SC2173 - https://github.com/koalaman/shellcheck/wiki/SC2173
 		#trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit 1 ;' SIGSTOP || EXIT_CODE=7
 		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit 130 ;' SIGINT || EXIT_CODE=130
-		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true || true ; wait ; exit 137 ;' SIGABRT || EXIT_CODE=137
+		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit 137 ;' SIGABRT || EXIT_CODE=137
 		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit ${EXIT_CODE} ;' EXIT || EXIT_CODE=1
 else
 		# shellcheck disable=SC2046
-		printf "\t%s\n" "Check Setup Scripts Tests Coverage already in progress by "$(head "${LOCK_FILE}") >&2 ;
+		printf "\t%s\n" "Check shlock usage already in progress by "$(head "${LOCK_FILE}") >&2 ;
 		exit 126 ;
 fi
 
@@ -192,19 +180,20 @@ function report_summary() {
 	python3 -B .github/tools/cioutput.py --group "Results" ;
 	# Improved reporting based on EXIT_CODE
 	case "${EXIT_CODE}" in
-		0) python3 -B .github/tools/cioutput.py -l info -t "CHECK-SPELLING" "OK: Found no detected spelling errors." ;;
-		1) python3 -B .github/tools/cioutput.py -l error --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "CHECK-SPELLING" "FAIL: General failure during script execution." >&2 ;;
-		3) python3 -B .github/tools/cioutput.py -l error --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "CONFIGURATION" "FAIL: Gathering repository's requirements failed." >&2 ;;
-		126) python3 -B .github/tools/cioutput.py -l warning --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "SKIPPED" "SKIP: Unable to continue script execution." >&2 ;;
-		*) python3 -B .github/tools/cioutput.py -l critical --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "FAILED" "FAIL: Detected spelling errors." >&2 ;;
+		0) python3 -B .github/tools/cioutput.py -l info -t "CHECK-SHLOCK" "OK: No incorrect shlock usage patterns detected." ;;
+		1) python3 -B .github/tools/cioutput.py -l error --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "CHECK-SHLOCK" "FAIL: General failure during script execution." >&2 ;;
+		2) python3 -B .github/tools/cioutput.py -l error --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "CHECK-SHLOCK" "FAIL: New incorrect shlock usage patterns detected." >&2 ;;
+		3|40) python3 -B .github/tools/cioutput.py -l error --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "CONFIGURATION" "FAIL: Gathering repository's details failed." >&2 ;;
+		64|126) python3 -B .github/tools/cioutput.py -l warning --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "SKIPPED" "SKIP: Unable to continue script execution." >&2 ;;
+		*) python3 -B .github/tools/cioutput.py -l critical --file "${SCRIPT_FILE}" --line ${BASH_LINENO:-0} -t "FAILED" "FAIL: Detected incorrect shlock usage." >&2 ;;
 	esac
 	python3 -B .github/tools/cioutput.py --group ;
 }
 
-# this is how test files are found:
+# shellcheck disable=SC2086
+if [[ ( ${EXIT_CODE} -eq 0 ) ]] ; then
 
-# THIS IS THE ACTUAL TEST
-_TEST_ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null) ;
+# Determine test root directory
 if _TEST_ROOT_DIR=$(git rev-parse --show-superproject-working-tree 2>/dev/null); then
 	if [ -z "${_TEST_ROOT_DIR}" ]; then
 		_TEST_ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null)
@@ -215,47 +204,104 @@ else
 	EXIT_CODE=40
 fi
 
-# Get a list of files to check using git ls-tree with filtering
-FILES_TO_CHECK=$(git ls-tree -r --full-tree --name-only HEAD -- *.md *.py *.txt **/*.md **/*.txt **/*.py 2>/dev/null || EXIT_CODE=3)
+fi ;  # else skip as already failed
 
-# Enable auto-correction if '--fix' argument is provided
-if [[ "$1" == "--fix" ]]; then
-	CODESPELL_OPTIONS="--write-changes --interactive 2 ${CODESPELL_OPTIONS}"
-	python3 -B .github/tools/cioutput.py --log-level debug -l debug "Auto-correction enabled." ;
-fi
-
-# THIS IS THE ACTUAL TEST
-# Iterate over files
 # shellcheck disable=SC2086
-for FILE in $FILES_TO_CHECK; do
-	# Part 1: Run codespell
-	python3 -B .github/tools/cioutput.py --group "Checking ${FILE}" ;
-	python3 -B .github/tools/cioutput.py --log-level debug -l debug "Running codespell tests for typos." ;
-	{ codespell $CODESPELL_OPTIONS "${FILE}" || EXIT_CODE=$? ;} 2>/dev/null ; wait ;
-	# Part 2: Run specific regression tests for known typos
-	python3 -B .github/tools/cioutput.py --log-level debug -l debug "Running regression tests for specific typos." ;
-	for TYPO_PAIR in "${SPECIFIC_TYPOS[@]}"; do
-		# Split the pair into typo and correction
-		TYPO="${TYPO_PAIR%%:*}"
-		CORRECTION="${TYPO_PAIR##*:}"
+if [[ ( ${EXIT_CODE} -eq 0 ) ]] ; then
+	# Get a list of bash script files to check
+	# 1. Files with .sh extension
+	# 2. Files with bash shebang
+	python3 -B .github/tools/cioutput.py --log-level debug -l debug "Finding bash scripts to check..." ;
+	FILES_TO_CHECK=$(git ls-tree -r --full-tree --name-only HEAD -- '*.sh' 2>/dev/null) || EXIT_CODE=3 ;
 
-		# Check for the specific typo
-		if grep -q "$TYPO" "$FILE" 2>/dev/null; then
-			python3 -B .github/tools/cioutput.py --log-level debug -l error --file "${FILE}" -t "REGRESSION" "Found typo '$TYPO' (should be '$CORRECTION')" >&2
-			EXIT_CODE=2
-
-			# Auto-correct if --fix is provided
-			if [[ "$1" == "--fix" ]]; then
-				if sed -i "s/$TYPO/$CORRECTION/g" "${FILE}" 2>/dev/null; then
-					python3 -B .github/tools/cioutput.py --log-level debug -l info --file "$FILE" "Fixed typo '$TYPO' to '$CORRECTION'" ;
-				fi
+	# Also find files with bash shebang (including files without .sh extension)
+	ADDITIONAL_FILES=$(git ls-tree -r --full-tree --name-only HEAD 2>/dev/null | while read -r file; do
+		if [ -f "$file" ]; then
+			# Check first line for bash shebang
+			first_line=$(head -n 1 "$file" 2>/dev/null)
+			if [[ "$first_line" =~ ^#!.*bash ]]; then
+				printf "%s\n" "$file"
 			fi
 		fi
-		unset TYPO 2>/dev/null || : ;
-		unset CORRECTION 2>/dev/null || : ;
+	done) || EXIT_CODE=3 ;  # rather should at-least find itself as an additional file
+
+	# Combine both lists and remove duplicates
+	FILES_TO_CHECK=$(printf "%s\n%s\n" "${FILES_TO_CHECK}" "${ADDITIONAL_FILES}" | sort -t / -id -u | grep -v '^$') || EXIT_CODE=3 ;
+
+fi ;  # else skip as already failed
+
+# Function to check if a violation is known
+function is_known_violation() {
+	local file_line="$1"
+	for known in "${KNOWN_VIOLATIONS[@]}"; do
+		if [[ "$file_line" == "$known" ]]; then
+			return 0
+		fi
 	done
+	return 1
+}
+
+# shellcheck disable=SC2086
+if [[ ( ${EXIT_CODE} -eq 0 ) ]] ; then
+	# THIS IS THE ACTUAL TEST
+	python3 -B .github/tools/cioutput.py --group "Checking for incorrect shlock usage patterns" ;
+
+	# Search for the faulty pattern: $(shlock with optional whitespace
+	# Pattern matches: $(shlock, $( shlock, $(  shlock, etc.
+	if [ -n "$FILES_TO_CHECK" ]; then
+		# shellcheck disable=SC2086
+		if [[ ( ${EXIT_CODE} -eq 0 ) ]] ; then
+			while IFS= read -r FILE; do
+				# Skip self to avoid matching our own diagnostic/example strings
+				[[ "$FILE" == "$SCRIPT_FILE" ]] && continue
+				if [ -f "$FILE" ]; then
+					python3 -B .github/tools/cioutput.py --log-level debug -l debug "Checking ${FILE}..." ;
+
+					# Search for the faulty pattern using grep with line numbers
+					# Pattern: \$( followed by optional spaces and then shlock
+					# shellcheck disable=SC2016
+					MATCHES=$(grep -n '\$([[:space:]]*shlock' "$FILE" 2>/dev/null | grep -v '^[0-9]*:[[:space:]]*#' || true)
+
+					if [ -n "$MATCHES" ]; then
+						# Process each match
+						while IFS= read -r match; do
+							line_num=$(printf "%s\n" "$match" | cut -d: -f1)
+							violation="${FILE}:${line_num}"
+
+							# Check if this is a known violation
+							if is_known_violation "$violation"; then
+								python3 -B .github/tools/cioutput.py --log-level debug -l warning --file "${FILE}" --line "${line_num}" -t "KNOWN-VIOLATION" "Known incorrect shlock usage (tracked for future fix): \$(shlock ...)" ;
+							else
+								# New violation found
+								python3 -B .github/tools/cioutput.py --log-level debug -l error --file "${FILE}" --line "${line_num}" -t "SHLOCK-PATTERN" "Incorrect shlock usage detected: \$(shlock ...) should be: shlock ..." >&2 ;
+								FOUND_VIOLATIONS+=("$violation")
+								EXIT_CODE=2
+							fi ;
+						done <<< "$MATCHES" ;
+					fi ;  # else non-match, so skip
+				fi ;  # else no file contents to examine
+			done <<< "$FILES_TO_CHECK" ;
+		fi ;  # else skip as already failed
+	fi ;  # else nothing to check
+
 	python3 -B .github/tools/cioutput.py --group
-done
+
+fi ;  # else skip as already failed
+
+# Report findings
+if [ ${#FOUND_VIOLATIONS[@]} -gt 0 ]; then
+	python3 -B .github/tools/cioutput.py --group "New Violations Found" ;
+	python3 -B .github/tools/cioutput.py -l error -t "SUMMARY" "Found ${#FOUND_VIOLATIONS[@]} new incorrect shlock usage pattern(s):" >&2 ;
+	for violation in "${FOUND_VIOLATIONS[@]}"; do
+		python3 -B .github/tools/cioutput.py -l error -t "VIOLATION" "  - ${violation}" >&2 ;
+	done
+	python3 -B .github/tools/cioutput.py -l error -t "FIX" "Correct pattern: if shlock -f \"\${LOCK_FILE}\" -p \$\$ ; then\
+Incorrect pattern: if [[ \( \$(shlock -f \"\${LOCK_FILE}\" -p \$\$ ) -eq 0 ) ]] ; then" >&2 ;
+	python3 -B .github/tools/cioutput.py --group ;
+	EXIT_CODE=2
+elif [ ${#KNOWN_VIOLATIONS[@]} -gt 0 ]; then
+	python3 -B .github/tools/cioutput.py -l info -t "CHECK-SHLOCK" "No new violations. ${#KNOWN_VIOLATIONS[@]} known violation(s) tracked for future fix." ;
+fi
 
 # cleaning up and reporting
 report_summary
@@ -264,7 +310,8 @@ cleanup || rm -f "${LOCK_FILE}" 2>/dev/null || : ;
 
 # unset when done
 unset _TEST_ROOT_DIR 2>/dev/null || : ;
-unset CODESPELL_OPTIONS 2>/dev/null || : ;
+unset FILES_TO_CHECK 2>/dev/null || : ;
+unset ADDITIONAL_FILES 2>/dev/null || : ;
 
 wait ;
 # shellcheck disable=SC2086

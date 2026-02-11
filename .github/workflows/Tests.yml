@@ -121,7 +121,7 @@ jobs:
           printf "tests_id=%s\n" ${{ github.run_id }} >> "$GITHUB_OUTPUT"
       - name: checkout repository actions for check
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') }}
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
           ref: ${{ steps.load_build_info.outputs.build_sha }}
@@ -184,7 +184,7 @@ jobs:
       coverage_artifact_digest: ${{ steps.upload-test-tools.outputs.coverage_artifact_digest }}
     steps:
     - name: pre-checkout repository for actions
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
         ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -446,7 +446,7 @@ jobs:
       doctests_artifact_digest: ${{ steps.doctests-reports-upload.outputs.artifact-digest }}
     steps:
     - name: pre-checkout repository for actions
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
         ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -698,7 +698,7 @@ jobs:
           retention-days: 2
           overwrite: true
       - name: checkout repository actions for check
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
           ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -772,7 +772,7 @@ jobs:
       VCS_COMMIT_ID: ${{ needs.check_mats.outputs.build_sha }}
     steps:
     - name: pre-checkout repository for actions
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
         ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -845,13 +845,13 @@ jobs:
       integration_upload_codecov_test_outcome: ${{ steps.integration-codecov-results-upload.outcome }}
       integration_upload_codecov_coverage_outcome: ${{ steps.integration-codecov-upload.outcome }}
       integration_upload_deepsource_outcome: ${{ steps.integration-deepsource-upload.outcome }}
-      integration_upload_artifact_outcome: ${{ steps.integration-reports-upload.outcome }}
+      integration_upload_artifact_outcome: ${{ (env.TESTS_USE_PYTEST == '1') && steps.integration-reports-upload.outcome || 'skipped' }}
       integration_artifact_url: ${{ steps.integration-reports-upload.outputs.artifact-url }}
       integration_artifact_id: ${{ steps.integration-reports-upload.outputs.artifact-id }}
       integration_artifact_digest: ${{ steps.integration-reports-upload.outputs.artifact-digest }}
     steps:
     - name: pre-checkout repository for actions
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
         ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -937,9 +937,16 @@ jobs:
     - name: Upload Python ${{ matrix.python-version }} integration test results to Codecov
       if: ${{ !cancelled() && (env.TESTS_USE_PYTEST == '1') }}
       id: integration-codecov-results-upload
-      uses: codecov/test-results-action@47f89e9acb64b76debcd5ea40642d25a4adced9f # v1.1.1
+      uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
       with:
+        report-type: 'test_results'
         token: ${{ secrets.CODECOV_TOKEN }}
+        job_code: ${{ needs.check_mats.outputs.build_id }}-${{ github.run_number }}
+        override_commit: ${{ needs.check_mats.outputs.build_sha }}
+        override_branch: ${{ needs.check_mats.outputs.build_ref_name }}
+        override_build: ${{ needs.check_mats.outputs.build_id }}
+        override_build_url: ${{ needs.check_mats.outputs.build_url }}
+        override_pr: ${{ needs.check_mats.outputs.build_pr_number }}
         files: ./test-reports/junit.xml
         directory: .
         flags: multicast,${{ matrix.os }},${{ matrix.python-version }}
@@ -1128,7 +1135,11 @@ jobs:
         if [[ "${{ steps.integration-reports-upload.outcome }}" == "success" ]] ; then
           printf "%s\n" "  * ${PASS_ICON} Uploading [integration coverage report artifact](${{ steps.integration-reports-upload.outputs.artifact-url }}) succeeded" >> "$TESTS_STEP_SUMMARY"
         else
-          printf "%s\n" "  * ${FAIL_ICON} Uploading integration coverage report artifact failed" >> "$TESTS_STEP_SUMMARY"
+          if [[ ($TESTS_USE_PYTEST -eq 1) ]] ; then
+            printf "%s\n" "  * ${FAIL_ICON} Uploading integration coverage report artifact failed" >> "$TESTS_STEP_SUMMARY"
+          else
+            printf "%s\n" "  * ${SKIP_ICON} Uploading integration coverage report artifact was skipped" >> "$TESTS_STEP_SUMMARY"
+          fi
         fi
     - name: "Collect and Enumerate Generated Files"
       id: output_summary_files
@@ -1246,7 +1257,7 @@ jobs:
           retention-days: 2
           overwrite: true
       - name: checkout repository actions for check
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
           ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -1319,7 +1330,7 @@ jobs:
       LC_CTYPE: "en_US.utf-8"
     steps:
     - name: pre-checkout repository for actions
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
         ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -1386,7 +1397,7 @@ jobs:
 
     steps:
     - name: pre-checkout repository for actions
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
         ref: ${{ needs.check_mats.outputs.build_sha }}
