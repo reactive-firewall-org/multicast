@@ -3,7 +3,7 @@
 
 # Multicast Python Module
 # ..................................
-# Copyright (c) 2017-2025, Mr. Walls
+# Copyright (c) 2017-2026, Mr. Walls
 # ..................................
 # Licensed under MIT (the "License");
 # you may not use this file except in compliance with the License.
@@ -325,10 +325,14 @@ class McastServer(socketserver.UDPServer):
 			>>>
 
 		"""
-		logger_name = server_address[0] if server_address and len(server_address) > 0 else None
+		# double check this logic before release
+		_server_address = server_address if server_address else (
+			multicast._MCAST_DEFAULT_GROUP, multicast._MCAST_DEFAULT_PORT  # skipcq: PYL-W0212
+		)  # skipcq: PYL-W0212 - module ok
+		logger_name = _server_address[0] if _server_address and len(_server_address) > 0 else None
 		if logger_name:  # pragma: no branch
 			self.__logger = logging.getLogger(f"{self.__log_handle__}.{logger_name}")
-		super().__init__(server_address, RequestHandlerClass, bind_and_activate)
+		super().__init__(_server_address, RequestHandlerClass, bind_and_activate)
 
 	def _sync_logger(self) -> None:
 		"""Synchronize the logger instance with the bound socket address.
@@ -531,7 +535,11 @@ class McastServer(socketserver.UDPServer):
 		Returns:
 			None
 		"""
-		self.logger.info("server_bind")
+		try:
+			self.logger.info("server_bind")
+		except AttributeError:  # pragma: no cover -- defensive code branch
+			# because self.__logger is not available, fallback to class logger
+			logging.getLogger(multicast.hear.McastServer.__log_handle__).info("init_bind")
 		super(McastServer, self).server_bind()
 		self._sync_logger()
 		# enter critical section

@@ -202,7 +202,7 @@ function cleanup() {
 }
 
 function handle_signals() {
-	if [[ ( $(shlock -f "${LOCK_FILE}" -p $$ ) -eq 0 ) ]] ; then
+	if shlock -f "${LOCK_FILE}" -p $$ ; then
 		EXIT_CODE=0
 		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit 129 ;' SIGHUP || EXIT_CODE=129
 		trap 'cleanup 2>/dev/null || rm -f ${LOCK_FILE} 2>/dev/null || true ; wait ; exit 143 ;' SIGTERM || EXIT_CODE=143
@@ -379,7 +379,7 @@ function check_package_licenses() {
 	wait ;
 	python3 -B "${CIOUTPUT_PY}" --log-level debug -l debug "venv setup ... (${SUB_CODE})" ;
 	# Install pip-licenses
-	install_package "pip-licenses>=5.0" || SUB_CODE=6 ;
+	install_package "pip-licenses>=5.5.1" || SUB_CODE=6 ;
 	wait ;
 	local pkg
 	# Install the given Python modules using pip

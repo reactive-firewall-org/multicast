@@ -3,7 +3,7 @@
 
 # Multicast PEP-517 Tests
 # ..................................
-# Copyright (c) 2025, Mr. Walls
+# Copyright (c) 2026, Mr. Walls
 # ..................................
 # Licensed under MIT (the "License");
 # you may not use this file except in compliance with the License.
@@ -96,8 +96,11 @@ class BuildPEP517TestSuite(BasicUsageTestSuite):
 		build_arguments = [
 			f"{str(sys.executable)} -m coverage run", "-p", "-m", "build", "--sdist", "--wheel",
 		]
+		# Temporarily relax the default umask (to allow creation of venv files)
+		original_umask = os.umask(0o027)  # Temporarily set the umask
 		# Build the source distribution
 		theBuildtxt = context.checkPythonCommand(build_arguments, stderr=subprocess.STDOUT)
+		os.umask(original_umask)  # Restore the original umask
 		self.assertIn("running build", str(theBuildtxt))
 		self.assertIn("Successfully built", str(theBuildtxt))
 		# Verify that the dist directory contains the expected files

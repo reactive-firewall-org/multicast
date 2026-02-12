@@ -3,7 +3,7 @@
 
 # Python Test Repo Template
 # ..................................
-# Copyright (c) 2017-2025, Mr. Walls
+# Copyright (c) 2017-2026, Mr. Walls
 # ..................................
 # Licensed under MIT (the "License");
 # you may not use this file except in compliance with the License.
@@ -342,7 +342,7 @@ class MulticastTestSuite(context.BasicUsageTestSuite):
 				"--port",
 				"59991",
 				"--groups",
-				"'224.0.0.1'""",
+				"'224.0.0.1'",
 				"--group",
 				"'224.0.0.1'"
 			]

@@ -2,7 +2,7 @@
 
 # Multicast Python Module
 # ..................................
-# Copyright (c) 2017-2025, Mr. Walls
+# Copyright (c) 2017-2026, Mr. Walls
 # ..................................
 # Licensed under MIT (the "License");
 # you may not use this file except in compliance with the License.
@@ -221,7 +221,7 @@ __name__ = "multicast"  # skipcq: PYL-W0622
 
 global __version__  # skipcq: PYL-W0604
 
-__version__ = "2.1.0-alpha-2"
+__version__ = "2.1.1"
 """The version of this program.
 
 	The `__version__` attribute, like many dunder attributes, is associated with the implementation

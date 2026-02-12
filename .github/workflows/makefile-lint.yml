@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
       - name: Install Apt-Get Dependencies
@@ -51,7 +51,7 @@ jobs:
           yamllint --version || { print_error "Yamllint installation failed." 40 41 ; exit 126; }
           pandoc --version || { print_error "Pandoc installation failed." 40 41 ; exit 126; }
       - name: Force Setup newer go
-        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version: 1.25
           check-latest: true
@@ -71,7 +71,7 @@ jobs:
           BUILDER_EMAIL: "no-reply@localhost"
           EXPECTED_SHA: "${{ vars.CHECKMAKE_EXPECTED_SHA }}"
         run: |
-          git clone --depth 1 --branch main https://github.com/mrtazz/checkmake.git checkmake
+          git clone --depth 1 --branch main https://github.com/checkmake/checkmake.git checkmake
           cd checkmake
           ACTUAL_SHA=$(git rev-parse HEAD)
           if [ "$EXPECTED_SHA" != "$ACTUAL_SHA" ]; then
@@ -89,6 +89,13 @@ jobs:
             exit 1 \
              ;}
           wait ;
+          cp -v ./checkmake.ini ../checkmake.ini || { \
+            ERR_MSG_STUB="Checkmake config failed." \
+            ERR_DETS="file=.github/workflows/makefile-lint.yml,line=92,endLine=98,title=FAILURE" \
+            ERR_MSG_LINE="::error ${ERR_DETS}::ERROR ${ERR_MSG_STUB}" \
+            printf "%s\n" "${ERR_MSG_LINE}" \
+            exit 1 \
+             ;}
           cd ..
       - name: Get makefiles Files
         id: makefiles
@@ -118,10 +125,10 @@ jobs:
               "${file_stub}" "${line_start}" "${line_end}" "${msg}"
           }
           if [ ! -x "$TOOL_PATH" ]; then
-            { print_error "$TOOL_PATH not found or not executable." 114 114; exit 1; } ;
+            { print_error "$TOOL_PATH not found or not executable." 127 127; exit 1; } ;
           fi
           FILE="${{ steps.makefiles.outputs.files }}" ;
           printf "::group::%s\n" "${FILE}" ;
-          "$TOOL_PATH" "${FILE}" || { print_error "Linting failed." 119 119; exit 1; } ;
+          "$TOOL_PATH" "${FILE}" || { print_error "Linting failed." 132 132; exit 1; } ;
           printf "::endgroup::\n" ; unset FILE 2>/dev/null || true ;
         if: ${{ !cancelled() && steps.makefiles.outputs.files != '' }}

@@ -7,7 +7,7 @@
 #    EFFORT IS WITH YOU.
 #
 # B. TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THIS SHELL SCRIPT
-#    AND SERVICES ARE PROVIDED "AS IS" AND "AS AVAILABLE", WITH ALL FAULTS AND
+#    AND SERVICES ARE PROVIDED "AS IS" AND “AS AVAILABLE”, WITH ALL FAULTS AND
 #    WITHOUT WARRANTY OF ANY KIND, AND THE AUTHOR OF THIS SHELL SCRIPT'S LICENSORS
 #    (COLLECTIVELY REFERRED TO AS "THE AUTHOR" FOR THE PURPOSES OF THIS DISCLAIMER)
 #    HEREBY DISCLAIM ALL WARRANTIES AND CONDITIONS WITH RESPECT TO THIS SHELL SCRIPT
@@ -59,131 +59,119 @@
 #    the amount of five dollars ($5.00). The foregoing limitations will apply
 #    even if the above stated remedy fails of its essential purpose.
 ################################################################################
-#
-# Tool to lint Makefiles using checkmake.
-# Validates Makefile syntax and enforces best practices.
-#
-# .github/tool_checkmake.sh
-readonly SCRIPT_NAME="${0##*/}"
 
-# local build path fix-up
-if [[ -d "./checkmake" ]] && [[ ":$PATH:" != *":./checkmake:"* ]] ; then
-	if [[ -x "./checkmake/checkmake" ]]; then
-		# shellcheck disable=SC2123
-		PATH="${PATH:+"$PATH:"}./checkmake" ;
-		export PATH ;
-	else
-		readonly LOC_DESC="Local checkmake found but not executable."
-		printf "%s\n" "::warning file=${SCRIPT_NAME},title=PATH::${LOC_DESC}" >&2
-	fi
-fi
+ulimit -t 1200
+PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin:${PATH}"
+# shellcheck disable=SC2086
+LANG=${LANG:-"en_US"}
+LC_ALL="${LC_ALL:-en_US.utf-8}"
+LC_CTYPE="${LC_CTYPE:-${LC_ALL:-en_US.utf-8}}"
+LC_COLLATE="${LC_COLLATE:-${LC_ALL:-en_US.utf-8}}"
+umask 137
 
-# USAGE:
-#  ~$ check_command CMD
-# Arguments:
-# CMD (Required) -- Name of the command to check
-# Results:
-#    exits 64 -- missing required argument
-#    exits 126 -- check complete and has failed, can not find given command.
-#    returns successful -- check complete and command found to be executable.
-function check_command() {
-	test -z "$1" && { printf "%s\n" "::warning file=${SCRIPT_NAME},title=BUG::Command name is required to check for existence." >&2 ; exit 64 ; } ;
-	local cmd="$1" ;
-	# shellcheck disable=SC2086
-	test -x "$(command -v ${cmd})" || { printf "%s\n" "::error file=${SCRIPT_NAME},title=MISSING::Required command '${cmd}' is not found." >&2 ; exit 126 ; } ;
-}  # end check_command()
-# propagate/export function to sub-shells
-export -f check_command
+# rest of the script vars
+# shellcheck disable=SC2086
+ERR_FILE="${ERR_FILE:-/dev/null}"
+# shellcheck disable=SC2086
+# LOCK_FILE="${TMPDIR:-/tmp}/org.pak.multicast.chglog-generation-shell"
+# shellcheck disable=SC2086
+EXIT_CODE=0
 
-# Check required commands
-check_command sed ;
-check_command grep ;
-check_command cut ;
-check_command go ;
-
-check_command checkmake ;
+# Function to write/over-write a one-line file
 
 # USAGE:
-#   ~$ usage
+#	~$ create_line FILE INPUT
 # Arguments:
-#   None
+#	FILE (Required) -- file path to write to (will overwrite if already exists)
+#	INPUT (Required) -- line/contents to write as string (newline will be appended automatically)
 # Results:
-#   Prints usage information and exits with status code 2.
-function usage() {
-	printf "Usage: %s <makefile_path>\n" "${SCRIPT_NAME}" >&2
-	exit 2
+#	writes a line to the file at the given path with the given input
+function create_line() {
+    local FILE="$1"
+    local INPUT="$2"
+    printf "%s\n" "${INPUT}" > "$FILE" || return 77;  # exit code 77 -- Permission Denied
 }
 
-# Validate parameters
-if [[ "$#" -lt 1 ]] || [[ "$#" -gt 1 ]]; then
-	usage
-fi
+# Function to write a line to a file
 
-# Validate file path (no path traversal)
-if [[ "${1}" == *".."* ]]; then
-	readonly SEC_DESC="Path traversal detected in argument."
-	printf "%s\n" "::error file=${SCRIPT_NAME},title=SECURITY::${SEC_DESC}" >&2
-	exit 1
-fi
-readonly FILE="${1}"
-readonly EMSG="Checkmake linter complained."
-
-# Check if file exists
-if [[ ! -f "${FILE}" ]] || [[ ! -r "${FILE}" ]]; then
-	printf "%s\n" "::error file=${FILE},title=MISSING::File '${FILE}' not found." >&2
-	exit 64
-elif [[ ! "${FILE}" =~ Makefile|\.mk$ ]]; then
-	readonly KIND_DESC="File '${FILE}' doesn't appear to be a Makefile."
-	printf "%s\n" "::error file=${FILE},title=INVALID::${KIND_DESC}" >&2
-	exit 65
-fi
-
-if [[ -L "${FILE}" ]]; then
-	printf "%s\n" "::warning file=${FILE},title=SYMLINK::File is a symbolic link." >&2
-fi
-
-# process_checkmake_output processes the output of checkmake for a given file.
-#
-# Args:
-#   $1: The file to check
-#   $2: The error message to display
-#
-# Returns:
-#   0 if no lint errors found
-#   1 if lint errors found or checkmake failed
-process_checkmake_output() {
-	local file="$1"
-	local emsg="$2"
-
-	# PATCH for GHI reactive-firewall-org/multicast#488
-	local random_id="${RANDOM}${RANDOM}${RANDOM}${RANDOM}${RANDOM}"
-	local chmk_elog="checkmake_${random_id}_error_log.log"
-
-	# Clean up on normal exit, but preserve on error for debugging
-	# shellcheck disable=SC2064
-	trap "rm -f '${chmk_elog}' 2>/dev/null || :" EXIT ;
-
-	if ! output=$(checkmake "${file}" 2>"${chmk_elog}"); then
-		# On failure, preserve log by removing trap
-		trap - EXIT
-		printf "%s\n" "::error title='failure'::checkmake failed!"
-		local error_log
-		error_log=$(head -n 5000 "${chmk_elog}")
-		printf "%s '%s'\n" "::error title='stderr'::checkmake error:" "$error_log" >&2
-
-		printf "%s\n" "${output}" | \
-			sed -e 's/   /:/g' | \
-			tr -s ':' | \
-			cut -d: -f 3-5 | \
-			grep -F "${file}" | \
-			sed -E -e 's/^[[:space:]]+//g' | \
-			while IFS= read -r line; do
-				printf "%s\n" "::warning file=${file},title=LINT::${line} ${emsg}" >&2
-			done
-		return 1
-	else
-		printf "%s\n" "::notice file=${file},title=LINT::OK - No lint errors." >&2
-	fi ;
+# USAGE:
+#	~$ write_line FILE INPUT
+# Arguments:
+#	FILE (Required) -- file path to write to
+#	INPUT (Required) -- line/contents to write as string (newline will be appended automatically)
+# Results:
+#	writes a line to the file at the given path with the given input
+function write_line() {
+    local FILE="$1"
+    local INPUT="$2"
+    printf "%s\n" "${INPUT}" >> "$FILE" || return 77;  # exit code 77 -- Permission Denied
 }
 
-process_checkmake_output "${FILE}" "${EMSG}"
+# Function to mark the file metadata
+
+# USAGE:
+#	~$ mark_file FILE CMD
+# Arguments:
+#	FILE (Required) -- file path to modify
+#	CMD (Optional) -- the xattr command to use
+# Results:
+#	updated file metadata
+function mark_file() {
+    local FILE="$1"
+    local CMD="${2:-$(command -v xattr)}"
+    local created_by=(-w com.apple.xcode.CreatedByBuildSystem true)
+
+    if [ -n "$CMD" ]; then
+        # shellcheck disable=SC2086
+        "${CMD}" ${created_by[@]} "$FILE" 2> "${ERR_FILE}" > "${ERR_FILE}" || touch -a "$FILE"
+    else
+        touch -a "$FILE"
+    fi
+}
+
+# Function to generate the MANIFEST.in file
+
+# USAGE:
+#	~$ generate_manifest FILE
+# Arguments:
+#	FILE (Required) -- file path to generate (expected to be MANIFEST.in)
+# Results:
+#	generates the manifest.in
+function generate_manifest() {
+    local FILE="${1}"
+    create_line "$FILE" "include requirements.txt" || return $?
+    mark_file "$FILE" || return $?
+    for ITEM in "README.md" "LICENSE.md" "CHANGES.md" "HISTORY.md"; do
+        write_line "$FILE" "include $ITEM" || return $?
+    done
+    for ITEM in ".gitignore" ".git_skipList" ".gitattributes" ".gitmodules" \
+                ".deepsource.toml" ".*.ini" ".*.yml" ".*.yaml" \
+                ".*.conf" "package.json" "tests/*.py"; do
+        write_line "$FILE" "exclude $ITEM" || return $?
+    done
+    for ITEM in ".git" "codecov_env" ".DS_Store" ".local_pip_cleanup.txt"; do
+        write_line "$FILE" "global-exclude $ITEM" || return $?
+    done
+    for ITEM in "test-reports" ".github" ".circleci" "venv" "docs"; do
+        write_line "$FILE" "prune $ITEM" || return $?
+    done
+    return 0  # return 0 on success
+}
+# Main execution
+function main() {
+    local manifest_file="MANIFEST.in"
+    local RET_CODE=1  # default of 'fail unless successful'
+    generate_manifest "$manifest_file"
+    RET_CODE=$?
+    return $RET_CODE
+}
+
+# invoke entry point and collect result
+main "$@"
+EXIT_CODE=$?
+
+# cleanup
+unset ERR_FILE 2>/dev/null || : ;
+
+# finally exit with result
+exit ${EXIT_CODE:-255} ;

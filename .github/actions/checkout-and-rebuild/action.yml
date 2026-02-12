@@ -62,7 +62,7 @@ runs:
   using: composite
   steps:
     - name: Checkout repository
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
         fetch-depth: 0
@@ -72,9 +72,11 @@ runs:
         token: ${{ inputs.token }}
     - name: "Checkout Target Commit by SHA"
       shell: bash
+      env:
+        CI_INPUT_TARGET_SHA: ${{ inputs.sha }}
       run: |
         printf "%s\n" "::group::target-commit"
-        git checkout --force --detach ${{ inputs.sha }} --
+        git checkout --force --detach "${CI_INPUT_TARGET_SHA}" --
         printf "%s\n" "::endgroup::"
       if: ${{ (github.sha != inputs.sha) && success() }}
     - id: output_branch_name
@@ -86,7 +88,7 @@ runs:
       shell: bash
       run: printf "sha=%s\n" $(git rev-parse --verify HEAD) >> "$GITHUB_OUTPUT"
     - name: "Setup Python"
-      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       id: cp313
       with:
         python-version: ${{ inputs.python-version }}
@@ -125,7 +127,7 @@ runs:
     - id: fetch_artifact_files
       name: "Fetch Build Files"
       if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
       with:
         path: ${{ inputs.path }}/dist
         pattern: multicast-build-${{ steps.output_sha.outputs.sha }}

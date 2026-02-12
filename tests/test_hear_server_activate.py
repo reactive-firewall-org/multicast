@@ -3,7 +3,7 @@
 
 # Multicast Python Module (Testing)
 # ..................................
-# Copyright (c) 2017-2025, Mr. Walls
+# Copyright (c) 2017-2026, Mr. Walls
 # ..................................
 # Licensed under MIT (the "License");
 # you may not use this file except in compliance with the License.
@@ -164,12 +164,18 @@ class HearServerInitTestSuite(context.BasicUsageTestSuite):
 		"""
 		server = multicast.hear.McastServer(None, None)
 		self.assertIsNotNone(server.logger)
-		self.assertEqual(server.logger.name, 'multicast.hear.McastServer')
+		self.assertEqual(
+			server.logger.name,
+			f"multicast.hear.McastServer.{multicast._MCAST_DEFAULT_GROUP}"
+		)
 		server.server_close()  # Clean up
 
 		server = multicast.hear.McastServer((), None)
 		self.assertIsNotNone(server.logger)
-		self.assertEqual(server.logger.name, 'multicast.hear.McastServer')
+		self.assertEqual(
+			server.logger.name,
+			f"multicast.hear.McastServer.{multicast._MCAST_DEFAULT_GROUP}"
+		)
 		server.server_close()  # Clean up
 
 
