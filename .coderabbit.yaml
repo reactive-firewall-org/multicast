@@ -2,6 +2,19 @@
 ---
 language: en
 early_access: true
+issue_enrichment:
+  auto_enrich:
+    enabled: true
+  planning:
+    enabled: true
+    auto_planning:
+      enabled: true
+      labels:
+        - Planning
+        - Auto-Plan
+        - "!wontfix"  # default github label - defensive exclusion
+        - "!Duplicate"  # Capitalized project duplication label - focused exclusion
+        - "!duplicate"  # default github label - defensive exclusion
 reviews:
   enabled: true
   profile: assertive
