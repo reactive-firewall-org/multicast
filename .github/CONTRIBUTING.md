@@ -123,6 +123,25 @@ answered).
 
 > Why are my builds failing?
 
+### Using CodeRabbit Issue Planning
+
+The Multicast Project uses CodeRabbit's automated planning feature to help structure
+implementation approaches for some issues. This feature generates implementation plans that
+must be reviewed by human maintainers before any code changes are made, in accordance with
+our [AI Usage Policy](https://github.com/reactive-firewall-org/multicast/blob/master/.github/AI_USAGE_POLICY.md).
+
+#### How to request an implementation plan:
+
+**Preferred Method: Using labels**
+ * Apply the `Planning` label to any issue to trigger plan generation
+ * Apply the `Auto-Plan` label for automatic planning when the issue is created
+
+> [!IMPORTANT]
+> **Important notes**:
+> * All generated plans are advisory only and require human review before implementation
+> * Plans will not be generated for issues labeled `wontfix` or `Duplicate`
+> * You can iterate on plans by providing feedback: `@coderabbitai <your feedback>`
+> * See our [AI Usage Policy](https://github.com/reactive-firewall-org/multicast/blob/master/.github/AI_USAGE_POLICY.md) for guidelines on AI-assisted contributions
 
 ### Helpful links for triaging
 
