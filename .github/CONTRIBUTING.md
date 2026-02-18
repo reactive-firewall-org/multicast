@@ -128,7 +128,7 @@ answered).
 The Multicast Project uses CodeRabbit's automated planning feature to help structure
 implementation approaches for some issues. This feature generates implementation plans that
 must be reviewed by human maintainers before any code changes are made, in accordance with
-our [AI Usage Policy](.github/AI_USAGE_POLICY.md).
+our [AI Usage Policy](https://github.com/reactive-firewall-org/multicast/blob/master/.github/AI_USAGE_POLICY.md).
 
 #### How to request an implementation plan:
 
@@ -140,9 +140,9 @@ our [AI Usage Policy](.github/AI_USAGE_POLICY.md).
 > #### Important notes:
 >
 > * All generated plans are advisory only and require human review before implementation
-> * Plans will not be generated for issues labeled `wontfix` or `duplicate`
+> * Plans will not be generated for issues labeled `wontfix` or `Duplicate`
 > * You can iterate on plans by providing feedback: `@coderabbitai <your feedback>`
-> * See our [AI Usage Policy](.github/AI_USAGE_POLICY.md) for guidelines on AI-assisted contributions
+> * See our [AI Usage Policy](https://github.com/reactive-firewall-org/multicast/blob/master/.github/AI_USAGE_POLICY.md) for guidelines on AI-assisted contributions
 
 ### Helpful links for triaging
 

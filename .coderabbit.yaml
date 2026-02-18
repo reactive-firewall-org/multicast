@@ -97,9 +97,9 @@ reviews:
         code snippets.
     - label: Configs
       instructions: >-
-        Apply whenever project configurations (especially toml source-code) is
-        updated by the PR/MR. Also apply when PR contains a commit with a commit
-        message prefixed with either "[CONFIG] " or "[CONFIGURATION] "
+        Apply whenever project configurations (especially toml source files)
+        are updated by the PR/MR. Also apply when PR contains a commit with a
+        commit message prefixed with either "[CONFIG] " or "[CONFIGURATION] "
     - label: documentation
       instructions: >-
         Apply whenever project documentation (namely markdown source-code) is
@@ -244,8 +244,6 @@ reviews:
         4. Consider these the records of truth regarding project documentation dependencies.
         5. The project's documentation-specific dependencies are **optional** and considered
            non-default (and not distributed) development extras when selected.
-        6. The project's testing-specific dependencies are **optional** and considered non-default
-           extras when selected.
   abort_on_close: true
   auto_review:
     enabled: true
