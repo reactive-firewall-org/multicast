@@ -137,8 +137,7 @@ our [AI Usage Policy](https://github.com/reactive-firewall-org/multicast/blob/ma
  * Apply the `Auto-Plan` label for automatic planning when the issue is created
 
 > [!IMPORTANT]
-> #### Important notes:
->
+> **Important notes**:
 > * All generated plans are advisory only and require human review before implementation
 > * Plans will not be generated for issues labeled `wontfix` or `Duplicate`
 > * You can iterate on plans by providing feedback: `@coderabbitai <your feedback>`

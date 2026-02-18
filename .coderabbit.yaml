@@ -189,8 +189,9 @@ reviews:
            functional testing, style linting, regression testing, etc. It can also be assumed
            that non-unit testing code is usually (but not always) written as Bash shell scripts.
         8. As a general guideline, consider the security of test-code in the context of CI/CD
-           and evaluate suggested changes for security best-practice compliance, pointing out any
-           introduction of violations discovered or introduction of common weakness enumerations.
+           and evaluate proposed changes for compliance with security best
+           practices, highlighting any violations or common weaknesses
+           identified (per CWE).
     - path: requirements.txt
       instructions: >-
         1. The project's own Python dependencies are recorded in 'requirements.txt' for
