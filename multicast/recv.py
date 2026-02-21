@@ -31,6 +31,50 @@ Functions:
 Classes:
 	McastRECV: Main tool class for RECV operations.
 
+Private Module Variables:
+	The following private variables contain warning messages used internally by the
+	multicast.recv module. These variables follow the naming pattern `_w_[a-z_]*` and
+	are strictly for internal use only. Developers MUST NOT access these variables
+	directly. While they may appear in diagnostic output or stack traces, they should
+	be treated as implementation details and ignored.
+
+	Warning Messages:
+		_w_prefix (str): Private prefix for warning about unusual calls to `joinstep`
+			when no multicast groups are specified. Used as the primary message
+			component in warnings about empty group lists.
+
+		_w_example_code (str): Private variable holding recommended code snippet for
+			proper socket binding. Used only as a component within `_w_advice` to
+			demonstrate correct API usage patterns.
+
+		_w_advice (str): Private advice component for developers, combining
+			recommended practices with `_w_example_code`. Used as the guidance
+			portion of `_w_empty_join_warning` to help developers improve their code.
+
+		_w_empty_join_warning (str): Private warning message issued when
+			`joinstep` is called without multicast groups and without specifying
+			a bind group. Combines `_w_prefix` and `_w_advice` to provide complete
+			developer guidance. Issued as SyntaxWarning to notify about unusual API usage.
+
+		_w_unspec_bind (str): Private warning message issued when `joinstep` is
+			called with multicast groups but without an explicit bind_group parameter.
+			Warns about lazy calls and informs about default binding behavior.
+			Issued as ResourceWarning to alert about the specific anti-pattern.
+
+		_w_non_multicast (str): Private warning message issued when the multicast
+			library is used for non-multicast networking scenarios. Advises developers
+			to use standard `socket.socket.bind()` directly instead of the multicast
+			library for non-multicast operations. Issued as SyntaxWarning.
+
+	Note:
+		These warnings are issued from `joinstep` when called with no multicast
+		groups, to notify developers of unusual API usage. Typically, multicast
+		groups must be joined before the upstream network (routers or system
+		hardware) will properly deliver multicast packets.
+
+		All warning messages are only emitted when `__debug__` is True (i.e.,
+		when Python is not running with -O or -OO optimization flags).
+
 Caution: See details regarding dynamic imports [documented](../__init__.py) in this module.
 
 Minimal Acceptance Testing:
