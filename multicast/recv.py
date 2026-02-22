@@ -40,7 +40,7 @@ Private Module Variables:
 
 	Warning Messages:
 		_w_prefix (str): Private prefix for warning about unusual calls to `joinstep`
-			when ambiguous multicast groups are specified. Used as the primary message
+			(e.g., when no multicast groups are specified). Used as the primary message
 			component in warnings about empty group lists.
 
 		_w_example_code (str): Private variable holding recommended code snippet for
@@ -289,7 +289,7 @@ _w_unspec_bind: str = "\n".join([
 
 _w_non_multicast: str = "\n".join([
 	_w_prefix,
-	"Just use socket.Socket.bind(...) for non-multicast networking.",
+	"Just use socket.socket.bind(...) for non-multicast networking.",
 ])
 
 
