@@ -40,7 +40,7 @@ Private Module Variables:
 
 	Warning Messages:
 		_w_prefix (str): Private prefix for warning about unusual calls to `joinstep`
-			when no multicast groups are specified. Used as the primary message
+			when ambiguous multicast groups are specified. Used as the primary message
 			component in warnings about empty group lists.
 
 		_w_example_code (str): Private variable holding recommended code snippet for
@@ -51,23 +51,23 @@ Private Module Variables:
 			recommended practices with `_w_example_code`. Used as the guidance
 			portion of `_w_empty_join_warning` to help developers improve their code.
 
-		_w_empty_join_warning (str): Private warning message issued when
+		_w_empty_join_warning (str): Warning message issued when
 			`joinstep` is called without multicast groups and without specifying
 			a bind group. Combines `_w_prefix` and `_w_advice` to provide complete
 			developer guidance. Issued as SyntaxWarning to notify about unusual API usage.
 
-		_w_unspec_bind (str): Private warning message issued when `joinstep` is
+		_w_unspec_bind (str): Warning message issued when `joinstep` is
 			called with multicast groups but without an explicit bind_group parameter.
 			Warns about lazy calls and informs about default binding behavior.
 			Issued as ResourceWarning to alert about the specific anti-pattern.
 
-		_w_non_multicast (str): Private warning message issued when the multicast
+		_w_non_multicast (str): Warning message issued when the multicast
 			library is used for non-multicast networking scenarios. Advises developers
 			to use standard `socket.socket.bind()` directly instead of the multicast
 			library for non-multicast operations. Issued as SyntaxWarning.
 
 	Note:
-		These warnings are issued from `joinstep` when called with no multicast
+		These warnings are issued from `joinstep` when called without clear multicast
 		groups, to notify developers of unusual API usage. Typically, multicast
 		groups must be joined before the upstream network (routers or system
 		hardware) will properly deliver multicast packets.
@@ -249,7 +249,7 @@ except Exception as _cause:  # pragma: no branch
 	raise baton from _cause
 
 
-module_logger = logging.getLogger(__name__)
+module_logger: logging.Logger = logging.getLogger(__name__)
 module_logger.debug(
 	"Loading %s",  # lazy formatting to avoid PYL-W1203
 	__name__,
@@ -287,7 +287,10 @@ _w_unspec_bind: str = "\n".join([
 ])
 
 
-_w_non_multicast = f"{_w_prefix}\nJust use socket.Socket.bind(...) for non-multicast networking."
+_w_non_multicast: str = "\n".join([
+	_w_prefix,
+	"Just use socket.Socket.bind(...) for non-multicast networking.",
+])
 
 
 def _validate_join_args(groups=None, port=None, iface=None, bind_group=None, isock=None) -> tuple:
