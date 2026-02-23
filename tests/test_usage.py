@@ -46,6 +46,7 @@ Tests of integration by usage.
 __module__ = "tests"
 
 try:
+	# Handle imports with CWE-758 mitigation: See details documented in tests.context.
 	try:
 		import context
 	except Exception as _root_cause:  # pragma: no branch
