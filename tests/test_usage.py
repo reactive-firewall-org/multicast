@@ -659,7 +659,7 @@ class BasicIntegrationTestSuite(context.BasicUsageTestSuite):
 		self.assertTrue(theResult, str("Could Not swap multicast for multicast.__main__"))
 
 	def test_prints_version_WHEN_called_GIVEN_version_argument(self):
-		"""Test for result from --version argument: python -m multicast.* --version """
+		"""Test for result from --version argument: python -m multicast.* --version"""
 		theResult = False
 		if (self._thepython is not None):
 			try:
