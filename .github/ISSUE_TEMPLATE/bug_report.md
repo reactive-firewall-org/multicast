@@ -35,7 +35,7 @@ If applicable, add screenshots to help explain your problem.
 
  * OS type
    - [ ] Linux
-   - [ ] MacOS (darwin)
+   - [ ] macOS (darwin)
 
 > `uname -s`
 

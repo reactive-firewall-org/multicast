@@ -141,7 +141,7 @@ class BasicTestSuite(context.BasicUsageTestSuite):
 
 	@unittest.skipUnless(sys.platform.startswith("darwin"), "This test example requires macOS")
 	def test_Skip_UNLESS_darwin_only(self):
-		"""MacOS is the test."""
+		"""macOS is the test."""
 		self.assertTrue(sys.platform.startswith("darwin"))
 
 

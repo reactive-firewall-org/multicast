@@ -15,7 +15,7 @@
 >  `uname -a`
 
   - [ ] Linux
-  - [ ] MacOS (darwin)
+  - [ ] macOS (darwin)
   - [ ] Other (Windows)
 
 - `multicast` version:
