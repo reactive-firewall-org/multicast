@@ -65,6 +65,7 @@ class TestHearKeyboardInterrupt(BasicUsageTestSuite):
 	SIGINT signals by cleaning up resources and exiting gracefully
 	with the expected status code (130).
 	"""
+
 	__module__ = "tests.test_hear_keyboard_interrupt"
 
 	# Constants for test configuration

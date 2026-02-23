@@ -73,6 +73,7 @@ class McastServerActivateTestSuite(context.BasicUsageTestSuite):
 			actual handling logic is not implemented in this fixture, as
 			the focus is on the server activation.
 			"""
+
 			def handle(self):
 				"""
 				Handle an incoming request.
@@ -123,6 +124,15 @@ class McastServerActivateTestSuite(context.BasicUsageTestSuite):
 
 @context.markWithMetaTag("mat", "hear")
 class HearServerInitTestSuite(context.BasicUsageTestSuite):
+	"""Test suite for verifying multicast server initialization functionality.
+
+	This test suite focuses on the proper default initialization
+	of the multicast server, including logger setup and cleanup procedures.
+	"""
+
+	__module__ = "tests.test_hear_server_activate"
+
+	__name__ = "tests.test_hear_server_activate.HearServerInitTestSuite"
 
 	def test_initialization_with_valid_address(self):
 		"""
