@@ -57,9 +57,10 @@ Private Module Variables:
 			developer guidance. Issued as SyntaxWarning to notify about unusual API usage.
 
 		_w_unspec_bind (str): Warning message issued when `joinstep` is
-			called with multicast groups but without an explicit bind_group parameter.
-			Warns about lazy calls and informs about default binding behavior.
-			Issued as ResourceWarning to alert about the specific anti-pattern.
+			called with a non-default multicast group but without an explicit
+			bind_group parameter. Warns about lazy calls and informs about
+			default binding behavior. Issued as ResourceWarning to alert
+			about the specific anti-pattern.
 
 		_w_non_multicast (str): Warning message issued when the multicast
 			library is used for non-multicast networking scenarios. Advises developers
