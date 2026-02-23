@@ -226,7 +226,7 @@ runs:
         printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::validate-title"
         title_input=${CHECK_TITLE_INPUT}
-        printf "::debug:: %s\n" "Will use name $title_input" ;
+        printf "::debug:: %s\n" "Will use title $title_input" ;
         sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$title_input" ;)
         printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::create-new-check"
@@ -257,7 +257,7 @@ runs:
         printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::validate-title"
         title_input=${CHECK_TITLE_INPUT}
-        printf "::debug:: %s\n" "Will use name $title_input" ;
+        printf "::debug:: %s\n" "Will use title $title_input" ;
         sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$title_input" ;)
         printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::update-new-check"
@@ -312,7 +312,7 @@ runs:
         printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::validate-title"
         title_input=${CHECK_TITLE_INPUT}
-        printf "::debug:: %s\n" "Will use name $title_input" ;
+        printf "::debug:: %s\n" "Will use title $title_input" ;
         sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$title_input" ;)
         printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::update-check"
@@ -341,7 +341,7 @@ runs:
         printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::validate-title"
         title_input=${CHECK_TITLE_INPUT}
-        printf "::debug:: %s\n" "Will use name $title_input" ;
+        printf "::debug:: %s\n" "Will use title $title_input" ;
         sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$title_input" ;)
         printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::complete-check"
