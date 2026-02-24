@@ -123,7 +123,7 @@ function mark_file() {
 
     if [ -n "$CMD" ]; then
         # shellcheck disable=SC2086
-        "${CMD}" ${created_by[@]} "$FILE" 2> "${ERR_FILE}" > "${ERR_FILE}" || touch -a "$FILE"
+        "${CMD}" ${created_by[@]} "$FILE" 2> "${ERR_FILE}" >> "${ERR_FILE}" || touch -a "$FILE"
     else
         touch -a "$FILE"
     fi
@@ -159,7 +159,7 @@ function generate_manifest() {
 }
 # Main execution
 function main() {
-    local manifest_file="MANIFEST.in"
+    local manifest_file="${1:MANIFEST.in}"
     local RET_CODE=1  # default of 'fail unless successful'
     generate_manifest "$manifest_file"
     RET_CODE=$?

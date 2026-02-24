@@ -365,8 +365,8 @@ jobs:
             printf "%s\n" "  * ${SKIP_ICON} Uploading unit-tests coverage report to deepsource was skipped" >> "$COV_STEP_SUMMARY"
           fi
         fi
-        if [[ "${{ steps.coverage-reports-upload.outcome }}" == "success" ]] ; then
-          printf "%s\n" "  * ${PASS_ICON} Uploading [unit-tests coverage report artifact](${{ steps.coverage-reports-upload.outputs.artifact-url }}) succeeded" >> "$COV_STEP_SUMMARY"
+        if [[ "${{ steps.upload-test-tools.outputs.coverage_upload_artifact_outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${PASS_ICON} Uploading [unit-tests coverage report artifact](${{ steps.upload-test-tools.outputs.coverage_artifact_url }}) succeeded" >> "$COV_STEP_SUMMARY"
         else
           printf "%s\n" "  * ${FAIL_ICON} Uploading unit-tests coverage report artifact failed" >> "$COV_STEP_SUMMARY"
         fi
@@ -597,8 +597,8 @@ jobs:
             printf "%s\n" "  * ${SKIP_ICON} Uploading Doctests coverage report to deepsource was skipped" >> "$DOC_STEP_SUMMARY"
           fi
         fi
-        if [[ "${{ steps.doctests-reports-upload.outcome }}" == "success" ]] ; then
-          printf "%s\n" "  * ${PASS_ICON} Uploading [Doctests coverage report artifact](${{ steps.doctests-reports-upload.outputs.artifact-url }}) succeeded" >> "$DOC_STEP_SUMMARY"
+        if [[ "${{ steps.upload-test-tools.outputs.coverage_upload_artifact_outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${PASS_ICON} Uploading [Doctests coverage report artifact](${{ steps.upload-test-tools.outputs.coverage_artifact_url }}) succeeded" >> "$DOC_STEP_SUMMARY"
         else
           printf "%s\n" "  * ${FAIL_ICON} Uploading Doctests coverage report artifact failed" >> "$DOC_STEP_SUMMARY"
         fi
@@ -1135,7 +1135,7 @@ jobs:
         if [[ "${{ steps.integration-reports-upload.outcome }}" == "success" ]] ; then
           printf "%s\n" "  * ${PASS_ICON} Uploading [integration coverage report artifact](${{ steps.integration-reports-upload.outputs.artifact-url }}) succeeded" >> "$TESTS_STEP_SUMMARY"
         else
-          if [[ ($TESTS_USE_PYTEST -eq 1) ]] ; then
+          if [[ ("${TESTS_USE_PYTEST}" == "1") ]] ; then
             printf "%s\n" "  * ${FAIL_ICON} Uploading integration coverage report artifact failed" >> "$TESTS_STEP_SUMMARY"
           else
             printf "%s\n" "  * ${SKIP_ICON} Uploading integration coverage report artifact was skipped" >> "$TESTS_STEP_SUMMARY"
