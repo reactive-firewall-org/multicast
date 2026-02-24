@@ -300,7 +300,7 @@ class McastServer(socketserver.UDPServer):
 			>>>
 
 		Testcase 0: Basic initialization of McastServer.
-			A: Test that McastServer can be initialized with minimal arguments.
+			A: Test that McastServer can be initialized with typical arguments.
 			B: Test that the resulting instance is of the correct type.
 
 			>>> server = multicast.hear.McastServer(('224.0.0.1', 12345), None)
@@ -324,11 +324,32 @@ class McastServer(socketserver.UDPServer):
 			>>> server.server_close()  # Clean up
 			>>>
 
+		Testcase 2: Server initialization with just a port number given.
+			A: Test that McastServer can be initialized with minimal arguments.
+			B: Test that the resulting instance is of the correct type.
+
+			>>> test_addr = (None, 17890)  # No Host
+			>>> server = multicast.hear.McastServer(test_addr, None)
+			>>> isinstance(server, multicast.hear.McastServer)
+			True
+			>>> isinstance(server, socketserver.UDPServer)
+			True
+			>>> server.logger is not None
+			True
+			>>> server.server_close()  # Clean up
+			>>>
+
 		"""
-		# double check this logic before release
-		_server_address = server_address if server_address else (
-			multicast._MCAST_DEFAULT_GROUP, multicast._MCAST_DEFAULT_PORT  # skipcq: PYL-W0212
-		)  # skipcq: PYL-W0212 - module ok
+		# Handle both missing server_address and missing/falsely host component
+		if not server_address or not server_address[0]:
+			_server_address = (
+				multicast._MCAST_DEFAULT_GROUP,  # skipcq: PYL-W0212 - module ok
+				server_address[1] if (
+					server_address and len(server_address) > 1
+				) else multicast._MCAST_DEFAULT_PORT,  # skipcq: PYL-W0212 - module ok
+			)  # skipcq: PYL-W0212 - module ok
+		else:
+			_server_address = server_address
 		logger_name = _server_address[0] if _server_address and len(_server_address) > 0 else None
 		if logger_name:  # pragma: no branch
 			self.__logger = logging.getLogger(f"{self.__log_handle__}.{logger_name}")

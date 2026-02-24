@@ -136,7 +136,7 @@ function cleanup() {
 	cd "${PRE_PWD}" && cd "${PRE_OLDPWD}" 2>/dev/null || true ;
 	cd "${PRE_PWD}" 2>/dev/null || true ;
 	# shellcheck disable=SC2317
-	unset LOCK_FILE 2>/dev/null || true ;
+	unset LOG_FILE 2>/dev/null || true ;
 	# shellcheck disable=SC2317
 	unset ERR_FILE 2>/dev/null || true ;
 	# shellcheck disable=SC2317
@@ -154,7 +154,7 @@ if shlock -f "${LOCK_FILE}" -p $$ ; then
 		# shellcheck disable=SC2173
 		#trap 'cleanup 2>/dev/null || rm -f "${LOCK_FILE} 2>/dev/null > /dev/null || true ; wait ; exit 1 ;' SIGSTOP || EXIT_CODE=7
 		trap 'cleanup 2>/dev/null || rm -f "${LOCK_FILE}" 2>/dev/null > /dev/null || true ; wait ; exit 130 ;' SIGINT || EXIT_CODE=130
-		trap 'cleanup 2>/dev/null || rm -f "${LOCK_FILE}" 2>/dev/null > /dev/null || true || true ; wait ; exit 137 ;' SIGABRT || EXIT_CODE=137
+		trap 'cleanup 2>/dev/null || rm -f "${LOCK_FILE}" 2>/dev/null > /dev/null || true ; wait ; exit 137 ;' SIGABRT || EXIT_CODE=137
 		# shellcheck disable=SC2086
 		trap 'cleanup 2>/dev/null || rm -f "${LOCK_FILE}" 2>/dev/null > /dev/null || true ; wait ; exit ${EXIT_CODE} ;' EXIT || EXIT_CODE=1
 else

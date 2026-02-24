@@ -87,9 +87,10 @@ EXIT_CODE=0
 # Results:
 #	writes a line to the file at the given path with the given input
 function create_line() {
-    local FILE="$1"
-    local INPUT="$2"
-    printf "%s\n" "${INPUT}" > "$FILE" || return 77;  # exit code 77 -- Permission Denied
+	local FILE="${1}"
+	local INPUT="${2}"
+	printf "%s\n" "${INPUT}" > "${FILE}" || return 77;  # exit code 77 -- Permission Denied
+	return 0  # return 0 on success
 }
 
 # Function to write a line to a file
@@ -102,9 +103,10 @@ function create_line() {
 # Results:
 #	writes a line to the file at the given path with the given input
 function write_line() {
-    local FILE="$1"
-    local INPUT="$2"
-    printf "%s\n" "${INPUT}" >> "$FILE" || return 77;  # exit code 77 -- Permission Denied
+	local FILE="${1}"
+	local INPUT="${2}"
+	printf "%s\n" "${INPUT}" >> "${FILE}" || return 77;  # exit code 77 -- Permission Denied
+	return 0  # return 0 on success
 }
 
 # Function to mark the file metadata
@@ -117,16 +119,20 @@ function write_line() {
 # Results:
 #	updated file metadata
 function mark_file() {
-    local FILE="$1"
-    local CMD="${2:-$(command -v xattr)}"
-    local created_by=(-w com.apple.xcode.CreatedByBuildSystem true)
+	local FILE="${1}"
+	local CMD="${2:-$(command -v xattr)}"
+	local created_by=(-w com.apple.xcode.CreatedByBuildSystem true)
+	local MRK_CODE=1  # default of 'fail unless successful'
 
-    if [ -n "$CMD" ]; then
-        # shellcheck disable=SC2086
-        "${CMD}" ${created_by[@]} "$FILE" 2> "${ERR_FILE}" >> "${ERR_FILE}" || touch -a "$FILE"
-    else
-        touch -a "$FILE"
-    fi
+	if [ -n "$CMD" ]; then
+		# shellcheck disable=SC2086
+		"${CMD}" ${created_by[@]} "${FILE}" 2> "${ERR_FILE}" >> "${ERR_FILE}" || touch -a "${FILE}"
+		MRK_CODE=$?
+	else
+		touch -a "${FILE}"
+		MRK_CODE=$?
+	fi
+	return $MRK_CODE  # exit code from touch -- expect success
 }
 
 # Function to generate the MANIFEST.in file
@@ -138,32 +144,38 @@ function mark_file() {
 # Results:
 #	generates the manifest.in
 function generate_manifest() {
-    local FILE="${1}"
-    create_line "$FILE" "include requirements.txt" || return $?
-    mark_file "$FILE" || return $?
-    for ITEM in "README.md" "LICENSE.md" "CHANGES.md" "HISTORY.md"; do
-        write_line "$FILE" "include $ITEM" || return $?
-    done
-    for ITEM in ".gitignore" ".git_skipList" ".gitattributes" ".gitmodules" \
-                ".deepsource.toml" ".*.ini" ".*.yml" ".*.yaml" \
-                ".*.conf" "package.json" "tests/*.py"; do
-        write_line "$FILE" "exclude $ITEM" || return $?
-    done
-    for ITEM in ".git" "codecov_env" ".DS_Store" ".local_pip_cleanup.txt"; do
-        write_line "$FILE" "global-exclude $ITEM" || return $?
-    done
-    for ITEM in "test-reports" ".github" ".circleci" "venv" "docs"; do
-        write_line "$FILE" "prune $ITEM" || return $?
-    done
-    return 0  # return 0 on success
+	local FILE="${1}"
+	create_line "${FILE}" "include requirements.txt" || return $?
+	mark_file "${FILE}" || return $?
+	for ITEM in "README.md" "LICENSE.md" "CHANGES.md" "HISTORY.md" ; do
+		write_line "${FILE}" "include $ITEM" || return $?
+	done
+	for ITEM in ".gitignore" ".git_skipList" ".gitattributes" ".gitmodules" \
+				".deepsource.toml" ".*.ini" ".*.yml" ".*.yaml" \
+				".*.conf" "package.json" "tests/*.py"; do
+		write_line "${FILE}" "exclude $ITEM" || return $?
+	done
+	for ITEM in ".git" "codecov_env" ".DS_Store" ".local_pip_cleanup.txt" ; do
+		write_line "${FILE}" "global-exclude $ITEM" || return $?
+	done
+	for ITEM in "test-reports" ".github" ".circleci" "venv" "docs" ; do
+		write_line "${FILE}" "prune $ITEM" || return $?
+	done
+	return 0  # return 0 on success
 }
+
 # Main execution
 function main() {
-    local manifest_file="${1:MANIFEST.in}"
-    local RET_CODE=1  # default of 'fail unless successful'
-    generate_manifest "$manifest_file"
-    RET_CODE=$?
-    return $RET_CODE
+	local manifest_file="MANIFEST.in"
+	local RET_CODE=1  # default of 'fail unless successful'
+	if [ -n "$1" ] ; then
+		generate_manifest "${1:-${manifest_file}}"
+		RET_CODE=$?
+	else
+		generate_manifest "${manifest_file}"
+		RET_CODE=$?
+	fi
+	return $RET_CODE
 }
 
 # invoke entry point and collect result
