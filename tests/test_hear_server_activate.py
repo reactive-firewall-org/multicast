@@ -20,6 +20,7 @@
 __module__ = "tests"
 
 try:
+	# Handle imports with CWE-758 mitigation: See details documented in tests.context.
 	try:
 		import context
 	except Exception as _cause:  # pragma: no branch
@@ -143,7 +144,7 @@ class HearServerInitTestSuite(context.BasicUsageTestSuite):
 			2. The server instance is also recognized as a UDPServer.
 			3. Cleanup is performed correctly after initialization.
 		"""
-		server = multicast.hear.McastServer(('224.0.0.1', 12345), None)
+		server = multicast.hear.McastServer(('224.0.0.1', self._the_test_port), None)
 		self.assertIsInstance(server, multicast.hear.McastServer)
 		self.assertIsInstance(server, socketserver.UDPServer)
 		server.server_close()  # Clean up
@@ -157,7 +158,7 @@ class HearServerInitTestSuite(context.BasicUsageTestSuite):
 			2. The logger's name ends with the expected multicast address.
 			3. Cleanup is performed correctly after initialization.
 		"""
-		test_addr = ('239.0.0.9', 23456)
+		test_addr = ('239.0.0.9', self._the_test_port)
 		server = multicast.hear.McastServer(test_addr, None)
 		self.assertIsNotNone(server.logger)
 		self.assertTrue(server.logger.name.endswith('239.0.0.9'))

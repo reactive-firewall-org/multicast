@@ -65,8 +65,11 @@ class ManifestInclusionTestSuite(BasicUsageTestSuite):
 		# Temporarily relax the default umask (to allow creation of venv files)
 		original_umask = os.umask(0o027)  # Temporarily set the umask
 		# Build the source distribution
-		theBuildtxt = context.checkPythonCommand(build_arguments, stderr=subprocess.STDOUT)
-		os.umask(original_umask)  # Restore the original umask
+		try:
+			theBuildtxt = context.checkPythonCommand(build_arguments, stderr=subprocess.STDOUT)
+		finally:
+			os.umask(original_umask)  # Restore the original umask
+			self.assertIsNotNone(theBuildtxt, f"Failed with {build_arguments} in relaxed state")
 		self.assertIn(str("running sdist"), str(theBuildtxt))
 		dist_dir = os.path.join(os.getcwd(), 'dist')
 		dist_files = sorted(os.listdir(dist_dir), reverse=True)
