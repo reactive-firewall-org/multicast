@@ -28,7 +28,7 @@ applications, making it straightforward to work with multicast sockets.
 [![Code Coverage](https://codecov.io/gh/reactive-firewall-org/multicast/branch/master/graph/badge.svg)](https://codecov.io/gh/reactive-firewall-org/multicast/branch/master/)
 [![Coverage Status](https://coveralls.io/repos/github/reactive-firewall-org/multicast/badge.svg)](https://coveralls.io/github/reactive-firewall-org/multicast)
 [![Bandit](https://github.com/reactive-firewall-org/multicast/actions/workflows/bandit.yml/badge.svg?branch=master)](https://github.com/reactive-firewall-org/multicast/actions/workflows/bandit.yml)
-[![OSSF-Scorecard Score](https://img.shields.io/ossf-scorecard/github.com/reactive-firewall-org/multicast)](https://github.com/reactive-firewall-org/multicast)
+[![OSSF-Scorecard Score](https://img.shields.io/ossf-scorecard/github.com/reactive-firewall-org/multicast)](https://scorecard.dev/viewer/?uri=github.com/reactive-firewall-org/multicast)
 [![Style Status](https://github.com/reactive-firewall-org/multicast/actions/workflows/flake8.yml/badge.svg?branch=master&event=push)](https://github.com/reactive-firewall-org/multicast/actions/workflows/flake8.yml)
 ![Size](https://img.shields.io/github/languages/code-size/reactive-firewall-org/multicast.svg)
 [![Scc Count Badge](https://sloc.xyz/github/reactive-firewall-org/multicast/?category=code)](https://github.com/reactive-firewall-org/multicast/)
