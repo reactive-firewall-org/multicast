@@ -59,16 +59,19 @@ except Exception as _cause:  # pragma: no branch
 @context.markWithMetaTag("mat", "build")
 class BuildPEP517TestSuite(BasicUsageTestSuite):
 	"""
-	Test suite for PEP 621 metadata compliance.
+	Test suite for PEP 517 build compatibility.
 
-	This test suite verifies that the project adheres to PEP 621 standards
-	for project metadata specification in pyproject.toml.
+	This test suite verifies that the project adheres to PEP 517 standards
+	for project builds. Minimal compatibility only.
+
+	Attributes:
+		__module__ (str): Module identifier
 
 	Meta Testing:
 
 		>>> import tests.test_build
-		>>> tests.test_build.BuildPEP621TestSuite
-		<class 'tests.test_build.BuildPEP621TestSuite'>
+		>>> tests.test_build.BuildPEP517TestSuite
+		<class 'tests.test_build.BuildPEP517TestSuite'>
 		>>>
 
 	"""
@@ -126,6 +129,33 @@ class BuildPEP517TestSuite(BasicUsageTestSuite):
 
 @context.markWithMetaTag("mat", "build")
 class BuildPEP621TestSuite(BasicUsageTestSuite):
+	"""
+	Test suite for validating the PEP 621 compliance of a Python package build configuration.
+
+	This test suite is designed to ensure that a project adheres to the standards set by
+	Python Enhancement Proposal (PEP) 621, which outlines the structure and required fields
+	for the `pyproject.toml` file. This configuration file is essential for the modern Python
+	build system, allowing for improved project management and package distribution.
+
+	Attributes:
+		__module__ (str): Module identifier
+
+	Methods:
+		test_has_configs_WHEN_supporting_pep621:
+			Tests the presence of the required project configuration file
+			(`pyproject.toml`) to verify compliance with PEP 621 standards.
+
+	References:
+	- PEP 621: https://peps.python.org/pep-0621/
+
+	Meta Testing:
+
+		>>> import tests.test_build
+		>>> tests.test_build.BuildPEP621TestSuite
+		<class 'tests.test_build.BuildPEP621TestSuite'>
+		>>>
+
+	"""
 
 	__module__ = "tests.test_build"
 
