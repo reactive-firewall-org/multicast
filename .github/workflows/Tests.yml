@@ -939,7 +939,7 @@ jobs:
       id: integration-codecov-results-upload
       uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
       with:
-        report-type: 'test_results'
+        report_type: 'test_results'
         token: ${{ secrets.CODECOV_TOKEN }}
         job_code: ${{ needs.check_mats.outputs.build_id }}-${{ github.run_number }}
         override_commit: ${{ needs.check_mats.outputs.build_sha }}
