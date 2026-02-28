@@ -83,7 +83,7 @@ class McastServerActivateTestSuite(context.BasicUsageTestSuite):
 				a request. In this case, it is just a test fixture and does not
 				perform any actions.
 				"""
-				pass  # Handler logic is not the focus here
+				pass  # skipcq: PTC-W0107 -- Handler logic is not the focus here
 
 		# Create an instance of McastServer
 		server_address = (MCAST_GROUP, 0)  # Bind to any available port
