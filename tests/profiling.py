@@ -111,9 +111,21 @@ class timewith():
 
 	@property
 	def elapsed(self):
+		"""Fetches the computed elapsed time property.
+
+		Computed as `time.time() - self.start`.
+
+		Returns:
+			The computed time from self.start.
+		"""
 		return time.time() - self.start
 
 	def checkpoint(self, name=""):
+		"""Prints diagnostic message with elapsed time, from start, and optional name.
+
+		Result:
+			A diagnostic message is printed.
+		"""
 		print(
 			str(f"{self.name} {name} took {self.elapsed} seconds").strip()
 		)
@@ -214,11 +226,12 @@ try:  # noqa
 	from line_profiler import LineProfiler
 
 	def do_profile(follow=None):  # pragma: no cover
+		"""Decorates a function to profile the function."""
 		if follow is None:
 			follow = []
 
-		def inner(func):
-			def profiled_func(*args, **kwargs):
+		def inner(func):  # skipcq: PY-D0003
+			def profiled_func(*args, **kwargs):  # skipcq: PY-D0003
 				try:
 					profiler = LineProfiler()
 					profiler.add_function(func)
@@ -237,8 +250,8 @@ except ImportError:  # pragma: no cover
 		if follow is None:
 			follow = []
 
-		def inner(func):
-			def nothing(*args, **kwargs):
+		def inner(func):  # skipcq: PY-D0003
+			def nothing(*args, **kwargs):  # skipcq: PY-D0003
 				return func(*args, **kwargs)
 			return nothing
 		return inner
@@ -254,4 +267,4 @@ if __name__ in '__main__':  # pragma: no cover
 	try:
 		exitcode = main(sys.argv[1:])
 	finally:
-		exit(exitcode)  # skipcq: PYL-R1722 - intentionally allow overwriteing exit for testing
+		exit(exitcode)  # skipcq: PYL-R1722 - intentionally allow overwriting exit for testing
