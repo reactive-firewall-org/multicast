@@ -171,23 +171,28 @@ class HearServerInitTestSuite(context.BasicUsageTestSuite):
 		Verifies that:
 			1. The logger is initialized with the default name when server_address is None.
 			2. The logger is initialized with the default name when server_address is an empty tuple.
-			3. Cleanup is performed correctly after initialization.
+			3. The logger is initialized with the default name when server_address' HOST is None.
+			4. Cleanup is performed correctly after initialization.
 		"""
-		server = multicast.hear.McastServer(None, None)
-		self.assertIsNotNone(server.logger)
-		self.assertEqual(
-			server.logger.name,
-			f"multicast.hear.McastServer.{multicast._MCAST_DEFAULT_GROUP}"
-		)
-		server.server_close()  # Clean up
-
-		server = multicast.hear.McastServer((), None)
-		self.assertIsNotNone(server.logger)
-		self.assertEqual(
-			server.logger.name,
-			f"multicast.hear.McastServer.{multicast._MCAST_DEFAULT_GROUP}"
-		)
-		server.server_close()  # Clean up
+		host_test_fixtures = [None, (), (None, self._the_test_port)]
+		_fail_fixture: str = "An expected logger was missing for the McastServer instance"
+		for host_test_fixture in host_test_fixtures:
+			with self.subTest(host_test_fixture=host_test_fixture):
+				server = None
+				_test_server_logger_name_cache = None
+				try:
+					server = multicast.hear.McastServer(host_test_fixture, None)
+					self.assertIsNotNone(server.logger, _fail_fixture)
+					_test_server_logger_name_cache = server.logger.name
+				except Exception as _cause:
+					context.debugtestError(_cause)
+				finally:
+					server.server_close()  # Clean up
+				# assert to actually test
+				self.assertEqual(
+						_test_server_logger_name_cache,
+						f"multicast.hear.McastServer.{multicast._MCAST_DEFAULT_GROUP}",  # skipcq: PYL-W0212
+					)  # skipcq: PYL-W0212 - Test OK
 
 
 if __name__ == '__main__':

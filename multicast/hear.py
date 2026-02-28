@@ -863,7 +863,7 @@ class McastHEAR(multicast.mtool):
 			None: This method does not return a value.
 
 		Note:
-			This is trivial implementation make this an optional abstract method.
+			This is a trivial implementation to make this an optional abstract method.
 		"""
 		pass  # skipcq - Optional abstract method
 
