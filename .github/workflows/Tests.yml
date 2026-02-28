@@ -324,7 +324,7 @@ jobs:
       if: ${{ always() }}
       shell: bash
       run: |
-        BUILD_LINK="[${VCS_COMMIT_ID}](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
+        BUILD_LINK="[![${VCS_COMMIT_ID}](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2Freactive-firewall-org%2Fmulticast%2Fcommits%2F${VCS_COMMIT_ID}&query=%24.sha&logo=github&label=SHA&cacheSeconds=3600)](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
         if [[ "${{ steps.coverage_outcome.outcome }}" == "success" ]] ; then
           printf "%s\n" "  * ${PASS_ICON} Codebase Coverage Testing succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for ${BUILD_LINK}" > "$COV_STEP_SUMMARY"
           printf "%s\n" " ${PASS_ICON} Codebase Coverage Testing succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for \`${VCS_COMMIT_ID}\`" >> "$GITHUB_STEP_SUMMARY"
@@ -565,7 +565,7 @@ jobs:
       if: ${{ always() }}
       shell: bash
       run: |
-        BUILD_LINK="[${VCS_COMMIT_ID}](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
+        BUILD_LINK="[![${VCS_COMMIT_ID}](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2Freactive-firewall-org%2Fmulticast%2Fcommits%2F${VCS_COMMIT_ID}&query=%24.sha&logo=github&label=SHA&cacheSeconds=3600)](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
         if [[ "${{ steps.doctests_outcome.outcome }}" == "success" ]] ; then
           printf "%s\n" "  * ${PASS_ICON} Doctests succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for ${BUILD_LINK}" > "$DOC_STEP_SUMMARY"
           printf "%s\n" " ${PASS_ICON} Doctests succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for \`${VCS_COMMIT_ID}\`" >> "$GITHUB_STEP_SUMMARY"
@@ -1078,7 +1078,7 @@ jobs:
       if: ${{ always() }}
       shell: bash
       run: |
-        BUILD_LINK="[${VCS_COMMIT_ID}](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
+        BUILD_LINK="[![${VCS_COMMIT_ID}](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2Freactive-firewall-org%2Fmulticast%2Fcommits%2F${VCS_COMMIT_ID}&query=%24.sha&logo=github&label=SHA&cacheSeconds=3600)](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
         if [[ "${{ steps.integration_outcome.outcome }}" == "success" ]] ; then
           printf "%s\n\n" "## ${PASS_ICON} Integration Acceptance Testing succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for ${BUILD_LINK}" > "$TESTS_STEP_SUMMARY"
           printf "%s\n" " ${PASS_ICON} Integration Acceptance Testing succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for \`${VCS_COMMIT_ID}\`" >> "$GITHUB_STEP_SUMMARY"
@@ -1104,7 +1104,11 @@ jobs:
         if [[ "${{ steps.integration-codecov-results-upload.outcome }}" == "success" ]] ; then
           printf "%s\n" "    * ${PASS_ICON} Uploading integration testing reports artifact succeeded" >> "$TESTS_STEP_SUMMARY"
         else
-          printf "%s\n" "    * ${FAIL_ICON} Uploading integration testing reports artifact failed" >> "$TESTS_STEP_SUMMARY"
+          if [[ ("${TESTS_USE_PYTEST}" == "1") ]] ; then
+            printf "%s\n" "    * ${FAIL_ICON} Uploading integration testing reports artifact failed" >> "$TESTS_STEP_SUMMARY"
+          else
+            printf "%s\n" "    * ${SKIP_ICON} Uploading integration testing report artifact was skipped (without \`pytest\`)" >> "$TESTS_STEP_SUMMARY"
+          fi
         fi
         if [[ "${{ steps.integration-doctests.outcome }}" == "success" ]] ; then
           printf "%s\n" "  * ${PASS_ICON} Integrated Doctesting succeeded" >> "$TESTS_STEP_SUMMARY"

@@ -239,7 +239,7 @@ jobs:
             echo "## :building_construction: Build" >> "${MATS_COMMENT_BODY}"
             echo "" >> "${MATS_COMMENT_BODY}"
             if [[ "${{ needs.check_build.outputs.should_run }}" == "true" ]]; then
-              echo " :ballot_box_with_check: BUILD \`${{ needs.check_build.outputs.trigger_id }}\` succeeded with commit [${BUILD_SHA}](https://github.com/reactive-firewall-org/multicast/commit/${BUILD_SHA})" >> "${MATS_COMMENT_BODY}"
+              echo " :ballot_box_with_check: BUILD \`${{ needs.check_build.outputs.trigger_id }}\` succeeded with commit [![${BUILD_SHA}](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2Freactive-firewall-org%2Fmulticast%2Fcommits%2F${BUILD_SHA}&query=%24.sha&logo=github&label=SHA&cacheSeconds=200)](https://github.com/reactive-firewall-org/multicast/commit/${BUILD_SHA})" >> "${MATS_COMMENT_BODY}"
               echo "build_success=true" >> "$GITHUB_OUTPUT"
             else
               echo " :x: BUILD ${{ needs.check_build.outputs.trigger_id }} failed" >> "${MATS_COMMENT_BODY}"
