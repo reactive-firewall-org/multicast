@@ -97,6 +97,7 @@ class BuildRequirementsTxtTestSuite(context.BasicUsageTestSuite):
 	def test_requirements_installation(self):
 		"""Attempt to install dependencies from 'tests/requirements.txt' in a virtual env."""
 		env_dir = "test_env"
+		result = None
 		# Temporarily relax the default umask (to allow creation of venv files)
 		original_umask = os.umask(0o027)  # Temporarily set the umask
 		# Build the source distribution

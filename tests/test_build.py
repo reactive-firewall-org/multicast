@@ -97,6 +97,7 @@ class BuildPEP517TestSuite(BasicUsageTestSuite):
 		build_arguments = [
 			f"{str(sys.executable)} -m coverage run", "-p", "-m", "build", "--sdist", "--wheel",
 		]
+		theBuildtxt = None
 		# Temporarily relax the default umask (to allow creation of venv files)
 		original_umask = os.umask(0o027)  # Temporarily set the umask
 		# Build the source distribution

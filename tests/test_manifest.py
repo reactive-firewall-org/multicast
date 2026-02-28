@@ -62,6 +62,7 @@ class ManifestInclusionTestSuite(BasicUsageTestSuite):
 			"build",
 			"--sdist",
 		]
+		theBuildtxt = None
 		# Temporarily relax the default umask (to allow creation of venv files)
 		original_umask = os.umask(0o027)  # Temporarily set the umask
 		# Build the source distribution
