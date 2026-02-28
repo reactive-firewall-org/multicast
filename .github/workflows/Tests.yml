@@ -127,7 +127,7 @@ jobs:
           ref: ${{ steps.load_build_info.outputs.build_sha }}
           sparse-checkout: '.github/actions/check-control'
           repository: reactive-firewall-org/multicast
-          github-token: ${{ env.GH_TOKEN }}
+          token: ${{ env.GH_TOKEN }}
       - name: "Queue Tests GitHub Check"
         id: output_tests_check_id
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') }}
