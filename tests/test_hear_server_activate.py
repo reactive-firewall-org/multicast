@@ -190,9 +190,9 @@ class HearServerInitTestSuite(context.BasicUsageTestSuite):
 					server.server_close()  # Clean up
 				# assert to actually test
 				self.assertEqual(
-						_test_server_logger_name_cache,
-						f"multicast.hear.McastServer.{multicast._MCAST_DEFAULT_GROUP}",  # skipcq: PYL-W0212
-					)  # skipcq: PYL-W0212 - Test OK
+					_test_server_logger_name_cache,
+					f"multicast.hear.McastServer.{multicast._MCAST_DEFAULT_GROUP}",  # skipcq: PYL-W0212
+				)  # skipcq: PYL-W0212 - Test OK
 
 
 if __name__ == '__main__':
