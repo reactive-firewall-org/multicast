@@ -60,7 +60,20 @@
 #    even if the above stated remedy fails of its essential purpose.
 ################################################################################
 
-ulimit -t 60
+# USAGE:
+#  ~$ $0 GRP CAT
+# Arguments:
+# GRP (Required) -- Name of test Group to run (e.g., mat|extra|fuzz|pref)
+# CAT (Optional) -- Name of the group's Category to select -- omit to mean all
+#
+# WARNING:
+#    DO NOT INVOKE DIRECTLY
+#    CALL ONLY FROM Makefile test-* targets
+#
+
+################################################################################
+
+ulimit -t 1300
 # setting the path may break brain-dead CI that uses crazy paths
 # PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
 umask 137
@@ -69,21 +82,35 @@ umask 137
 # shellcheck disable=SC2155
 export LC_CTYPE="${LC_CTYPE:-'en_US.UTF-8'}"
 
+# Global variable to track initial directories
+readonly PRE_OLDPWD="${OLDPWD:-${PWD:-$(pwd)}}"
+readonly PRE_PWD="${PWD:-$(pwd)}"
+
+# rest of the script vars
+LOG_FILE="test_log_${PPID}.log"
+ERR_FILE="test_log_errors_${PPID}.log"
+LOCK_FILE="${TMPDIR:-/tmp}/org.pak.multicast.coverage-helper-shell"
+EXIT_CODE=1
+
 # Function to check if a command exists.
 
 # USAGE:
-#  ~$ check_command CMD
+#	~$ check_command CMD
 # Arguments:
 # CMD (Required) -- Name of the command to check
 # Results:
-#    exits 64 -- missing required argument
-#    exits 126 -- check complete and has failed, can not find given command.
-#    returns successful -- check complete and command found to be executable.
+#	exits 64 -- missing required argument
+#	exits 126 -- check complete and has failed, can not find given command.
+#	returns successful -- check complete and command found to be executable.
 function check_command() {
-    test -z "$1" && { printf "%s\n" "Error: command name is required to check for existence." >&2 ; exit 64 ; } ;
-    local cmd="$1" ;
-    # shellcheck disable=SC2086
-    test -x "$(command -v ${cmd})" || { printf "%s\n" "Error: Required command '$cmd' is not found." >&2 ; exit 126 ; } ;
+	test -z "$1" && { printf "::error file=%s,line=%s,title=COMMAND::%s\n" \
+				"${SCRIPT_FILE}" "${BASH_LINENO:-0}" \
+				"Error: command name is required to check for existence." >&2 ; exit 64 ;} ;
+	local cmd="$1" ;
+	# shellcheck disable=SC2086
+	test -x "$(command -v ${cmd})" || { printf "::error file=%s,line=%s,title=COMMAND::%s\n" \
+				"${SCRIPT_FILE}" "${BASH_LINENO:-0}" \
+				"Error: Required command '$cmd' is not found." >&2 ; exit 126 ;} ;
 }  # end check_command()
 # propagate/export function to sub-shells
 export -f check_command
@@ -94,21 +121,27 @@ hash -p ./.github/tool_shlock_helper.sh shlock || { printf "%s\n" "Error: Failed
 # Check required commands
 check_command grep ;
 check_command python3 ;
-check_command make ;
 check_command git ;
-check_command tee ;
 check_command shlock ;
 
-# rest of the script vars
-LOG_FILE="test_log_${PPID}.log"
-ERR_FILE="test_log_errors_${PPID}.log"
-LOCK_FILE="${TMPDIR:-/tmp}/org.pak.multicast.cov-integration-shell"
-EXIT_CODE=1
-
 function cleanup() {
-	rm -f ./"${LOG_FILE}" 2>/dev/null || true ; wait ;
-	rm -f ./"${ERR_FILE}" 2>/dev/null || true ; wait ;
+	# shellcheck disable=SC2317
+	rm -f "${LOG_FILE}" 2>/dev/null || true ; wait ;
+	# shellcheck disable=SC2317
+	rm -f "${ERR_FILE}" 2>/dev/null || true ; wait ;
+	# shellcheck disable=SC2317
 	rm -f "${LOCK_FILE}" 2>/dev/null || true ; wait ;
+		# best effort to restore starting location
+	# shellcheck disable=SC2015
+	cd "${PRE_PWD}" && cd "${PRE_OLDPWD}" 2>/dev/null || true ;
+	cd "${PRE_PWD}" 2>/dev/null || true ;
+	# shellcheck disable=SC2317
+	unset LOG_FILE 2>/dev/null || true ;
+	# shellcheck disable=SC2317
+	unset ERR_FILE 2>/dev/null || true ;
+	# shellcheck disable=SC2317
+	unset LOCK_FILE 2>/dev/null || true ; wait ;
+	# shellcheck disable=SC2317
 	hash -d shlock 2>/dev/null > /dev/null || true ;
 }
 
@@ -121,7 +154,7 @@ if shlock -f "${LOCK_FILE}" -p $$ ; then
 		# shellcheck disable=SC2173
 		#trap 'cleanup 2>/dev/null || rm -f "${LOCK_FILE} 2>/dev/null > /dev/null || true ; wait ; exit 1 ;' SIGSTOP || EXIT_CODE=7
 		trap 'cleanup 2>/dev/null || rm -f "${LOCK_FILE}" 2>/dev/null > /dev/null || true ; wait ; exit 130 ;' SIGINT || EXIT_CODE=130
-		trap 'cleanup 2>/dev/null || rm -f "${LOCK_FILE}" 2>/dev/null > /dev/null || true || true ; wait ; exit 137 ;' SIGABRT || EXIT_CODE=137
+		trap 'cleanup 2>/dev/null || rm -f "${LOCK_FILE}" 2>/dev/null > /dev/null || true ; wait ; exit 137 ;' SIGABRT || EXIT_CODE=137
 		# shellcheck disable=SC2086
 		trap 'cleanup 2>/dev/null || rm -f "${LOCK_FILE}" 2>/dev/null > /dev/null || true ; wait ; exit ${EXIT_CODE} ;' EXIT || EXIT_CODE=1
 else
@@ -143,112 +176,109 @@ else
 fi
 
 if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
-TEST_MCAST_PORT=$(((RANDOM % 16384) + 49152));
-TEST_MCAST_GROUP='224.0.0.1' ;
-COVERAGE_DATA_FILE="./coverage_integration" ;
-if [[ -n "${PYTHON}" ]] && [[ -x "${PYTHON}" ]] ; then
-	PY_3_CMD="${PYTHON}"
-else
-	PY_3_CMD=$(command -v python3);
-	if [[ -z "${PY_3_CMD}" ]] ; then
-		printf "%s\n" "::error file='${0}',title='Missing Python'::No Python interpreter found!" >&2
+	# TEST_MCAST_PORT=$(((RANDOM % 16384) + 49152));
+	# TEST_MCAST_GROUP='224.0.0.1' ;
+	TEST_GROUP="${1}" ;
+	TEST_CAT="${2}" ;
+	COVERAGE_DATA_FILE="coverage_${TEST_CAT:-${TEST_GROUP:-all}}" ;
+	export COVERAGE_DATA_FILE
+	if [[ -n "${PYTHON}" ]] && [[ -x "${PYTHON}" ]] ; then
+		PY_3_CMD="${PYTHON}"
+	else
+		PY_3_CMD=$(command -v python3);
+		if [[ -z "${PY_3_CMD}" ]] ; then
+			printf "%s\n" "::error file='${0}',title='Missing Python'::No Python interpreter found!" >&2
+			EXIT_CODE=126 ;
+		fi ;
+	fi ;
+	# Verify the Python interpreter is actually working
+	if [[ ("${EXIT_CODE}" -eq 0) ]] && ! "${PY_3_CMD}" --version >/dev/null 2>&1 ; then
+		printf "%s\n" "::error::Python interpreter at '${PY_3_CMD}' is not working properly" >&2 ;
 		EXIT_CODE=126 ;
 	fi ;
-fi ;
-# Verify the Python interpreter is actually working
-if [[ ("${EXIT_CODE}" -eq 0) ]] && ! "${PY_3_CMD}" --version >/dev/null 2>&1 ; then
-	printf "%s\n" "::error::Python interpreter at '${PY_3_CMD}' is not working properly" >&2 ;
-	EXIT_CODE=126 ;
-fi ;
-printf "%s\n" "::debug:: Will Use ${PY_3_CMD}"
-# shellcheck disable=SC2086
-COVERAGE_CMD="${PY_3_CMD} -m coverage run -p --source=multicast -m";
-export COVERAGE_CMD
+	printf "%s\n" "::debug:: Will Use ${PY_3_CMD}"
+	# shellcheck disable=SC2086
+	COVERAGE_CMD="${PY_3_CMD} -m coverage run -p --source=multicast -m";
+	export COVERAGE_CMD
 
+	if [[ -n "${PYTEST}" ]] && [[ -n "$TESTS_USE_PYTEST" ]] ; then
+		PYTEST_CMD="${PYTEST}"
+	else
+		# shellcheck disable=SC2086
+		PYTEST_CMD="${PY_3_CMD} -m pytest --cache-clear --junitxml=test-reports/junit.xml -v --rootdir=."
+	fi ;
+
+	if [[ -n "${COVERAGE_ARGS}" ]] && [[ -n "$TESTS_USE_PYTEST" ]] ; then
+		printf "%s\n" "::debug:: Will Use coverage arguments: ${COVERAGE_ARGS}"
+	else
+		COVERAGE_ARGS="";
+	fi ;
 fi ;
 # start test-suite
 if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
-make -j1 -f Makefile test-reports || EXIT_CODE=3 ;
-printf "%s\n\n" "Start of Log:" > ./"${LOG_FILE}" ; wait ;
-printf "%s\n\n" "Will use host-port: [${TEST_MCAST_GROUP} : ${TEST_MCAST_PORT}]" >> ./"${LOG_FILE}" ; wait ;
-printf "%s\n\n" "Start of Integration Test one-shot:" >> ./"${LOG_FILE}" ; wait ;
-# shellcheck disable=SC2086
-( sleep 1 ; ${COVERAGE_CMD} multicast --use-std RECV --port "${TEST_MCAST_PORT}" --groups "${TEST_MCAST_GROUP}" --group "${TEST_MCAST_GROUP}" 2>./"${ERR_FILE}" & sleep 6 ; kill -9 $! 2>/dev/null ) >> ./"${LOG_FILE}" & true ;
-
-for PCOUNT in $(seq 1 5) ; do
-	# Test message sending operations rapidly
-	# shellcheck disable=SC2086
-	${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" --message "TEST from ${PCOUNT}" 2>/dev/null & : ;
-done ;
-# shellcheck disable=SC2086
-${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" --message "STOP from $TEST_MCAST_GROUP" 2>/dev/null & sleep 1 ;
-# shellcheck disable=SC2086
-${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" --message "STOP" 2>/dev/null ;
-printf "%s\n\n" "End of Integration Test one-shot" >> ./"${LOG_FILE}" ; wait ;
-fi ;
-if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
-printf "%s\n\n" "Start of Integration Test daemon:" >> ./"${LOG_FILE}" ; wait ;
-# shellcheck disable=SC2086
-( sleep 1 ; ${COVERAGE_CMD} multicast --daemon HEAR --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" 2>./"${ERR_FILE}" & sleep 6 ; kill -9 $! 2>/dev/null ) >> ./"${LOG_FILE}" & true ;
-
-for PCOUNT in $(seq 1 5) ; do
-	# Test concurrent message sending operations, all to the same destination group
-	# shellcheck disable=SC2086
-	${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" --message "TEST from $PCOUNT" 2>/dev/null & : ;
-done ;
-# shellcheck disable=SC2086
-${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" --message "STOP from $TEST_MCAST_GROUP" 2>/dev/null & sleep 1 ;
-# shellcheck disable=SC2086
-${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" --message "STOP" 2>/dev/null ;
-wait ;
-printf "%s\n\n" "End of Integration Test daemon" >> ./"${LOG_FILE}" ; wait ;
-fi ;
-# test --pipe mode added in v2.1.0
-if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
-printf "%s\n\n" "Start of Integration Test pipe:" >> ./"${LOG_FILE}" ; wait ;
-# shellcheck disable=SC2086
-( sleep 1 ; ${COVERAGE_CMD} multicast --daemon HEAR --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" 2>./"${ERR_FILE}" & sleep 6 ; kill -9 $! 2>/dev/null ) >> ./"${LOG_FILE}" & true ;
-
-for NOISE_ID in $(seq 1 5) ; do
-	# Test concurrent message sending operations, each using piped input
-	# shellcheck disable=SC2086
-	{ printf "%s\n" "TEST input from $NOISE_ID" | ${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" --pipe 2>/dev/null ;} & : ;
-done ;
-# shellcheck disable=SC2086
-printf "%s\n" "TEST input from $NOISE_ID" | ${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" --pipe 2>/dev/null & sleep 1 ;
-# shellcheck disable=SC2086
-${COVERAGE_CMD} multicast SAY --port "${TEST_MCAST_PORT}" --group "${TEST_MCAST_GROUP}" --message "STOP" 2>/dev/null ;
-wait ;
-printf "%s\n\n" "End of Integration Test pipe" >> ./"${LOG_FILE}" ; wait ;
-fi ;
-# cleanup from test-suite
-
-if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
-
-# shellcheck disable=SC2086
-${PY_3_CMD} -m coverage combine --data-file="${COVERAGE_DATA_FILE}" ./.coverage.* || EXIT_CODE=2 ;
-if [[ -r "${COVERAGE_DATA_FILE}" ]] ; then
-	# shellcheck disable=SC2086
-	${PY_3_CMD} -m coverage report -m --include=multicast/* --data-file="${COVERAGE_DATA_FILE}" 2>/dev/null || EXIT_CODE=2 ;
-	# shellcheck disable=SC2086
-	${PY_3_CMD} -m coverage xml -o ./test-reports/coverage_supplement.xml --include=multicast/* --data-file="${COVERAGE_DATA_FILE}" || EXIT_CODE=2 ;
-else
-	printf "%s\n" "::error file='${0}',title='No Coverage':: Coverage collection FAILED!" >>./"${ERR_FILE}" || EXIT_CODE=2 ;
-fi ;
-wait ;
+	if [ -n "$TESTS_USE_PYTEST" ]; then
+		# Use pytest if specified
+		if [ -n "${TEST_GROUP}" ]; then
+			if [ -n "${TEST_CAT}" ]; then
+				# shellcheck disable=SC2086
+				${PYTEST_CMD} $COVERAGE_ARGS -m "${TEST_GROUP} and ${TEST_CAT}" tests/ || EXIT_CODE=2 ;
+			else
+				# shellcheck disable=SC2086
+				${PYTEST_CMD} $COVERAGE_ARGS -m "${TEST_GROUP}" tests/ || EXIT_CODE=2 ;
+			fi ;
+		else
+			# shellcheck disable=SC2086
+			${PYTEST_CMD} $COVERAGE_ARGS || EXIT_CODE=2 ;
+		fi ;
+	else
+		if [ -n "${TEST_GROUP}" ]; then
+			if [ -n "${TEST_CAT}" ]; then
+				# shellcheck disable=SC2086
+				${COVERAGE_CMD} tests.run_selective --group ${TEST_GROUP} --category ${TEST_CAT} || EXIT_CODE=2 ;
+			else
+				# shellcheck disable=SC2086
+				${COVERAGE_CMD} tests.run_selective --group ${TEST_GROUP} || EXIT_CODE=2 ;
+			fi ;
+		else
+			# shellcheck disable=SC2086
+			${COVERAGE_CMD} tests.run_selective || EXIT_CODE=2 ;
+		fi ;
+		wait ;
+		# cleanup from test-suite
+		if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
+			# shellcheck disable=SC2086
+			${PY_3_CMD} -m coverage combine --keep --data-file=${COVERAGE_DATA_FILE} ./.coverage.* 2>./"${ERR_FILE}" || EXIT_CODE=2 ;
+			if [[ -r "${COVERAGE_DATA_FILE}" ]] ; then
+				if [ -n "${TEST_GROUP}" ]; then
+					# shellcheck disable=SC2086
+					${PY_3_CMD} -m coverage report -m --include=multicast/* --data-file=${COVERAGE_DATA_FILE} 2>/dev/null || : ;  # always continue
+					# shellcheck disable=SC2086
+					${PY_3_CMD} -m coverage xml -o test-reports/coverage_${TEST_CAT:-${TEST_GROUP}}.xml --include=multicast/* --data-file="${COVERAGE_DATA_FILE}" 2>/dev/null || : ;  # always continue
+				else
+					# shellcheck disable=SC2086
+					${PY_3_CMD} -m coverage combine --append ./coverage_* 2>/dev/null || : ;  # always continue
+					# shellcheck disable=SC2086
+					${PY_3_CMD} -m coverage report -m --include=multicast/* 2>/dev/null || : ;  # always continue
+					# shellcheck disable=SC2086
+					${PY_3_CMD} -m coverage xml -o test-reports/coverage.xml --include=multicast/* 2>/dev/null || : ;  # always continue
+				fi ;
+			else
+				printf "%s\n" "::error file='${0}',title='No Coverage':: Coverage collection FAILED!" >&2 ;
+			fi ;
+		fi ;
+		wait ;
+	fi ;
 fi ;
 
-cp -f ./"${LOG_FILE}" ./test-reports/integration_data_log.log 2>/dev/null ; wait ;
-printf "%s\n" "" | tee -a ./test-reports/integration_data_log.log ; wait ;
+# no logs to handle in helper
 
-if [[ ( -r ./${ERR_FILE} ) ]] ; then
-	printf "%s\n" "Errors: " | tee -a ./test-reports/integration_data_log.log ; wait ;
-	cat <./"${ERR_FILE}" | tee -a ./test-reports/integration_data_log.log ; wait ;
-fi
-
+unset _TEST_ROOT_DIR 2>/dev/null || : ;
+unset COVERAGE_DATA_FILE 2>/dev/null || : ;
 unset COVERAGE_CMD 2>/dev/null || : ;
-unset TEST_MCAST_GROUP 2>/dev/null || : ;
-unset TEST_MCAST_PORT 2>/dev/null || : ;
+unset PYTEST_CMD 2>/dev/null || : ;
+unset PY_3_CMD 2>/dev/null || : ;
+# unset TEST_MCAST_GROUP 2>/dev/null || : ;
+# unset TEST_MCAST_PORT 2>/dev/null || : ;
 
 cleanup || rm -f "${LOCK_FILE}" 2>/dev/null > /dev/null || true ; wait ;
 

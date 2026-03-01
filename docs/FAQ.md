@@ -191,7 +191,7 @@ MCAST_PORT = int(random.SystemRandom().randint(49152, 65535))  # Replace with yo
 # There are 3 logical choices for the vast majority of users:
 # 1. '0.0.0.0' for Promiscuous mode (Usually needs privileges to use on most Operating Systems)
 # 2. The actual interface IPv4 dot notation address for unprivileged mode
-# 3. None, Linux and MacOS implementations can let the system choose by passing the
+# 3. None, Linux and macOS implementations can let the system choose by passing the
 #    MCAST_GRP to the Python socket.bind operation (handled by multicast.skt when missing Host IP)
 #    Windows users must use option 1 or 2 for now.
 # This address is per socket (e.g., can be chosen per socket even if on a single interface)
@@ -498,6 +498,6 @@ work as far as the `multicast` module is concerned.
 
 ***
 
-#### Copyright (c) 2021-2025, Mr. Walls
+#### Copyright (c) 2021-2026, Mr. Walls
 
 [![License - MIT](https://img.shields.io/pypi/l/multicast?cacheSeconds=3600)](https://github.com/reactive-firewall-org/multicast/tree/HEAD/LICENSE.md)

@@ -2,7 +2,7 @@
 
 # Multicast Python Module
 # ..................................
-# Copyright (c) 2017-2025, Mr. Walls
+# Copyright (c) 2017-2026, Mr. Walls
 # ..................................
 # Licensed under MIT (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,12 +17,12 @@
 # limitations under the License.
 
 import sys
+import abc
 import argparse
 import logging
-import unicodedata
 import socket
 import struct
-import abc
+import unicodedata
 
 # skipcq
 __all__ = [
@@ -221,7 +221,7 @@ __name__ = "multicast"  # skipcq: PYL-W0622
 
 global __version__  # skipcq: PYL-W0604
 
-__version__ = "2.0.9"
+__version__ = "2.1.1"
 """The version of this program.
 
 	The `__version__` attribute, like many dunder attributes, is associated with the implementation
@@ -299,7 +299,7 @@ Dynamic Imports:
 	While the multicast alias is the same as the multicast module name, this pattern should
 	serve to reinforce the Multicast module's namespace, especially when dealing with dynamic
 	imports and to maintain consistency across different parts of the code.
-	Roughly speaking, the following diagram describes the interdependentcies:
+	Roughly speaking, the following diagram describes the interdependencies:
 	```mermaid
 		graph TD;
 			Client-Code-->multicast/__init__.py;

@@ -3,7 +3,7 @@
 
 # Multicast Python Module (Testing)
 # ..................................
-# Copyright (c) 2017-2025, Mr. Walls
+# Copyright (c) 2017-2026, Mr. Walls
 # ..................................
 # Licensed under MIT (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 __module__ = "tests"
 
 try:
+	# Handle imports with CWE-758 mitigation: See details documented in tests.context.
 	try:
 		import context
 	except Exception as _cause:  # pragma: no branch
@@ -32,6 +33,7 @@ try:
 		from context import unittest
 		import threading
 		import socket
+		import socketserver
 except Exception as baton:
 	raise ImportError("[CWE-758] Failed to import test context") from baton
 
@@ -72,6 +74,7 @@ class McastServerActivateTestSuite(context.BasicUsageTestSuite):
 			actual handling logic is not implemented in this fixture, as
 			the focus is on the server activation.
 			"""
+
 			def handle(self):
 				"""
 				Handle an incoming request.
@@ -80,7 +83,7 @@ class McastServerActivateTestSuite(context.BasicUsageTestSuite):
 				a request. In this case, it is just a test fixture and does not
 				perform any actions.
 				"""
-				pass  # Handler logic is not the focus here
+				pass  # skipcq: PTC-W0107 -- Handler logic is not the focus here
 
 		# Create an instance of McastServer
 		server_address = (MCAST_GROUP, 0)  # Bind to any available port
@@ -118,6 +121,78 @@ class McastServerActivateTestSuite(context.BasicUsageTestSuite):
 			server_thread.join(timeout=THREAD_JOIN_TIMEOUT)
 			self.assertFalse(server_thread.is_alive(), "Server thread did not terminate")
 		self.assertTrue(final_result)
+
+
+@context.markWithMetaTag("mat", "hear")
+class HearServerInitTestSuite(context.BasicUsageTestSuite):
+	"""Test suite for verifying multicast server initialization functionality.
+
+	This test suite focuses on the proper default initialization
+	of the multicast server, including logger setup and cleanup procedures.
+	"""
+
+	__module__ = "tests.test_hear_server_activate"
+
+	__name__ = "tests.test_hear_server_activate.HearServerInitTestSuite"
+
+	def test_initialization_with_valid_address(self):
+		"""
+		Test multicast server initialization with a valid address.
+
+		Verifies that:
+			1. The server instance is of the correct type (McastServer).
+			2. The server instance is also recognized as a UDPServer.
+			3. Cleanup is performed correctly after initialization.
+		"""
+		server = multicast.hear.McastServer(('224.0.0.1', self._the_test_port), None)
+		self.assertIsInstance(server, multicast.hear.McastServer)
+		self.assertIsInstance(server, socketserver.UDPServer)
+		server.server_close()  # Clean up
+
+	def test_initialization_with_logger_name(self):
+		"""
+		Test multicast server initialization with a specific logger name.
+
+		Verifies that:
+			1. The logger is properly initialized.
+			2. The logger's name ends with the expected multicast address.
+			3. Cleanup is performed correctly after initialization.
+		"""
+		test_addr = ('239.0.0.9', self._the_test_port)
+		server = multicast.hear.McastServer(test_addr, None)
+		self.assertIsNotNone(server.logger)
+		self.assertTrue(server.logger.name.endswith('239.0.0.9'))
+		server.server_close()  # Clean up
+
+	def test_initialization_without_address(self):
+		"""
+		Test multicast server initialization without a valid address.
+
+		Verifies that:
+			1. The logger is initialized with the default name when server_address is None.
+			2. The logger is initialized with the default name when server_address is an empty tuple.
+			3. The logger is initialized with the default name when server_address' HOST is None.
+			4. Cleanup is performed correctly after initialization.
+		"""
+		host_test_fixtures = [None, (), (None, self._the_test_port)]
+		_fail_fixture: str = "An expected logger was missing for the McastServer instance"
+		for host_test_fixture in host_test_fixtures:
+			with self.subTest(host_test_fixture=host_test_fixture):
+				server = None
+				_test_server_logger_name_cache = None
+				try:
+					server = multicast.hear.McastServer(host_test_fixture, None)
+					self.assertIsNotNone(server.logger, _fail_fixture)
+					_test_server_logger_name_cache = server.logger.name
+				except Exception as _cause:
+					context.debugtestError(_cause)
+				finally:
+					server.server_close()  # Clean up
+				# assert to actually test
+				self.assertEqual(
+					_test_server_logger_name_cache,
+					f"multicast.hear.McastServer.{multicast._MCAST_DEFAULT_GROUP}",  # skipcq: PYL-W0212
+				)  # skipcq: PYL-W0212 - Test OK
 
 
 if __name__ == '__main__':

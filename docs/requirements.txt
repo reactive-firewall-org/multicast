@@ -1,6 +1,6 @@
 # Multicast Python Module docs req file
 # ..................................
-# Copyright (c) 2017-2025, Mr. Walls
+# Copyright (c) 2017-2026, Mr. Walls
 # ..................................
 # Licensed under MIT (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@
 # struct - builtin - PSF license
 # argparse - builtin - PSF license
 # setuptools - MIT license
-setuptools>=80.9
+setuptools>=81.0
 # virtualenv - MIT license
 #virtualenv>=15.0.1
 # pgpy - BSD 3-Clause licensed
@@ -35,9 +35,9 @@ setuptools>=80.9
 # tox - MIT license
 #tox>=4.27.0
 # wheel - MIT license
-wheel>=0.45
+wheel>=0.46.3
 # pip - MIT license
-pip>=25.1.1
+pip>=26.0.1
 # build - MIT license
 build>=1.2.1, !=1.2.2.post1
 # sphinx - BSD license

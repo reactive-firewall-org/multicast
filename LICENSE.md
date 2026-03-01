@@ -1,6 +1,6 @@
 # MIT License
 
-Copyright (c) 2017-2025, Mr. Walls
+Copyright (c) 2017-2026, Mr. Walls
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -64,7 +64,7 @@ You may obtain a copy of the License at
 ### Files: `.github/workflows/markdown-lint.yml`, and `.github/workflows/yaml-lint.yml`
 
 ***
-Copyright (c) 2017-2025, Your Mileage May Vary
+Copyright (c) 2017-2026, Your Mileage May Vary
 ALSO Licensed under MIT
 You may obtain a copy of the License at
 [MIT License](https://github.com/reactive-firewall/ymmv/blob/HEAD/LICENSE.md)
@@ -73,7 +73,7 @@ You may obtain a copy of the License at
 ### File: `Logo.svg`
 
 ***
-Copyright (c) 2024-2025, Multicast Logo by Mr. Walls.
+Copyright (c) 2024-2026, Multicast Logo by Mr. Walls.
 Source-code (e.g., xml) is under Apache 2.0 License.
 Rasterized variants (e.g., when rendered/cached/etc. as an image with discrete dimensions) are
 the Multicast trademark (Namely Multicast's M like symbol and its likeness), and some

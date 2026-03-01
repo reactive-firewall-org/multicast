@@ -1,18 +1,18 @@
 [build-system]
-requires = ["setuptools>=80.9", "build>=1.2.1", "wheel>=0.45"]
+requires = ["setuptools>=81.0", "build>=1.2.1", "wheel>=0.46.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
-classifiers = ["Intended Audience :: Developers", "Operating System :: POSIX", "Operating System :: MacOS :: MacOS X", "Operating System :: POSIX :: Linux", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3.13", "Programming Language :: Python :: 3.12", "Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.10", "Programming Language :: Python :: 3 :: Only", "Topic :: Software Development :: Libraries :: Python Modules", "Topic :: System :: Networking"]
+classifiers = ["Intended Audience :: Developers", "Operating System :: POSIX", "Operating System :: MacOS :: MacOS X", "Operating System :: POSIX :: Linux", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3.14", "Programming Language :: Python :: 3.13", "Programming Language :: Python :: 3.12", "Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.10", "Programming Language :: Python :: 3 :: Only", "Topic :: Software Development :: Libraries :: Python Modules", "Topic :: System :: Networking"]
 dependencies = []
 description = "Multicast Python Module to provide for Send/Recv functionality."
 keywords = ["multicast", "RFC-1112", "udp-protocol", "network-programming", "POSIX-compliant", "socket", "many-to-many", "client-server"]
 license-files = ["LICENSE.md"]
 maintainers = [{ "name" = "reactive-firewall", "email" = "reactive-firewall@users.noreply.github.com" }]
 name = "multicast"
-requires-python = ">=3.9.6, !=3.9.7, !=3.9.8, !=3.9.9, !=3.9.10, !=3.9.11, !=3.9.12, !=3.9.13, !=3.9.14, !=3.9.15, !=3.9.16, !=3.9.17, !=3.9.18, !=3.9.19, !=3.13.0, <3.14.0"
+requires-python = ">=3.9.6, !=3.9.7, !=3.9.8, !=3.9.9, !=3.9.10, !=3.9.11, !=3.9.12, !=3.9.13, !=3.9.14, !=3.9.15, !=3.9.16, !=3.9.17, !=3.9.18, !=3.9.19, !=3.13.0, !=3.14.0, <3.15.0"
 scripts = { "multicast" = "multicast.__main__:cli" }
-version = "v2.0.9"
+version = "v2.1.1"
 
 [project.urls]
 "Bug Tracker" = "https://github.com/reactive-firewall-org/multicast/issues"
@@ -49,10 +49,6 @@ max-line-length = 100
 docstring-convention = "google"
 
 [tool.pytest]
-testpaths = "tests"
-python_files = "test_*.py"
-
-[tool.pytest.ini_options]
 minversion = "7.4"
 # testpaths = "tests"
 pythonpath = "multicast tests"

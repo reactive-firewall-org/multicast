@@ -18,6 +18,6 @@ Jump directly to the [Quickstart](./toc)
 
 ---
 
-### Copyright (c) 2021-2025, Mr. Walls
+### Copyright (c) 2021-2026, Mr. Walls
 
 [![License - MIT](https://img.shields.io/pypi/l/multicast?cacheSeconds=3600)](https://github.com/reactive-firewall-org/multicast/tree/HEAD/LICENSE.md)

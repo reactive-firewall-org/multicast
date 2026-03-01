@@ -3,7 +3,7 @@
 
 # Python Test Repo Template
 # ..................................
-# Copyright (c) 2017-2025, Mr. Walls
+# Copyright (c) 2017-2026, Mr. Walls
 # ..................................
 # Licensed under MIT (the "License");
 # you may not use this file except in compliance with the License.
@@ -141,7 +141,7 @@ class BasicTestSuite(context.BasicUsageTestSuite):
 
 	@unittest.skipUnless(sys.platform.startswith("darwin"), "This test example requires macOS")
 	def test_Skip_UNLESS_darwin_only(self):
-		"""MacOS is the test."""
+		"""macOS is the test."""
 		self.assertTrue(sys.platform.startswith("darwin"))
 
 

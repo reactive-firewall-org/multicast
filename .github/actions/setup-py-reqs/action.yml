@@ -65,10 +65,75 @@ runs:
   steps:
     - name: "Calculate Commit SHA"
       id: output_sha
+      if: ${{ !cancelled() }}
+      env:
+        CI_INPUT_TARGET_SHA: '${{ inputs.sha }}'
       shell: bash
       run: |
-        printf "sha=%s\n" $(git rev-parse --verify '${{ inputs.sha }}') >> "$GITHUB_OUTPUT"
-        printf "BUILD_SHA=%s\n" $(git rev-parse --verify '${{ inputs.sha }}') >> "$GITHUB_ENV"
+        set -euo pipefail
+
+        raw_input="${CI_INPUT_TARGET_SHA}"
+
+        # Reject NUL or newline immediately
+        if printf '%s' "$raw_input" | grep -q '[^[:print:]]'; then
+          printf "::error title='Invalid':: %s\n" "Error: input contains disallowed control characters" >&2
+          exit 1
+        fi
+
+        # Strip one level of surrounding quotes and trim whitespace
+        normalize() {
+          local s="$1"
+          s="${s#"${s%%[![:space:]]*}"}"
+          s="${s%"${s##*[![:space:]]}"}"
+          if [[ (${s:0:1} == "'" && ${s: -1} == "'") || (${s:0:1} == '"' && ${s: -1} == '"') ]]; then
+            s="${s:1:-1}"
+          fi
+          printf '%s' "$s"
+        }
+        input="$(normalize "$raw_input")"
+
+        # Reject inputs starting with '-' (options)
+        if [[ "${input:0:1}" == "-" ]]; then
+          printf "::error title='Invalid':: %s\n" "Error: input may not start with '-'" >&2
+          exit 1
+        fi
+
+        # If it's a 40-char SHA, accept directly
+        if [[ "$input" =~ ^[0-9a-f]{40}$ ]]; then
+          resolved_sha="$input"
+        else
+          # Try explicit namespaces in order: full refs, refs/heads/, refs/tags/, then bare branch/tag
+          resolved_sha=""
+          # 1) If input is a full ref path starting with refs/, resolve only that
+          if [[ "$input" == refs/* ]]; then
+            if git rev-parse --verify "$input" >/dev/null 2>&1; then
+              resolved_sha="$(git rev-parse --verify "$input")"
+            else
+              printf "::error title='Invalid':: %s\n" "Error: ref not found: $input" >&2
+              exit 1
+            fi
+          else
+            # 2) Try refs/heads/<input>
+            if git rev-parse --verify "refs/heads/$input" >/dev/null 2>&1; then
+              resolved_sha="$(git rev-parse --verify "refs/heads/$input")"
+            # 3) Try refs/tags/<input>
+            elif git rev-parse --verify "refs/tags/$input" >/dev/null 2>&1; then
+              resolved_sha="$(git rev-parse --verify "refs/tags/$input")"
+            else
+              printf "::error title='Invalid':: %s\n" "Error: no matching branch or tag found for: $input" >&2
+              exit 1
+            fi
+          fi
+        fi
+
+        # Ensure final resolved value is a full 40-char commit SHA
+        if [[ ! "$resolved_sha" =~ ^[0-9a-f]{40}$ ]]; then
+          printf "::error title='Invalid':: %s\n" "Error: resolved value is not a full commit SHA" >&2
+          exit 1
+        fi
+
+        printf "sha=%s\n" "$resolved_sha" >> "$GITHUB_OUTPUT"
+        printf "BUILD_SHA=%s\n" "$resolved_sha" >> "$GITHUB_ENV" ;
     - name: "Setup Python"
       id: output_python
       if: ${{ !cancelled() }}
@@ -217,7 +282,7 @@ runs:
     - name: "Upload Details"
       id: upload
       if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         path: DEPS
         name: ${{ steps.output_artifact_name.outputs.artifact-name }}

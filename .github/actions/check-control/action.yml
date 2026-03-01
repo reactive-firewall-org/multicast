@@ -107,9 +107,75 @@ runs:
   using: composite
   steps:
     - id: output_sha
-      if: ${{ !cancelled() }}
+      if: ${{ (github.repository == 'reactive-firewall-org/multicast') && !cancelled() }}
+      env:
+        CI_INPUT_TARGET_SHA: '${{ inputs.sha }}'
       shell: bash
-      run: printf "sha=%s\n" $(git rev-parse --verify '${{ inputs.sha }}') >> "$GITHUB_OUTPUT"
+      run: |
+        set -euo pipefail
+
+        raw_input="${CI_INPUT_TARGET_SHA}"
+
+        # Reject NUL or newline immediately
+        if printf '%s' "$raw_input" | grep -q '[^[:print:]]'; then
+          printf "::error title='Invalid':: %s\n" "Error: input contains disallowed control characters" >&2
+          exit 1
+        fi
+
+        # Strip one level of surrounding quotes and trim whitespace
+        normalize() {
+          local s="$1"
+          s="${s#"${s%%[![:space:]]*}"}"
+          s="${s%"${s##*[![:space:]]}"}"
+          if [[ (${s:0:1} == "'" && ${s: -1} == "'") || (${s:0:1} == '"' && ${s: -1} == '"') ]]; then
+            s="${s:1:-1}"
+          fi
+          printf '%s' "$s"
+        }
+        input="$(normalize "$raw_input")"
+
+        # Reject inputs starting with '-' (options)
+        if [[ "${input:0:1}" == "-" ]]; then
+          printf "::error title='Invalid':: %s\n" "Error: input may not start with '-'" >&2
+          exit 1
+        fi
+
+        # If it's a 40-char SHA, accept directly
+        if [[ "$input" =~ ^[0-9a-f]{40}$ ]]; then
+          resolved_sha="$input"
+        else
+          # Try explicit namespaces in order: full refs, refs/heads/, refs/tags/, then bare branch/tag
+          resolved_sha=""
+          # 1) If input is a full ref path starting with refs/, resolve only that
+          if [[ "$input" == refs/* ]]; then
+            if git rev-parse --verify "$input" >/dev/null 2>&1; then
+              resolved_sha="$(git rev-parse --verify "$input")"
+            else
+              printf "::error title='Invalid':: %s\n" "Error: ref not found: $input" >&2
+              exit 1
+            fi
+          else
+            # 2) Try refs/heads/<input>
+            if git rev-parse --verify "refs/heads/$input" >/dev/null 2>&1; then
+              resolved_sha="$(git rev-parse --verify "refs/heads/$input")"
+            # 3) Try refs/tags/<input>
+            elif git rev-parse --verify "refs/tags/$input" >/dev/null 2>&1; then
+              resolved_sha="$(git rev-parse --verify "refs/tags/$input")"
+            else
+              printf "::error title='Invalid':: %s\n" "Error: no matching branch or tag found for: $input" >&2
+              exit 1
+            fi
+          fi
+        fi
+
+        # Ensure final resolved value is a full 40-char commit SHA
+        if [[ ! "$resolved_sha" =~ ^[0-9a-f]{40}$ ]]; then
+          printf "::error title='Invalid':: %s\n" "Error: resolved value is not a full commit SHA" >&2
+          exit 1
+        fi
+
+        printf "sha=%s\n" "$resolved_sha" >> "$GITHUB_OUTPUT"
+
     - id: output_uuid
       if: ${{ !cancelled() && (inputs.check-id == '') }}
       shell: bash
@@ -128,7 +194,7 @@ runs:
       if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
       shell: bash
       run: |
-        if [[ "${{ inputs.details-url }}" != "" ]] ; then
+        if [[ "${{ inputs.details-url }}" != "DEFAULT" ]] ; then
           printf "details_url=%s\n" '${{ inputs.details-url }}' >> "$GITHUB_OUTPUT"
           printf "::debug:: %s\n" "Check detail url was provided: ${{ inputs.details-url }}" ;
         else
@@ -151,17 +217,28 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
+        CHECK_NAME_INPUT: '${{ inputs.name }}'
+        CHECK_TITLE_INPUT: '${{ inputs.title || inputs.name }}'
       run: |
+        printf "%s\n" "::group::validate-name"
+        name_input=${CHECK_NAME_INPUT}
+        printf "::debug:: %s\n" "Will use name $name_input" ;
+        printf "%s\n" "::endgroup::"
+        printf "%s\n" "::group::validate-title"
+        title_input=${CHECK_TITLE_INPUT}
+        printf "::debug:: %s\n" "Will use title $title_input" ;
+        sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$title_input" ;)
+        printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::create-new-check"
         # GitHub CLI api
         # https://cli.github.com/manual/gh_api
         CHECK_ID=$(gh api --method POST -H "Accept: application/vnd.github+json" \
         /repos/reactive-firewall-org/multicast/check-runs \
-        -f "name=${{ inputs.name }}" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
-        -f "status=${{ inputs.status }}" -f "external_id=${{ steps.output_uuid.outputs.uuid }}" \
+        -f "name=$name_input" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
+        -f 'status=${{ inputs.status }}' -f "external_id=${{ steps.output_uuid.outputs.uuid }}" \
         -f "started_at=${{ steps.output_date.outputs.check_date }}Z" \
         -f "details_url=${{ steps.output_check_details_url.outputs.details_url }}" \
-        -f 'output[title]=${{ inputs.title }}' \
+        -f "$sanitized_input_title_field" \
         -f 'output[summary]=' -f 'output[text]=' --jq '.id');
         printf "check_id=%s\n" "${CHECK_ID}" >> "$GITHUB_OUTPUT"
         printf "%s\n" "::endgroup::"
@@ -171,17 +248,28 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
+        CHECK_NAME_INPUT: '${{ inputs.name }}'
+        CHECK_TITLE_INPUT: '${{ inputs.title || inputs.name }}'
       run: |
+        printf "%s\n" "::group::validate-name"
+        name_input=${CHECK_NAME_INPUT}
+        printf "::debug:: %s\n" "Will use name $name_input" ;
+        printf "%s\n" "::endgroup::"
+        printf "%s\n" "::group::validate-title"
+        title_input=${CHECK_TITLE_INPUT}
+        printf "::debug:: %s\n" "Will use title $title_input" ;
+        sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$title_input" ;)
+        printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::update-new-check"
         # GitHub CLI api
         # https://cli.github.com/manual/gh_api
         CHECK_ID=$(gh api --method POST -H "Accept: application/vnd.github+json" \
         /repos/reactive-firewall-org/multicast/check-runs \
-        -f "name=${{ inputs.name }}" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
+        -f "name=$name_input" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
         -f "status=in_progress" -f "external_id=${{ steps.output_uuid.outputs.uuid }}" \
         -f "started_at=${{ steps.output_date.outputs.check_date }}Z" \
         -f "details_url=${{ steps.output_check_details_url.outputs.details_url }}" \
-        -f 'output[title]=${{ inputs.title }}' \
+        -f "$sanitized_input_title_field" \
         -f 'output[summary]=Check is in progress.' -f 'output[text]=' --jq '.id');
         printf "check_id=%s\n" "${CHECK_ID}" >> "$GITHUB_OUTPUT"
         printf "%s\n" "::endgroup::"
@@ -215,16 +303,27 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
+        CHECK_NAME_INPUT: '${{ inputs.name }}'
+        CHECK_TITLE_INPUT: '${{ inputs.title || inputs.name }}'
       run: |
+        printf "%s\n" "::group::validate-name"
+        name_input=${CHECK_NAME_INPUT}
+        printf "::debug:: %s\n" "Will use name $name_input" ;
+        printf "%s\n" "::endgroup::"
+        printf "%s\n" "::group::validate-title"
+        title_input=${CHECK_TITLE_INPUT}
+        printf "::debug:: %s\n" "Will use title $title_input" ;
+        sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$title_input" ;)
+        printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::update-check"
         # GitHub CLI api
         # https://cli.github.com/manual/gh_api
         gh api --method PATCH -H "Accept: application/vnd.github+json" \
         /repos/reactive-firewall-org/multicast/check-runs/${{ steps.output_check_id.outputs.check_id }} \
-        -f "name=${{ inputs.name }}" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
+        -f "name=$name_input" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
         -f "status=${{ inputs.status }}" \
         -f "details_url=${{ steps.output_check_details_url.outputs.details_url }}" \
-        -f 'output[title]=${{ inputs.title }}' \
+        -f "$sanitized_input_title_field" \
         -f 'output[summary]=${{ inputs.summary }}' -f 'output[text]=${{ inputs.text }}'
         printf "%s\n" "::endgroup::"
     - name: "Update Check"
@@ -233,17 +332,28 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
+        CHECK_NAME_INPUT: '${{ inputs.name }}'
+        CHECK_TITLE_INPUT: '${{ inputs.title || inputs.name }}'
       run: |
+        printf "%s\n" "::group::validate-name"
+        name_input=${CHECK_NAME_INPUT}
+        printf "::debug:: %s\n" "Will use name $name_input" ;
+        printf "%s\n" "::endgroup::"
+        printf "%s\n" "::group::validate-title"
+        title_input=${CHECK_TITLE_INPUT}
+        printf "::debug:: %s\n" "Will use title $title_input" ;
+        sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$title_input" ;)
+        printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::complete-check"
         # GitHub CLI api
         # https://cli.github.com/manual/gh_api
         gh api --method PATCH -H "Accept: application/vnd.github+json" \
         /repos/reactive-firewall-org/multicast/check-runs/${{ steps.output_check_id.outputs.check_id }} \
-        -f "name=${{ inputs.name }}" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
+        -f "name=$name_input" -f "head_sha=${{ steps.output_sha.outputs.sha }}" \
         -f "status=completed" -f "conclusion=${{ inputs.conclusion }}" \
         -f "completed_at=${{ steps.output_date.outputs.check_date }}Z" \
         -f "details_url=${{ steps.output_check_details_url.outputs.details_url }}" \
-        -f 'output[title]=${{ inputs.title }}' \
+        -f "$sanitized_input_title_field" \
         -f 'output[summary]=${{ inputs.summary }}' -f 'output[text]=${{ inputs.text }}'
         printf "%s\n" "::endgroup::"
     - name: "Report outcome of checks API"

@@ -3,7 +3,7 @@
 
 # Multicast Python Module
 # ..................................
-# Copyright (c) 2017-2025, Mr. Walls
+# Copyright (c) 2017-2026, Mr. Walls
 # ..................................
 # Licensed under MIT (the "License");
 # you may not use this file except in compliance with the License.
@@ -300,7 +300,7 @@ class McastServer(socketserver.UDPServer):
 			>>>
 
 		Testcase 0: Basic initialization of McastServer.
-			A: Test that McastServer can be initialized with minimal arguments.
+			A: Test that McastServer can be initialized with typical arguments.
 			B: Test that the resulting instance is of the correct type.
 
 			>>> server = multicast.hear.McastServer(('224.0.0.1', 12345), None)
@@ -324,13 +324,36 @@ class McastServer(socketserver.UDPServer):
 			>>> server.server_close()  # Clean up
 			>>>
 
+		Testcase 2: Server initialization with just a port number given.
+			A: Test that McastServer can be initialized with minimal arguments.
+			B: Test that the resulting instance is of the correct type.
+
+			>>> test_addr = (None, 17890)  # No Host
+			>>> server = multicast.hear.McastServer(test_addr, None)
+			>>> isinstance(server, multicast.hear.McastServer)
+			True
+			>>> isinstance(server, socketserver.UDPServer)
+			True
+			>>> server.logger is not None
+			True
+			>>> server.server_close()  # Clean up
+			>>>
+
 		"""
-		logger_name = server_address[0] if server_address and len(server_address) > 0 else None
+		# Handle both missing server_address and missing/falsely host component
+		if not server_address or not server_address[0]:
+			_server_address = (
+				multicast._MCAST_DEFAULT_GROUP,  # skipcq: PYL-W0212 - module ok
+				server_address[1] if (
+					server_address and len(server_address) > 1
+				) else multicast._MCAST_DEFAULT_PORT,  # skipcq: PYL-W0212 - module ok
+			)  # skipcq: PYL-W0212 - module ok
+		else:
+			_server_address = server_address
+		logger_name = _server_address[0] if _server_address and len(_server_address) > 0 else None
 		if logger_name:  # pragma: no branch
 			self.__logger = logging.getLogger(f"{self.__log_handle__}.{logger_name}")
-		else:
-			self.__logger = logging.getLogger(f"{self.__log_handle__}")
-		super().__init__(server_address, RequestHandlerClass, bind_and_activate)
+		super().__init__(_server_address, RequestHandlerClass, bind_and_activate)
 
 	def _sync_logger(self) -> None:
 		"""Synchronize the logger instance with the bound socket address.
@@ -533,7 +556,11 @@ class McastServer(socketserver.UDPServer):
 		Returns:
 			None
 		"""
-		self.logger.info("server_bind")
+		try:
+			self.logger.info("server_bind")
+		except AttributeError:  # pragma: no cover -- defensive code branch
+			# because self.__logger is not available, fallback to class logger
+			logging.getLogger(multicast.hear.McastServer.__log_handle__).info("init_bind")
 		super(McastServer, self).server_bind()
 		self._sync_logger()
 		# enter critical section
@@ -836,7 +863,7 @@ class McastHEAR(multicast.mtool):
 			None: This method does not return a value.
 
 		Note:
-			This is trivial implementation make this an optional abstract method.
+			This is a trivial implementation to make this an optional abstract method.
 		"""
 		pass  # skipcq - Optional abstract method
 

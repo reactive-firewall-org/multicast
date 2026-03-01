@@ -3,7 +3,7 @@
 
 # Multicast Require Parsing Tests
 # ..................................
-# Copyright (c) 2025, Mr. Walls
+# Copyright (c) 2025-2026, Mr. Walls
 # ..................................
 # Licensed under MIT (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,8 +40,63 @@ except Exception as _cause:  # pragma: no branch
 
 @context.markWithMetaTag("mat", "build")
 class ManifestInclusionTestSuite(BasicUsageTestSuite):
+	"""
+	ManifestInclusionTestSuite is a test suite focused on validating the contents
+	of the source distribution (sdist) for a package, ensuring that it includes
+	required files while excluding unwanted ones.
+
+	This test suite extends the BasicUsageTestSuite provided by the `context` module,
+	implementing tests to verify the correct inclusion and exclusion of files as specified
+	in the package manifest.
+
+	Attributes:
+		__module__ (str): Module identifier
+		__name__ (str): Full class name
+
+	Methods:
+		_build_sdist_and_get_members():
+			Builds the source distribution for the package and retrieves the list
+			of files included in the resulting archive along with the package version.
+			It temporarily modifies the umask to allow file creations and performs
+			necessary assertions on the build outcome.
+
+		test_sdist_includes_required_files():
+			Tests that the source distribution contains all mandatory files
+			specified for the package by validating their presence in the built
+			tar archive.
+
+		test_sdist_excludes_unwanted_files():
+			Tests that certain undesired files and directories are excluded from
+			the source distribution by asserting their absence in the built
+			tar archive.
+
+	Returns:
+		tuple: Each test method retrieves a tuple containing the list of member file paths
+		and the package version string from the `_build_sdist_and_get_members` method.
+
+	Raises:
+		AssertionError:
+			- In `_build_sdist_and_get_members`, if the build command does not execute
+				successfully or if no files are found in the 'dist' directory.
+			- In `test_sdist_includes_required_files`, if any expected file is missing from
+				the sdist.
+			- In `test_sdist_excludes_unwanted_files`, if any unwanted file is found in the sdist.
+
+	Notes:
+		The tests require a functioning environment that can build the source distribution
+		and may depend on the presence of specific files and directories as dictated
+		by the package's structure. The tests should be run in an appropriate context
+		where the build tooling and dependencies are available.
+
+	Usage:
+		This test suite can be instantiated and executed within a testing framework
+		that supports the discovery and execution of test cases, allowing for thorough validation
+		of the source distribution's contents.
+	"""
 
 	__module__ = "tests.test_manifest"
+
+	__name__ = "tests.test_manifest.ManifestInclusionTestSuite"
 
 	def _build_sdist_and_get_members(self):
 		"""Build the source distribution and return the list of member files and package version.
@@ -62,8 +117,15 @@ class ManifestInclusionTestSuite(BasicUsageTestSuite):
 			"build",
 			"--sdist",
 		]
+		theBuildtxt = None
+		# Temporarily relax the default umask (to allow creation of venv files)
+		original_umask = os.umask(0o027)  # Temporarily set the umask
 		# Build the source distribution
-		theBuildtxt = context.checkPythonCommand(build_arguments, stderr=subprocess.STDOUT)
+		try:
+			theBuildtxt = context.checkPythonCommand(build_arguments, stderr=subprocess.STDOUT)
+		finally:
+			os.umask(original_umask)  # Restore the original umask
+			self.assertIsNotNone(theBuildtxt, f"Failed with {build_arguments} in relaxed state")
 		self.assertIn(str("running sdist"), str(theBuildtxt))
 		dist_dir = os.path.join(os.getcwd(), 'dist')
 		dist_files = sorted(os.listdir(dist_dir), reverse=True)

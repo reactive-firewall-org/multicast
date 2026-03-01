@@ -1,6 +1,6 @@
 # Multicast Python Module test req file
 # ..................................
-# Copyright (c) 2017-2025, Mr. Walls
+# Copyright (c) 2017-2026, Mr. Walls
 # ..................................
 # Licensed under MIT (the "License");
 # you may not use this file except in compliance with the License.
@@ -57,7 +57,7 @@
 ###
 # typing_extensions - builtin? - MIT License
 # setuptools - MIT license
-setuptools>=80.9
+setuptools>=81.0
 # virtualenv - MIT license
 virtualenv>=20.26.6
 # pgpy - BSD 3-Clause licensed
@@ -91,8 +91,8 @@ pytest-enabler>=1.0.1
 # coverage - Apache 2.0 license
 coverage>=7.2
 # wheel - MIT license
-wheel>=0.45
+wheel>=0.46.3
 # pip - MIT license
-pip>=25.1.1
+pip>=26.0.1
 # build - MIT license
 build>=1.2.1, !=1.2.2.post1

@@ -28,8 +28,8 @@ applications, making it straightforward to work with multicast sockets.
 [![Code Coverage](https://codecov.io/gh/reactive-firewall-org/multicast/branch/master/graph/badge.svg)](https://codecov.io/gh/reactive-firewall-org/multicast/branch/master/)
 [![Coverage Status](https://coveralls.io/repos/github/reactive-firewall-org/multicast/badge.svg)](https://coveralls.io/github/reactive-firewall-org/multicast)
 [![Bandit](https://github.com/reactive-firewall-org/multicast/actions/workflows/bandit.yml/badge.svg?branch=master)](https://github.com/reactive-firewall-org/multicast/actions/workflows/bandit.yml)
+[![OSSF-Scorecard Score](https://img.shields.io/ossf-scorecard/github.com/reactive-firewall-org/multicast)](https://scorecard.dev/viewer/?uri=github.com/reactive-firewall-org/multicast)
 [![Style Status](https://github.com/reactive-firewall-org/multicast/actions/workflows/flake8.yml/badge.svg?branch=master&event=push)](https://github.com/reactive-firewall-org/multicast/actions/workflows/flake8.yml)
-[![CodeFactor](https://www.codefactor.io/repository/github/reactive-firewall-org/multicast/badge)](https://www.codefactor.io/repository/github/reactive-firewall-org/multicast)
 ![Size](https://img.shields.io/github/languages/code-size/reactive-firewall-org/multicast.svg)
 [![Scc Count Badge](https://sloc.xyz/github/reactive-firewall-org/multicast/?category=code)](https://github.com/reactive-firewall-org/multicast/)
 [![Scc Count Badge](https://sloc.xyz/github/reactive-firewall-org/multicast/?category=blanks)](https://github.com/reactive-firewall-org/multicast/)
@@ -39,10 +39,13 @@ applications, making it straightforward to work with multicast sockets.
 
 ### Stable (Mainstream)
 
+[![PyPI - Version](https://img.shields.io/pypi/v/multicast)](https://pypi.org/project/multicast/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/multicast)](https://pypi.org/project/multicast/)
 [![Stable CI](https://github.com/reactive-firewall-org/multicast/actions/workflows/Tests.yml/badge.svg?branch=stable)](https://github.com/reactive-firewall-org/multicast/actions/workflows/Tests.yml)
 [![Stable Appveyor](https://ci.appveyor.com/api/projects/status/0h5vuexyty9lbl81/branch/stable?svg=true)](https://ci.appveyor.com/project/reactive-firewall-org/multicast/branch/stable)
 [![Stable Code Coverage](https://codecov.io/gh/reactive-firewall-org/multicast/branch/stable/graph/badge.svg)](https://codecov.io/gh/reactive-firewall-org/multicast/branch/stable/)
 [![CodeQL](https://github.com/reactive-firewall-org/multicast/actions/workflows/codeql-analysis.yml/badge.svg?branch=stable)](https://github.com/reactive-firewall-org/multicast/actions/workflows/codeql-analysis.yml)
+[![PyPI - Downloads](https://img.shields.io/pypi/dw/multicast)](https://pypi.org/project/multicast/)
 
 ## Installation
 
@@ -233,7 +236,7 @@ Next steps and bug fixes are tracked by the
 
 ## License
 
-### Copyright (c) 2021-2025, Mr. Walls
+### Copyright (c) 2021-2026, Mr. Walls
 
 The Multicast Python Module is licensed under the MIT License. See the
 [LICENSE.md](https://github.com/reactive-firewall-org/multicast/tree/HEAD/LICENSE.md) file for

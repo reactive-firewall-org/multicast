@@ -6,7 +6,7 @@ codecov:
   max_report_age: off
 comment:
   behavior: default
-  layout: reach, diff, flags, files, footer
+  layout: "reach, diff, flags, files, footer"
   require_base: false
   require_changes: false
   require_head: true
@@ -36,9 +36,16 @@ coverage:
         only_pulls: false
         flags:
           - "multicast"
+          - "doctests"
         paths:
-          - "multicast/"
-          - "!tests/"
+          - "multicast/*"
+          - "!tests/*"
+      doctests:
+        target: 75%
+        threshold: 1%
+        only_pulls: false
+        flags:
+          - "doctests"
       tests:
         target: 80%
         threshold: 1%
@@ -47,16 +54,23 @@ coverage:
         removed_code_behavior: fully_covered_patch
         flags:
           - "tests"
+          - "unittests"
         paths:
-          - tests/
-          - "!multicast/"
+          - "tests/*"
+          - "!multicast/*"
 github_checks:
   annotations: true
 flags:
   multicast:
     paths:
-      - "multicast/"
+      - "multicast/*"
+      - "!tests/*"
   tests:
     paths:
-      - "tests/"
-      - "!multicast/"
+      - "tests/*"
+      - "!multicast/*"
+    carryforward: true
+  doctests:
+    carryforward: true
+  unittests:
+    carryforward: false

@@ -75,6 +75,7 @@ jobs:
       tests_id: ${{ steps.output_run_id.outputs.tests_id }}
       tests_url: ${{ steps.output_run_id.outputs.tests_url }}
       check_id: ${{ steps.output_tests_check_id.outputs.check-id }}
+    if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (github.event.workflow_run.conclusion == 'success') }}
     steps:
       - id: check
         run: |
@@ -82,9 +83,10 @@ jobs:
             echo "should_run=true" >> "$GITHUB_OUTPUT"
           else
             echo "should_run=false" >> "$GITHUB_OUTPUT"
+            exit 1 ;
           fi
       - id: get_trigger_id
-        if: ${{ (steps.check.outputs.should_run == 'true') && success() }}
+        if: ${{ (steps.check.outputs.should_run == 'true') && (github.repository == 'reactive-firewall-org/multicast') && success() }}
         run: |
           ID_VALUE=$(gh api "${{ github.event.workflow_run.url }}" --jq '.id')
           if [[ -n "$ID_VALUE" ]]; then
@@ -93,8 +95,8 @@ jobs:
             echo "trigger_id=null" >> "$GITHUB_OUTPUT"  # Default fallback
           fi
       - name: "Fetch MATs Info"
-        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        if: ${{ (steps.check.outputs.should_run == 'true') && (github.repository == 'reactive-firewall-org/multicast') && success() }}
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           path: "multicast-info.txt"
           pattern: multicast-info-*
@@ -104,7 +106,7 @@ jobs:
           run-id: ${{ steps.get_trigger_id.outputs.trigger_id }}
       - name: "move into place"
         id: load_build_info
-        if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
+        if: ${{ (steps.check.outputs.should_run == 'true') && (github.repository == 'reactive-firewall-org/multicast') && success() }}
         run: |
           mv -vf "multicast-info.txt/multicast-info.txt" ./"multicast-info-tmp.txt" ;
           wait ;
@@ -113,18 +115,22 @@ jobs:
           cat <"multicast-info.txt" >> "$GITHUB_OUTPUT"
       - id: output_run_id
         shell: bash
-        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') }}
         run: |
           printf "tests_url=%s\n" 'https://github.com/reactive-firewall-org/multicast/actions/runs/${{ github.run_id }}' >> "$GITHUB_OUTPUT"
           printf "tests_id=%s\n" ${{ github.run_id }} >> "$GITHUB_OUTPUT"
       - name: checkout repository actions for check
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') }}
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
           ref: ${{ steps.load_build_info.outputs.build_sha }}
           sparse-checkout: '.github/actions/check-control'
+          repository: reactive-firewall-org/multicast
+          token: ${{ env.GH_TOKEN }}
       - name: "Queue Tests GitHub Check"
         id: output_tests_check_id
+        if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') }}
         uses: ./.github/actions/check-control
         with:
           name: "CI-TESTs"
@@ -144,11 +150,12 @@ jobs:
       pull-requests: read
       security-events: none
     environment: ${{ needs.check_mats.outputs.mats_environment }}
-    if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') }}
     needs: [check_mats]
+    if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') && (github.repository == 'reactive-firewall-org/multicast') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
+      max-parallel: 3
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["${{ vars.PYTHON_OLD_MIN }}", "${{ vars.PYTHON_OLD_EXTRA }}", "${{ vars.PYTHON_DEFAULT }}", "${{ vars.PYTHON_EXPERIMENTAL }}"]
@@ -177,7 +184,7 @@ jobs:
       coverage_artifact_digest: ${{ steps.upload-test-tools.outputs.coverage_artifact_digest }}
     steps:
     - name: pre-checkout repository for actions
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
         ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -216,7 +223,7 @@ jobs:
         make -f Makefile test || exit 1
     - name: Upload Python ${{ matrix.python-version }} test coverage to Codecov
       id: coverage-unittests-codecov-upload
-      uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
+      uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         job_code: ${{ needs.check_mats.outputs.build_id }}-${{ github.run_number }}
@@ -233,7 +240,7 @@ jobs:
         fail_ci_if_error: false
     - name: Upload Python ${{ matrix.python-version }} second flag coverage to Codecov
       id: coverage-project-codecov-upload
-      uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
+      uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         job_code: ${{ needs.check_mats.outputs.build_id }}-${{ github.run_number }}
@@ -317,7 +324,7 @@ jobs:
       if: ${{ always() }}
       shell: bash
       run: |
-        BUILD_LINK="[${VCS_COMMIT_ID}](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
+        BUILD_LINK="[![${VCS_COMMIT_ID}](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2Freactive-firewall-org%2Fmulticast%2Fcommits%2F${VCS_COMMIT_ID}&query=%24.sha&logo=github&label=SHA&cacheSeconds=3600)](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
         if [[ "${{ steps.coverage_outcome.outcome }}" == "success" ]] ; then
           printf "%s\n" "  * ${PASS_ICON} Codebase Coverage Testing succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for ${BUILD_LINK}" > "$COV_STEP_SUMMARY"
           printf "%s\n" " ${PASS_ICON} Codebase Coverage Testing succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for \`${VCS_COMMIT_ID}\`" >> "$GITHUB_STEP_SUMMARY"
@@ -358,8 +365,8 @@ jobs:
             printf "%s\n" "  * ${SKIP_ICON} Uploading unit-tests coverage report to deepsource was skipped" >> "$COV_STEP_SUMMARY"
           fi
         fi
-        if [[ "${{ steps.coverage-reports-upload.outcome }}" == "success" ]] ; then
-          printf "%s\n" "  * ${PASS_ICON} Uploading [unit-tests coverage report artifact](${{ steps.coverage-reports-upload.outputs.artifact-url }}) succeeded" >> "$COV_STEP_SUMMARY"
+        if [[ "${{ steps.upload-test-tools.outputs.coverage_upload_artifact_outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${PASS_ICON} Uploading [unit-tests coverage report artifact](${{ steps.upload-test-tools.outputs.coverage_artifact_url }}) succeeded" >> "$COV_STEP_SUMMARY"
         else
           printf "%s\n" "  * ${FAIL_ICON} Uploading unit-tests coverage report artifact failed" >> "$COV_STEP_SUMMARY"
         fi
@@ -390,7 +397,7 @@ jobs:
     - name: "Upload Coverage Summary"
       id: upload
       if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         path: COVERAGE
         name: ${{ steps.output_coverage_step_summary.outputs.coverage-artifact-name }}
@@ -411,11 +418,12 @@ jobs:
       pull-requests: read
       security-events: none
     environment: ${{ needs.check_mats.outputs.mats_environment }}
-    if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') }}
     needs: [check_mats]
+    if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') && (github.repository == 'reactive-firewall-org/multicast') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
+      max-parallel: 3
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["${{ vars.PYTHON_OLD_MIN }}", "${{ vars.PYTHON_OLD_EXTRA }}", "${{ vars.PYTHON_DEFAULT }}", "${{ vars.PYTHON_EXPERIMENTAL }}"]
@@ -438,7 +446,7 @@ jobs:
       doctests_artifact_digest: ${{ steps.doctests-reports-upload.outputs.artifact-digest }}
     steps:
     - name: pre-checkout repository for actions
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
         ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -471,7 +479,7 @@ jobs:
       run: make -f Makefile test-mat-doctests ;
     - name: Upload Python ${{ matrix.python-version }} doctest coverage to Codecov
       id: doctests-codecov-upload
-      uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
+      uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         job_code: ${{ needs.check_mats.outputs.build_id }}-${{ github.run_number }}
@@ -489,7 +497,7 @@ jobs:
         fail_ci_if_error: false
     - name: Upload Python ${{ matrix.python-version }} Artifact
       id: doctests-reports-upload
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         name: DocTest-Report-${{ matrix.os }}-${{ matrix.python-version }}
         path: ./test-reports/
@@ -557,7 +565,7 @@ jobs:
       if: ${{ always() }}
       shell: bash
       run: |
-        BUILD_LINK="[${VCS_COMMIT_ID}](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
+        BUILD_LINK="[![${VCS_COMMIT_ID}](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2Freactive-firewall-org%2Fmulticast%2Fcommits%2F${VCS_COMMIT_ID}&query=%24.sha&logo=github&label=SHA&cacheSeconds=3600)](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
         if [[ "${{ steps.doctests_outcome.outcome }}" == "success" ]] ; then
           printf "%s\n" "  * ${PASS_ICON} Doctests succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for ${BUILD_LINK}" > "$DOC_STEP_SUMMARY"
           printf "%s\n" " ${PASS_ICON} Doctests succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for \`${VCS_COMMIT_ID}\`" >> "$GITHUB_STEP_SUMMARY"
@@ -589,8 +597,8 @@ jobs:
             printf "%s\n" "  * ${SKIP_ICON} Uploading Doctests coverage report to deepsource was skipped" >> "$DOC_STEP_SUMMARY"
           fi
         fi
-        if [[ "${{ steps.doctests-reports-upload.outcome }}" == "success" ]] ; then
-          printf "%s\n" "  * ${PASS_ICON} Uploading [Doctests coverage report artifact](${{ steps.doctests-reports-upload.outputs.artifact-url }}) succeeded" >> "$DOC_STEP_SUMMARY"
+        if [[ "${{ steps.upload-test-tools.outputs.coverage_upload_artifact_outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${PASS_ICON} Uploading [Doctests coverage report artifact](${{ steps.upload-test-tools.outputs.coverage_artifact_url }}) succeeded" >> "$DOC_STEP_SUMMARY"
         else
           printf "%s\n" "  * ${FAIL_ICON} Uploading Doctests coverage report artifact failed" >> "$DOC_STEP_SUMMARY"
         fi
@@ -621,7 +629,7 @@ jobs:
     - name: "Upload Doctests Summary"
       id: upload
       if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         path: COVERAGE
         name: ${{ steps.output_doctests_step_summary.outputs.doctests-artifact-name }}
@@ -642,7 +650,7 @@ jobs:
     if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') && (needs.COVERAGE.outputs.coverage_outcome != 'cancelled') }}
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           path: ${{ github.workspace }}/COVERAGE
           pattern: multicast-coverage-${{ needs.check_mats.outputs.build_sha }}-part-*
@@ -681,7 +689,7 @@ jobs:
       - name: "Upload COVERAGE summary"
         id: upload-coverage-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: ./COVERAGE-Summary-Artifact.txt
           name: COVERAGE-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
@@ -690,7 +698,7 @@ jobs:
           retention-days: 2
           overwrite: true
       - name: checkout repository actions for check
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
           ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -702,19 +710,19 @@ jobs:
       contents: write
     needs: [check_mats, COVERAGE_SUMMARY]
     runs-on: ubuntu-latest
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
     steps:
       - name: "Download Status Summary Artifact"
         id: download-coverage-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: COVERAGE-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
           github-token: ${{ github.token }}
       - name: "COVERAGE commit comment"
         id: coverage-commit-comment
         if: ${{ success() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: peter-evans/commit-comment@5a6f8285b8f2e8376e41fe1b563db48e6cf78c09 # v3.0.0
+        uses: peter-evans/commit-comment@f6d60c65d05bb59f750fa51ad3de1d443ba0eb52 # v4.0.0
         with:
           sha: ${{ needs.check_mats.outputs.build_sha }}
           token: ${{ github.token }}
@@ -729,7 +737,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Signal Coveralls Finished
-      uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
+      uses: coverallsapp/github-action@5cbfd81b66ca5d10c19b062c04de0199c215fb6e # v2.3.7
       with:
         build-number: ${{ needs.check_mats.outputs.tests_id }}
         parallel-finished: true
@@ -764,7 +772,7 @@ jobs:
       VCS_COMMIT_ID: ${{ needs.check_mats.outputs.build_sha }}
     steps:
     - name: pre-checkout repository for actions
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
         ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -811,6 +819,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
+      max-parallel: 4
       matrix:
         os: [ubuntu-latest, macos-latest]
         python-version: ["${{ vars.PYTHON_OLD_MIN }}", "${{ vars.PYTHON_OLD_EXTRA }}", "${{ vars.PYTHON_DEFAULT }}", "${{ vars.PYTHON_EXPERIMENTAL }}"]
@@ -836,13 +845,13 @@ jobs:
       integration_upload_codecov_test_outcome: ${{ steps.integration-codecov-results-upload.outcome }}
       integration_upload_codecov_coverage_outcome: ${{ steps.integration-codecov-upload.outcome }}
       integration_upload_deepsource_outcome: ${{ steps.integration-deepsource-upload.outcome }}
-      integration_upload_artifact_outcome: ${{ steps.integration-reports-upload.outcome }}
+      integration_upload_artifact_outcome: ${{ (env.TESTS_USE_PYTEST == '1') && steps.integration-reports-upload.outcome || 'skipped' }}
       integration_artifact_url: ${{ steps.integration-reports-upload.outputs.artifact-url }}
       integration_artifact_id: ${{ steps.integration-reports-upload.outputs.artifact-id }}
       integration_artifact_digest: ${{ steps.integration-reports-upload.outputs.artifact-digest }}
     steps:
     - name: pre-checkout repository for actions
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
         ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -892,7 +901,7 @@ jobs:
       shell: bash
     - name: Upload Python ${{ matrix.python-version }} integration coverage to Codecov
       id: integration-codecov-upload
-      uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
+      uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         job_code: ${{ needs.check_mats.outputs.build_id }}-${{ github.run_number }}
@@ -911,7 +920,7 @@ jobs:
         fail_ci_if_error: false
     - name: Upload Extra Python ${{ matrix.python-version }} Artifact
       id: integration-reports-upload
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         name: Integration-Test-Report-${{ matrix.os }}-${{ matrix.python-version }}
         path: ./test-reports/
@@ -928,9 +937,16 @@ jobs:
     - name: Upload Python ${{ matrix.python-version }} integration test results to Codecov
       if: ${{ !cancelled() && (env.TESTS_USE_PYTEST == '1') }}
       id: integration-codecov-results-upload
-      uses: codecov/test-results-action@47f89e9acb64b76debcd5ea40642d25a4adced9f # v1.1.1
+      uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
       with:
+        report_type: 'test_results'
         token: ${{ secrets.CODECOV_TOKEN }}
+        job_code: ${{ needs.check_mats.outputs.build_id }}-${{ github.run_number }}
+        override_commit: ${{ needs.check_mats.outputs.build_sha }}
+        override_branch: ${{ needs.check_mats.outputs.build_ref_name }}
+        override_build: ${{ needs.check_mats.outputs.build_id }}
+        override_build_url: ${{ needs.check_mats.outputs.build_url }}
+        override_pr: ${{ needs.check_mats.outputs.build_pr_number }}
         files: ./test-reports/junit.xml
         directory: .
         flags: multicast,${{ matrix.os }},${{ matrix.python-version }}
@@ -1062,7 +1078,7 @@ jobs:
       if: ${{ always() }}
       shell: bash
       run: |
-        BUILD_LINK="[${VCS_COMMIT_ID}](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
+        BUILD_LINK="[![${VCS_COMMIT_ID}](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2Freactive-firewall-org%2Fmulticast%2Fcommits%2F${VCS_COMMIT_ID}&query=%24.sha&logo=github&label=SHA&cacheSeconds=3600)](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
         if [[ "${{ steps.integration_outcome.outcome }}" == "success" ]] ; then
           printf "%s\n\n" "## ${PASS_ICON} Integration Acceptance Testing succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for ${BUILD_LINK}" > "$TESTS_STEP_SUMMARY"
           printf "%s\n" " ${PASS_ICON} Integration Acceptance Testing succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for \`${VCS_COMMIT_ID}\`" >> "$GITHUB_STEP_SUMMARY"
@@ -1088,7 +1104,11 @@ jobs:
         if [[ "${{ steps.integration-codecov-results-upload.outcome }}" == "success" ]] ; then
           printf "%s\n" "    * ${PASS_ICON} Uploading integration testing reports artifact succeeded" >> "$TESTS_STEP_SUMMARY"
         else
-          printf "%s\n" "    * ${FAIL_ICON} Uploading integration testing reports artifact failed" >> "$TESTS_STEP_SUMMARY"
+          if [[ ("${TESTS_USE_PYTEST}" == "1") ]] ; then
+            printf "%s\n" "    * ${FAIL_ICON} Uploading integration testing reports artifact failed" >> "$TESTS_STEP_SUMMARY"
+          else
+            printf "%s\n" "    * ${SKIP_ICON} Uploading integration testing report artifact was skipped (without \`pytest\`)" >> "$TESTS_STEP_SUMMARY"
+          fi
         fi
         if [[ "${{ steps.integration-doctests.outcome }}" == "success" ]] ; then
           printf "%s\n" "  * ${PASS_ICON} Integrated Doctesting succeeded" >> "$TESTS_STEP_SUMMARY"
@@ -1119,7 +1139,11 @@ jobs:
         if [[ "${{ steps.integration-reports-upload.outcome }}" == "success" ]] ; then
           printf "%s\n" "  * ${PASS_ICON} Uploading [integration coverage report artifact](${{ steps.integration-reports-upload.outputs.artifact-url }}) succeeded" >> "$TESTS_STEP_SUMMARY"
         else
-          printf "%s\n" "  * ${FAIL_ICON} Uploading integration coverage report artifact failed" >> "$TESTS_STEP_SUMMARY"
+          if [[ ("${TESTS_USE_PYTEST}" == "1") ]] ; then
+            printf "%s\n" "  * ${FAIL_ICON} Uploading integration coverage report artifact failed" >> "$TESTS_STEP_SUMMARY"
+          else
+            printf "%s\n" "  * ${SKIP_ICON} Uploading integration coverage report artifact was skipped" >> "$TESTS_STEP_SUMMARY"
+          fi
         fi
     - name: "Collect and Enumerate Generated Files"
       id: output_summary_files
@@ -1147,7 +1171,7 @@ jobs:
     - name: "Upload integration Summary"
       id: upload
       if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         path: EXTRAS
         name: ${{ steps.output_integration_step_summary.outputs.integration-artifact-name }}
@@ -1173,7 +1197,7 @@ jobs:
     if: ${{ !cancelled() && (needs.check_mats.outputs.should_run == 'true') && (needs.INTEGRATION.outputs.integration_outcome != 'cancelled') }}
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           path: ${{ github.workspace }}/EXTRAS
           pattern: multicast-integration-${{ needs.check_mats.outputs.build_sha }}-part-*
@@ -1228,7 +1252,7 @@ jobs:
       - name: "Upload INTEGRATION summary"
         id: upload-integration-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: ./Integration-Summary-Artifact.txt
           name: INTEGRATION-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
@@ -1237,7 +1261,7 @@ jobs:
           retention-days: 2
           overwrite: true
       - name: checkout repository actions for check
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
           ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -1264,19 +1288,19 @@ jobs:
       contents: write
     needs: [check_mats, INTEGRATION_SUMMARY]
     runs-on: ubuntu-latest
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
     steps:
       - name: "Download Status Summary Artifact"
         id: download-integration-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: INTEGRATION-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
           github-token: ${{ github.token }}
       - name: "INTEGRATION commit comment"
         id: integration-commit-comment
         if: ${{ success() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: peter-evans/commit-comment@5a6f8285b8f2e8376e41fe1b563db48e6cf78c09 # v3.0.0
+        uses: peter-evans/commit-comment@f6d60c65d05bb59f750fa51ad3de1d443ba0eb52 # v4.0.0
         with:
           sha: ${{ needs.check_mats.outputs.build_sha }}
           token: ${{ github.token }}
@@ -1297,8 +1321,9 @@ jobs:
     defaults:
       run:
         shell: bash
-    timeout-minutes: 10
+    timeout-minutes: 5
     strategy:
+      max-parallel: 1
       matrix:
         os: [ubuntu-latest]
         python-version: ["${{ vars.PYTHON_OLD_MIN }}", "${{ vars.PYTHON_OLD_EXTRA }}", "${{ vars.PYTHON_DEFAULT }}", "${{ vars.PYTHON_EXPERIMENTAL }}"]
@@ -1309,7 +1334,7 @@ jobs:
       LC_CTYPE: "en_US.utf-8"
     steps:
     - name: pre-checkout repository for actions
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
         ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -1333,7 +1358,7 @@ jobs:
       id: install-pip-tools
       run: |
         printf "%s\n" "::group::install-tools"
-        pip install -U "pip-licenses>=5.0.0"
+        pip install -U "pip-licenses>=5.5.1"
         printf "%s\n" "::endgroup::"
       shell: bash
     - name: Pre-Clean
@@ -1376,7 +1401,7 @@ jobs:
 
     steps:
     - name: pre-checkout repository for actions
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
         ref: ${{ needs.check_mats.outputs.build_sha }}
@@ -1391,7 +1416,7 @@ jobs:
         python-version: "${{ vars.PYTHON_DEFAULT }}"
     - name: Prep Testing Tox
       id: prep-tox
-      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       with:
         python-version: |
           ${{ vars.PYTHON_OLD_MIN }}

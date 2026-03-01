@@ -546,7 +546,7 @@ consistency.
 ##### Setting up Python with the default version
 
 ```yaml
-- uses: actions/setup-python@v5
+- uses: actions/setup-python@v6
   with:
     python-version: "${{ vars.PYTHON_DEFAULT }}"
 ```
@@ -561,13 +561,13 @@ jobs:
       matrix:
         python-version: ["${{ vars.PYTHON_DEFAULT }}", "${{ vars.PYTHON_EXPERIMENTAL }}"]
     steps:
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 ```
 
 ***
 
-#### Copyright (c) 2021-2025, Mr. Walls
+#### Copyright (c) 2021-2026, Mr. Walls
 
 [![License - MIT](https://img.shields.io/pypi/l/multicast?cacheSeconds=3600)](https://github.com/reactive-firewall-org/multicast/tree/HEAD/LICENSE.md)

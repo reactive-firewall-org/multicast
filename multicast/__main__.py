@@ -3,7 +3,7 @@
 
 # Multicast Python Module
 # ..................................
-# Copyright (c) 2017-2025, Mr. Walls
+# Copyright (c) 2017-2026, Mr. Walls
 # ..................................
 # Licensed under MIT (the "License");
 # you may not use this file except in compliance with the License.
@@ -860,7 +860,7 @@ def cli() -> int:
 			>>>
 	"""
 	__EXIT_CODE: tuple = (1, exceptions.EXIT_CODES[1][1])
-	if sys.argv is not None:
+	if sys.argv is not None:  # pragma: no branch
 		if len(sys.argv) > 1:
 			__EXIT_CODE = main(sys.argv[1:])
 		else:  # pragma: no branch

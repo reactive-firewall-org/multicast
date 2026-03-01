@@ -3,7 +3,7 @@
 
 # Multicast Python Module (Testing)
 # ..................................
-# Copyright (c) 2017-2025, Mr. Walls
+# Copyright (c) 2017-2026, Mr. Walls
 # ..................................
 # Licensed under MIT (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,17 +27,7 @@ termination when the multicast hearing process receives shutdown signals.
 __module__ = "tests"
 
 try:
-	"""Handle imports with CWE-758 mitigation.
-
-	This implementation uses a nested try-except pattern to:
-	1. Attempt direct context import
-	2. Fallback to relative import
-	3. Validate context module integrity
-	4. Import required dependencies
-
-	References:
-	- CWE-758: Reliance on Undefined, Unspecified, or Implementation-Defined Behavior
-	"""
+	# Handle imports with CWE-758 mitigation: See details documented in tests.context.
 	try:
 		import context
 	except Exception as _cause:  # pragma: no branch

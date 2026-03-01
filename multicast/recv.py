@@ -3,7 +3,7 @@
 
 # Multicast Python Module
 # ..................................
-# Copyright (c) 2017-2025, Mr. Walls
+# Copyright (c) 2017-2026, Mr. Walls
 # ..................................
 # Licensed under MIT (the "License");
 # you may not use this file except in compliance with the License.
@@ -575,6 +575,20 @@ class McastRECV(multicast.mtool):
 
 	@classmethod
 	def setupArgs(cls, parser):
+		"""
+		Ignored for this subclass of mtool.
+
+		See multicast.__main__.McastRecvHearDispatch.setupArgs instead.
+
+		Args:
+			parser (argparse.ArgumentParser): ignored.
+
+		Returns:
+			None: This method does not return a value.
+
+		Note:
+			This is a trivial implementation to make this an optional abstract method.
+		"""
 		pass  # skipcq - Optional abstract method
 
 	@staticmethod

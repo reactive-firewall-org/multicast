@@ -2,7 +2,7 @@
 
 # Multicast Python Module (Testing)
 # ..................................
-# Copyright (c) 2017-2025, Mr. Walls
+# Copyright (c) 2017-2026, Mr. Walls
 # ..................................
 # Licensed under MIT (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,6 +43,18 @@ Robust imports: These statements import the entire "multicast" module,
 	This can be flagged as an intentional
 	[cyclic-import](https://pylint.pycqa.org/en/latest/user_guide/messages/refactor/cyclic-import.html)
 	warning.
+
+	Handling imports with CWE-758 mitigation. Many test module imports will use a nested try-except
+	block to wrap imports for additional import robustness.
+
+	These implementation uses a nested try-except pattern to:
+		1. Attempt direct context import
+		2. Fallback to relative import
+		3. Validate context module integrity
+		4. Import required dependencies
+
+	References:
+	- CWE-758: Reliance on Undefined, Unspecified, or Implementation-Defined Behavior
 
 Meta Tests - Fixtures:
 

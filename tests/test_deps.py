@@ -3,7 +3,7 @@
 
 # Multicast Python Module (Testing)
 # ..................................
-# Copyright (c) 2017-2025, Mr. Walls
+# Copyright (c) 2017-2026, Mr. Walls
 # ..................................
 # Licensed under MIT (the "License");
 # you may not use this file except in compliance with the License.
@@ -97,11 +97,19 @@ class BuildRequirementsTxtTestSuite(context.BasicUsageTestSuite):
 	def test_requirements_installation(self):
 		"""Attempt to install dependencies from 'tests/requirements.txt' in a virtual env."""
 		env_dir = "test_env"
-		builder = venv.EnvBuilder(with_pip=True)
-		builder.create(env_dir)
-		result = context.checkPythonCommand(
-			[context.getPythonCommand(), "-m pip", "install", "-r", "tests/requirements.txt"]
-		)
+		result = None
+		# Temporarily relax the default umask (to allow creation of venv files)
+		original_umask = os.umask(0o027)  # Temporarily set the umask
+		# Build the source distribution
+		try:
+			builder = venv.EnvBuilder(with_pip=True)
+			builder.create(env_dir)
+			result = context.checkPythonCommand(
+				[context.getPythonCommand(), "-m pip", "install", "-r", "tests/requirements.txt"]
+			)
+			builder.clear_directory(env_dir)
+		finally:
+			os.umask(original_umask)  # Restore the original umask
 		self.assertIsNotNone(result, "Failed to install requirements!")
 
 
