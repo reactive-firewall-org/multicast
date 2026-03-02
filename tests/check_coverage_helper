@@ -178,12 +178,9 @@ if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
 	# TEST_MCAST_GROUP='224.0.0.1' ;
 	TEST_GROUP="${1}" ;
 	TEST_CAT="${2}" ;
-	COVERAGE_CONTEXT_STUB="${TEST_CAT:-${TEST_GROUP:-all}";
+	COVERAGE_CONTEXT_STUB="${TEST_CAT:-${TEST_GROUP:-all}}" ;
 	COVERAGE_DATA_FILE="coverage_${COVERAGE_CONTEXT_STUB}" ;
-	COVERAGE_CONTEXT_ARGS="--context=${COVERAGE_CONTEXT_STUB} --data-file=${COVERAGE_DATA_FILE}";
-	if [[ ("${COVERAGE_CONTEXT_STUB}" == "all") ]] ; then
-		COVERAGE_CONTEXT_ARGS="--append ${COVERAGE_CONTEXT_ARGS}"
-	fi ;
+	COVERAGE_CONTEXT_ARGS="--context=${COVERAGE_CONTEXT_STUB} --data-file=${COVERAGE_DATA_FILE}" ;
 	export COVERAGE_DATA_FILE
 	if [[ -n "${PYTHON}" ]] && [[ -x "${PYTHON}" ]] ; then  # e.g., check_command ${PYTHON}
 		PY_3_CMD="${PYTHON}"
