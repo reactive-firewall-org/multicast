@@ -27,13 +27,13 @@
 # struct - builtin - PSF license
 # argparse - builtin - PSF license
 # setuptools - MIT license
-setuptools>=81.0
+setuptools>=82.0
 # virtualenv - MIT license
-#virtualenv>=15.0.1
+#virtualenv>=21.1.0
 # pgpy - BSD 3-Clause licensed
 #pgpy>=0.4.1
 # tox - MIT license
-#tox>=4.27.0
+#tox>=4.30.3
 # wheel - MIT license
 wheel>=0.46.3
 # pip - MIT license

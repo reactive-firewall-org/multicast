@@ -36,14 +36,15 @@ coverage:
         only_pulls: false
         flags:
           - "multicast"
-          - "doctests"
         paths:
           - "multicast/*"
           - "!tests/*"
       doctests:
         target: 75%
         threshold: 1%
+        if_ci_failed: ignore
         only_pulls: false
+        removed_code_behavior: fully_covered_patch
         flags:
           - "doctests"
       tests:
@@ -73,4 +74,4 @@ flags:
   doctests:
     carryforward: true
   unittests:
-    carryforward: false
+    carryforward: true

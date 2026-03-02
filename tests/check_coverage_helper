@@ -80,7 +80,7 @@ umask 137
 
 # exported Env vars
 # shellcheck disable=SC2155
-export LC_CTYPE="${LC_CTYPE:-'en_US.UTF-8'}"
+export LC_CTYPE="${LC_CTYPE:-en_US.UTF-8}"
 
 # Global variable to track initial directories
 readonly PRE_OLDPWD="${OLDPWD:-${PWD:-$(pwd)}}"
@@ -119,8 +119,6 @@ export -f check_command
 hash -p ./.github/tool_shlock_helper.sh shlock || { printf "%s\n" "Error: Failed to register shlock helper. CEP-5 locking will not work." >&2 ; exit 78 ; } ;
 
 # Check required commands
-check_command grep ;
-check_command python3 ;
 check_command git ;
 check_command shlock ;
 
@@ -180,13 +178,18 @@ if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
 	# TEST_MCAST_GROUP='224.0.0.1' ;
 	TEST_GROUP="${1}" ;
 	TEST_CAT="${2}" ;
-	COVERAGE_DATA_FILE="coverage_${TEST_CAT:-${TEST_GROUP:-all}}" ;
+	COVERAGE_CONTEXT_STUB="${TEST_CAT:-${TEST_GROUP:-all}";
+	COVERAGE_DATA_FILE="coverage_${COVERAGE_CONTEXT_STUB}" ;
+	COVERAGE_CONTEXT_ARGS="--context=${COVERAGE_CONTEXT_STUB} --data-file=${COVERAGE_DATA_FILE}";
+	if [[ ("${COVERAGE_CONTEXT_STUB}" == "all") ]] ; then
+		COVERAGE_CONTEXT_ARGS="--append ${COVERAGE_CONTEXT_ARGS}"
+	fi ;
 	export COVERAGE_DATA_FILE
-	if [[ -n "${PYTHON}" ]] && [[ -x "${PYTHON}" ]] ; then
+	if [[ -n "${PYTHON}" ]] && [[ -x "${PYTHON}" ]] ; then  # e.g., check_command ${PYTHON}
 		PY_3_CMD="${PYTHON}"
 	else
 		PY_3_CMD=$(command -v python3);
-		if [[ -z "${PY_3_CMD}" ]] ; then
+		if [[ -z "${PY_3_CMD}" ]] ; then  # e.g., check_command python3
 			printf "%s\n" "::error file='${0}',title='Missing Python'::No Python interpreter found!" >&2
 			EXIT_CODE=126 ;
 		fi ;
@@ -198,7 +201,7 @@ if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
 	fi ;
 	printf "%s\n" "::debug:: Will Use ${PY_3_CMD}"
 	# shellcheck disable=SC2086
-	COVERAGE_CMD="${PY_3_CMD} -m coverage run -p --source=multicast -m";
+	COVERAGE_CMD="${PY_3_CMD} -m coverage run -p ${COVERAGE_CONTEXT_ARGS} --source=multicast -m";
 	export COVERAGE_CMD
 
 	if [[ -n "${PYTEST}" ]] && [[ -n "$TESTS_USE_PYTEST" ]] ; then
@@ -273,7 +276,9 @@ fi ;
 # no logs to handle in helper
 
 unset _TEST_ROOT_DIR 2>/dev/null || : ;
+unset COVERAGE_CONTEXT_ARGS 2>/dev/null || : ;
 unset COVERAGE_DATA_FILE 2>/dev/null || : ;
+unset COVERAGE_CONTEXT_STUB 2>/dev/null || : ;
 unset COVERAGE_CMD 2>/dev/null || : ;
 unset PYTEST_CMD 2>/dev/null || : ;
 unset PY_3_CMD 2>/dev/null || : ;

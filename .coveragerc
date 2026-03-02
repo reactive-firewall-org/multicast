@@ -1,13 +1,13 @@
 [run]
-concurrency = multiprocessing
+concurrency = multiprocessing,thread
 parallel = True
 sigterm = True
 branch = True
 
 [report]
-include = multicast/*,tests/*
+include = multicast/*
 # Regexes for lines to exclude from consideration
-exclude_lines =
+exclude_also =
     # Have to re-enable the standard pragma
     pragma: no cover
     from . import
