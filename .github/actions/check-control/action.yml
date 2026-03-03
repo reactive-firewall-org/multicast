@@ -321,7 +321,7 @@ runs:
         summary_input="${RAW_CHECK_SUMMARY_INPUT}" || summary_input="" ;
         sanitized_input_summary_field=$(printf "%s%s" 'output[summary]=' "$summary_input" ;)
         printf "%s\n" "::endgroup::"
-        printf "%s\n" "::group::validate-summary"
+        printf "%s\n" "::group::validate-description"
         text_input="${RAW_CHECK_TEXT_INPUT}" || text_input="" ;
         sanitized_input_text_field=$(printf "%s%s" 'output[text]=' "$text_input" ;)
         printf "%s\n" "::endgroup::"
