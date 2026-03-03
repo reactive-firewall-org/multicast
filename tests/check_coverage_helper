@@ -180,7 +180,7 @@ if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
 	TEST_CAT="${2}" ;
 	COVERAGE_CONTEXT_STUB="${TEST_CAT:-${TEST_GROUP:-all}}" ;
 	COVERAGE_DATA_FILE="coverage_${COVERAGE_CONTEXT_STUB}" ;
-	COVERAGE_CONTEXT_ARGS="--context=${COVERAGE_CONTEXT_STUB} --data-file=${COVERAGE_DATA_FILE}" ;
+	COVERAGE_CONTEXT_ARGS="--context=${COVERAGE_CONTEXT_STUB}" ;
 	export COVERAGE_DATA_FILE
 	if [[ -n "${PYTHON}" ]] && [[ -x "${PYTHON}" ]] ; then  # e.g., check_command ${PYTHON}
 		PY_3_CMD="${PYTHON}"
