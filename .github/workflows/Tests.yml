@@ -820,7 +820,7 @@ jobs:
         else
           exit 1
         fi
-    - name: "Summarize Syle-Tests"
+    - name: "Summarize Style-Tests"
       id: style_report
       if: ${{ always() }}
       shell: bash
