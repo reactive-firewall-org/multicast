@@ -317,6 +317,14 @@ runs:
         printf "::debug:: %s\n" "Will use title $title_input" ;
         sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$title_input" ;)
         printf "%s\n" "::endgroup::"
+        printf "%s\n" "::group::validate-summary"
+        summary_input="${RAW_CHECK_SUMMARY_INPUT}" || summary_input="" ;
+        sanitized_input_summary_field=$(printf "%s%s" 'output[summary]=' "$summary_input" ;)
+        printf "%s\n" "::endgroup::"
+        printf "%s\n" "::group::validate-description"
+        text_input="${RAW_CHECK_TEXT_INPUT}" || text_input="" ;
+        sanitized_input_text_field=$(printf "%s%s" 'output[text]=' "$text_input" ;)
+        printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::update-check"
         # GitHub CLI api
         # https://cli.github.com/manual/gh_api
@@ -326,7 +334,7 @@ runs:
         -f "status=${{ inputs.status }}" \
         -f "details_url=${{ steps.output_check_details_url.outputs.details_url }}" \
         -f "$sanitized_input_title_field" \
-        -f 'output[summary]=${RAW_CHECK_SUMMARY_INPUT}' -f 'output[text]=${RAW_CHECK_TEXT_INPUT}'
+        -f "$sanitized_input_summary_field" -f "$sanitized_input_text_field"
         printf "%s\n" "::endgroup::"
     - name: "Update Check"
       id: complete_check
@@ -358,7 +366,7 @@ runs:
         -f "completed_at=${{ steps.output_date.outputs.check_date }}Z" \
         -f "details_url=${{ steps.output_check_details_url.outputs.details_url }}" \
         -f "$sanitized_input_title_field" \
-        -f 'output[summary]=${RAW_CHECK_SUMMARY_INPUT}' -f 'output[text]=${RAW_CHECK_TEXT_INPUT}'
+        -f 'output[summary]='"${RAW_CHECK_SUMMARY_INPUT}" -f 'output[text]='"${RAW_CHECK_TEXT_INPUT}"
         printf "%s\n" "::endgroup::"
     - name: "Report outcome of checks API"
       id: output_check_outcome

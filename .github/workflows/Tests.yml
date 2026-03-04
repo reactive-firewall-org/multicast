@@ -476,7 +476,9 @@ jobs:
         coveralls-token: ${{ github.server_url == 'https://github.com' && secrets.COVERALLS_REPO_TOKEN || '' }}
     - name: Generate Doctest Coverage for py${{ matrix.python-version }} on ${{ matrix.os }}
       id: doctests-main
-      run: make -f Makefile test-mat-doctests ;
+      shell: bash
+      run: |
+        make -f Makefile test-mat-doctests || exit 1
     - name: Upload Python ${{ matrix.python-version }} doctest coverage to Codecov
       id: doctests-codecov-upload
       uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
@@ -803,6 +805,31 @@ jobs:
       id: post-style-test
       run: make -j1 -f Makefile clean || true ;
       if: ${{ success() }}
+    - name: "Evaluate Style-Tests"
+      id: styletests_outcome
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        if [[ "${{ steps.style.outcome }}" == "success" ]] ; then
+          THE_RESULT="success"
+        else
+          THE_RESULT="failure"
+        fi
+        if [[ "${THE_RESULT}" == "success" ]] ; then
+          exit 0
+        else
+          exit 1
+        fi
+    - name: "Summarize Style-Tests"
+      id: style_report
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        if [[ "${{ steps.styletests_outcome.outcome }}" == "success" ]] ; then
+          printf "%s\n" " ${PASS_ICON} Style Checks succeeded with python version \`${PYTHON_DEFAULT}\` for \`${VCS_COMMIT_ID}\`" >> "$GITHUB_STEP_SUMMARY"
+        else
+          printf "%s\n" " ${FAIL_ICON} ~Style Checks succeeded with python version \`${PYTHON_DEFAULT}\`~" >> "$GITHUB_STEP_SUMMARY"
+        fi
 
 
   INTEGRATION:
@@ -892,7 +919,9 @@ jobs:
       shell: bash
     - name: Generate Doctest Coverage for py${{ matrix.python-version }} on ${{ matrix.os }}
       id: integration-doctests
-      run: make -f Makefile test-mat-doctests ;
+      shell: bash
+      run: |
+        make -f Makefile test-mat-doctests ;
     - name: Generate Functional Test Coverage for py${{ matrix.python-version }} on ${{ matrix.os }}
       id: integration-main
       run: |
