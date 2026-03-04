@@ -127,7 +127,7 @@ jobs:
           ref: ${{ steps.load_build_info.outputs.build_sha }}
           sparse-checkout: '.github/actions/check-control'
           repository: reactive-firewall-org/multicast
-          github-token: ${{ env.GH_TOKEN }}
+          token: ${{ env.GH_TOKEN }}
       - name: "Queue Tests GitHub Check"
         id: output_tests_check_id
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') }}
@@ -324,7 +324,7 @@ jobs:
       if: ${{ always() }}
       shell: bash
       run: |
-        BUILD_LINK="[${VCS_COMMIT_ID}](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
+        BUILD_LINK="[![${VCS_COMMIT_ID}](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2Freactive-firewall-org%2Fmulticast%2Fcommits%2F${VCS_COMMIT_ID}&query=%24.sha&logo=github&label=SHA&cacheSeconds=3600)](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
         if [[ "${{ steps.coverage_outcome.outcome }}" == "success" ]] ; then
           printf "%s\n" "  * ${PASS_ICON} Codebase Coverage Testing succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for ${BUILD_LINK}" > "$COV_STEP_SUMMARY"
           printf "%s\n" " ${PASS_ICON} Codebase Coverage Testing succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for \`${VCS_COMMIT_ID}\`" >> "$GITHUB_STEP_SUMMARY"
@@ -365,8 +365,8 @@ jobs:
             printf "%s\n" "  * ${SKIP_ICON} Uploading unit-tests coverage report to deepsource was skipped" >> "$COV_STEP_SUMMARY"
           fi
         fi
-        if [[ "${{ steps.coverage-reports-upload.outcome }}" == "success" ]] ; then
-          printf "%s\n" "  * ${PASS_ICON} Uploading [unit-tests coverage report artifact](${{ steps.coverage-reports-upload.outputs.artifact-url }}) succeeded" >> "$COV_STEP_SUMMARY"
+        if [[ "${{ steps.upload-test-tools.outputs.coverage_upload_artifact_outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${PASS_ICON} Uploading [unit-tests coverage report artifact](${{ steps.upload-test-tools.outputs.coverage_artifact_url }}) succeeded" >> "$COV_STEP_SUMMARY"
         else
           printf "%s\n" "  * ${FAIL_ICON} Uploading unit-tests coverage report artifact failed" >> "$COV_STEP_SUMMARY"
         fi
@@ -476,7 +476,9 @@ jobs:
         coveralls-token: ${{ github.server_url == 'https://github.com' && secrets.COVERALLS_REPO_TOKEN || '' }}
     - name: Generate Doctest Coverage for py${{ matrix.python-version }} on ${{ matrix.os }}
       id: doctests-main
-      run: make -f Makefile test-mat-doctests ;
+      shell: bash
+      run: |
+        make -f Makefile test-mat-doctests || exit 1
     - name: Upload Python ${{ matrix.python-version }} doctest coverage to Codecov
       id: doctests-codecov-upload
       uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
@@ -565,7 +567,7 @@ jobs:
       if: ${{ always() }}
       shell: bash
       run: |
-        BUILD_LINK="[${VCS_COMMIT_ID}](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
+        BUILD_LINK="[![${VCS_COMMIT_ID}](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2Freactive-firewall-org%2Fmulticast%2Fcommits%2F${VCS_COMMIT_ID}&query=%24.sha&logo=github&label=SHA&cacheSeconds=3600)](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
         if [[ "${{ steps.doctests_outcome.outcome }}" == "success" ]] ; then
           printf "%s\n" "  * ${PASS_ICON} Doctests succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for ${BUILD_LINK}" > "$DOC_STEP_SUMMARY"
           printf "%s\n" " ${PASS_ICON} Doctests succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for \`${VCS_COMMIT_ID}\`" >> "$GITHUB_STEP_SUMMARY"
@@ -597,8 +599,8 @@ jobs:
             printf "%s\n" "  * ${SKIP_ICON} Uploading Doctests coverage report to deepsource was skipped" >> "$DOC_STEP_SUMMARY"
           fi
         fi
-        if [[ "${{ steps.doctests-reports-upload.outcome }}" == "success" ]] ; then
-          printf "%s\n" "  * ${PASS_ICON} Uploading [Doctests coverage report artifact](${{ steps.doctests-reports-upload.outputs.artifact-url }}) succeeded" >> "$DOC_STEP_SUMMARY"
+        if [[ "${{ steps.upload-test-tools.outputs.coverage_upload_artifact_outcome }}" == "success" ]] ; then
+          printf "%s\n" "  * ${PASS_ICON} Uploading [Doctests coverage report artifact](${{ steps.upload-test-tools.outputs.coverage_artifact_url }}) succeeded" >> "$DOC_STEP_SUMMARY"
         else
           printf "%s\n" "  * ${FAIL_ICON} Uploading Doctests coverage report artifact failed" >> "$DOC_STEP_SUMMARY"
         fi
@@ -803,6 +805,31 @@ jobs:
       id: post-style-test
       run: make -j1 -f Makefile clean || true ;
       if: ${{ success() }}
+    - name: "Evaluate Style-Tests"
+      id: styletests_outcome
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        if [[ "${{ steps.style.outcome }}" == "success" ]] ; then
+          THE_RESULT="success"
+        else
+          THE_RESULT="failure"
+        fi
+        if [[ "${THE_RESULT}" == "success" ]] ; then
+          exit 0
+        else
+          exit 1
+        fi
+    - name: "Summarize Style-Tests"
+      id: style_report
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        if [[ "${{ steps.styletests_outcome.outcome }}" == "success" ]] ; then
+          printf "%s\n" " ${PASS_ICON} Style Checks succeeded with python version \`${PYTHON_DEFAULT}\` for \`${VCS_COMMIT_ID}\`" >> "$GITHUB_STEP_SUMMARY"
+        else
+          printf "%s\n" " ${FAIL_ICON} ~Style Checks succeeded with python version \`${PYTHON_DEFAULT}\`~" >> "$GITHUB_STEP_SUMMARY"
+        fi
 
 
   INTEGRATION:
@@ -892,7 +919,9 @@ jobs:
       shell: bash
     - name: Generate Doctest Coverage for py${{ matrix.python-version }} on ${{ matrix.os }}
       id: integration-doctests
-      run: make -f Makefile test-mat-doctests ;
+      shell: bash
+      run: |
+        make -f Makefile test-mat-doctests ;
     - name: Generate Functional Test Coverage for py${{ matrix.python-version }} on ${{ matrix.os }}
       id: integration-main
       run: |
@@ -939,7 +968,7 @@ jobs:
       id: integration-codecov-results-upload
       uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
       with:
-        report-type: 'test_results'
+        report_type: 'test_results'
         token: ${{ secrets.CODECOV_TOKEN }}
         job_code: ${{ needs.check_mats.outputs.build_id }}-${{ github.run_number }}
         override_commit: ${{ needs.check_mats.outputs.build_sha }}
@@ -1078,7 +1107,7 @@ jobs:
       if: ${{ always() }}
       shell: bash
       run: |
-        BUILD_LINK="[${VCS_COMMIT_ID}](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
+        BUILD_LINK="[![${VCS_COMMIT_ID}](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2Freactive-firewall-org%2Fmulticast%2Fcommits%2F${VCS_COMMIT_ID}&query=%24.sha&logo=github&label=SHA&cacheSeconds=3600)](https://github.com/reactive-firewall-org/multicast/commit/${VCS_COMMIT_ID})"
         if [[ "${{ steps.integration_outcome.outcome }}" == "success" ]] ; then
           printf "%s\n\n" "## ${PASS_ICON} Integration Acceptance Testing succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for ${BUILD_LINK}" > "$TESTS_STEP_SUMMARY"
           printf "%s\n" " ${PASS_ICON} Integration Acceptance Testing succeeded with python version \`${PYTHON_VERSION}\` on \`${{ runner.os }}\` for \`${VCS_COMMIT_ID}\`" >> "$GITHUB_STEP_SUMMARY"
@@ -1104,7 +1133,11 @@ jobs:
         if [[ "${{ steps.integration-codecov-results-upload.outcome }}" == "success" ]] ; then
           printf "%s\n" "    * ${PASS_ICON} Uploading integration testing reports artifact succeeded" >> "$TESTS_STEP_SUMMARY"
         else
-          printf "%s\n" "    * ${FAIL_ICON} Uploading integration testing reports artifact failed" >> "$TESTS_STEP_SUMMARY"
+          if [[ ("${TESTS_USE_PYTEST}" == "1") ]] ; then
+            printf "%s\n" "    * ${FAIL_ICON} Uploading integration testing reports artifact failed" >> "$TESTS_STEP_SUMMARY"
+          else
+            printf "%s\n" "    * ${SKIP_ICON} Uploading integration testing report artifact was skipped (without \`pytest\`)" >> "$TESTS_STEP_SUMMARY"
+          fi
         fi
         if [[ "${{ steps.integration-doctests.outcome }}" == "success" ]] ; then
           printf "%s\n" "  * ${PASS_ICON} Integrated Doctesting succeeded" >> "$TESTS_STEP_SUMMARY"
@@ -1135,7 +1168,7 @@ jobs:
         if [[ "${{ steps.integration-reports-upload.outcome }}" == "success" ]] ; then
           printf "%s\n" "  * ${PASS_ICON} Uploading [integration coverage report artifact](${{ steps.integration-reports-upload.outputs.artifact-url }}) succeeded" >> "$TESTS_STEP_SUMMARY"
         else
-          if [[ ($TESTS_USE_PYTEST -eq 1) ]] ; then
+          if [[ ("${TESTS_USE_PYTEST}" == "1") ]] ; then
             printf "%s\n" "  * ${FAIL_ICON} Uploading integration coverage report artifact failed" >> "$TESTS_STEP_SUMMARY"
           else
             printf "%s\n" "  * ${SKIP_ICON} Uploading integration coverage report artifact was skipped" >> "$TESTS_STEP_SUMMARY"

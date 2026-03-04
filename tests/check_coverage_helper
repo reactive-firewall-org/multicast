@@ -80,9 +80,10 @@ umask 137
 
 # exported Env vars
 # shellcheck disable=SC2155
-export LC_CTYPE="${LC_CTYPE:-'en_US.UTF-8'}"
+export LC_CTYPE="${LC_CTYPE:-en_US.UTF-8}"
 
 # Global variable to track initial directories
+readonly SCRIPT_FILE="tests/check_coverage_helper"
 readonly PRE_OLDPWD="${OLDPWD:-${PWD:-$(pwd)}}"
 readonly PRE_PWD="${PWD:-$(pwd)}"
 
@@ -119,8 +120,6 @@ export -f check_command
 hash -p ./.github/tool_shlock_helper.sh shlock || { printf "%s\n" "Error: Failed to register shlock helper. CEP-5 locking will not work." >&2 ; exit 78 ; } ;
 
 # Check required commands
-check_command grep ;
-check_command python3 ;
 check_command git ;
 check_command shlock ;
 
@@ -136,7 +135,7 @@ function cleanup() {
 	cd "${PRE_PWD}" && cd "${PRE_OLDPWD}" 2>/dev/null || true ;
 	cd "${PRE_PWD}" 2>/dev/null || true ;
 	# shellcheck disable=SC2317
-	unset LOCK_FILE 2>/dev/null || true ;
+	unset LOG_FILE 2>/dev/null || true ;
 	# shellcheck disable=SC2317
 	unset ERR_FILE 2>/dev/null || true ;
 	# shellcheck disable=SC2317
@@ -154,7 +153,7 @@ if shlock -f "${LOCK_FILE}" -p $$ ; then
 		# shellcheck disable=SC2173
 		#trap 'cleanup 2>/dev/null || rm -f "${LOCK_FILE} 2>/dev/null > /dev/null || true ; wait ; exit 1 ;' SIGSTOP || EXIT_CODE=7
 		trap 'cleanup 2>/dev/null || rm -f "${LOCK_FILE}" 2>/dev/null > /dev/null || true ; wait ; exit 130 ;' SIGINT || EXIT_CODE=130
-		trap 'cleanup 2>/dev/null || rm -f "${LOCK_FILE}" 2>/dev/null > /dev/null || true || true ; wait ; exit 137 ;' SIGABRT || EXIT_CODE=137
+		trap 'cleanup 2>/dev/null || rm -f "${LOCK_FILE}" 2>/dev/null > /dev/null || true ; wait ; exit 137 ;' SIGABRT || EXIT_CODE=137
 		# shellcheck disable=SC2086
 		trap 'cleanup 2>/dev/null || rm -f "${LOCK_FILE}" 2>/dev/null > /dev/null || true ; wait ; exit ${EXIT_CODE} ;' EXIT || EXIT_CODE=1
 else
@@ -180,13 +179,15 @@ if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
 	# TEST_MCAST_GROUP='224.0.0.1' ;
 	TEST_GROUP="${1}" ;
 	TEST_CAT="${2}" ;
-	COVERAGE_DATA_FILE="coverage_${TEST_CAT:-${TEST_GROUP:-all}}" ;
+	COVERAGE_CONTEXT_STUB="${TEST_CAT:-${TEST_GROUP:-all}}" ;
+	COVERAGE_DATA_FILE="coverage_${COVERAGE_CONTEXT_STUB}" ;
+	COVERAGE_CONTEXT_ARGS="--context=${COVERAGE_CONTEXT_STUB}" ;
 	export COVERAGE_DATA_FILE
-	if [[ -n "${PYTHON}" ]] && [[ -x "${PYTHON}" ]] ; then
+	if [[ -n "${PYTHON}" ]] && [[ -x "${PYTHON}" ]] ; then  # e.g., check_command ${PYTHON}
 		PY_3_CMD="${PYTHON}"
 	else
 		PY_3_CMD=$(command -v python3);
-		if [[ -z "${PY_3_CMD}" ]] ; then
+		if [[ -z "${PY_3_CMD}" ]] ; then  # e.g., check_command python3
 			printf "%s\n" "::error file='${0}',title='Missing Python'::No Python interpreter found!" >&2
 			EXIT_CODE=126 ;
 		fi ;
@@ -198,7 +199,7 @@ if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
 	fi ;
 	printf "%s\n" "::debug:: Will Use ${PY_3_CMD}"
 	# shellcheck disable=SC2086
-	COVERAGE_CMD="${PY_3_CMD} -m coverage run -p --source=multicast -m";
+	COVERAGE_CMD="${PY_3_CMD} -m coverage run -p ${COVERAGE_CONTEXT_ARGS} --source=multicast -m";
 	export COVERAGE_CMD
 
 	if [[ -n "${PYTEST}" ]] && [[ -n "$TESTS_USE_PYTEST" ]] ; then
@@ -253,7 +254,7 @@ if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
 					# shellcheck disable=SC2086
 					${PY_3_CMD} -m coverage report -m --include=multicast/* --data-file=${COVERAGE_DATA_FILE} 2>/dev/null || : ;  # always continue
 					# shellcheck disable=SC2086
-					${PY_3_CMD} -m coverage xml -o test-reports/coverage_${TEST_CAT:-${TEST_GROUP}}.xml --include=multicast/* --data-file="${COVERAGE_DATA_FILE}" 2>/dev/null || : ;  # always continue
+					${PY_3_CMD} -m coverage xml -o test-reports/coverage_${COVERAGE_CONTEXT_STUB}.xml --include=multicast/* --data-file="${COVERAGE_DATA_FILE}" 2>/dev/null || : ;  # always continue
 				else
 					# shellcheck disable=SC2086
 					${PY_3_CMD} -m coverage combine --append ./coverage_* 2>/dev/null || : ;  # always continue
@@ -273,7 +274,9 @@ fi ;
 # no logs to handle in helper
 
 unset _TEST_ROOT_DIR 2>/dev/null || : ;
+unset COVERAGE_CONTEXT_ARGS 2>/dev/null || : ;
 unset COVERAGE_DATA_FILE 2>/dev/null || : ;
+unset COVERAGE_CONTEXT_STUB 2>/dev/null || : ;
 unset COVERAGE_CMD 2>/dev/null || : ;
 unset PYTEST_CMD 2>/dev/null || : ;
 unset PY_3_CMD 2>/dev/null || : ;

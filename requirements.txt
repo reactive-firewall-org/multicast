@@ -23,9 +23,9 @@
 # argparse - builtin - PSF license
 # argparse>=1.4.0
 # setuptools - MIT license
-setuptools>=81.0
+setuptools>=82.0
 # virtualenv - MIT license
-# virtualenv>=20.26.6
+# virtualenv>=21.1.0
 # pip - MIT license
 pip>=26.0.1
 # build - MIT license

@@ -37,6 +37,38 @@ except Exception as baton:
 
 @context.markWithMetaTag("mat", "hear")
 class McastHearTestSuite(context.BasicUsageTestSuite):  # skipcq: PTC-W0046 -- intermediate class
+	"""
+	McastHearTestSuite is a test suite designed for verifying multicast functionalities
+	related to hearing (i.e., listening) operations in a multicast server environment.
+
+	This test suite extends the BasicUsageTestSuite provided by the `context` module,
+	implementing specific test cases to ensure that multicast hearing functionalities
+	conform to expected behaviors and interfaces.
+
+	Attributes:
+		__module__ (str): Module identifier
+		__name__ (str): Full class name
+
+	Methods:
+		get_default_ip():
+			Retrieves the default IP address of the machine running the test.
+			This method ensures compliance with RFC 5737 by using a specific
+			non-routable IP address (203.0.113.1) and an arbitrary high port number
+			(59095) to establish a socket connection.
+
+	Notes:
+		The tests included in this suite may rely on the system's network configuration
+		and the ability to establish socket connections to validate multicast hearing operations.
+
+		In cases where obtaining the IP address fails, an exception of type
+		`multicast.exceptions.CommandExecutionError` will be raised, indicating
+		the nature of the failure.
+
+	Usage:
+		This test suite can be instantiated and executed within a testing framework
+		that supports the discovery and running of tests, allowing for the assessment
+		of multicast hearing functionalities.
+	"""
 
 	__module__ = "tests.test_hear_server"
 
