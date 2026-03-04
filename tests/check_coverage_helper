@@ -83,6 +83,7 @@ umask 137
 export LC_CTYPE="${LC_CTYPE:-en_US.UTF-8}"
 
 # Global variable to track initial directories
+readonly SCRIPT_FILE="tests/check_coverage_helper"
 readonly PRE_OLDPWD="${OLDPWD:-${PWD:-$(pwd)}}"
 readonly PRE_PWD="${PWD:-$(pwd)}"
 
@@ -180,7 +181,7 @@ if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
 	TEST_CAT="${2}" ;
 	COVERAGE_CONTEXT_STUB="${TEST_CAT:-${TEST_GROUP:-all}}" ;
 	COVERAGE_DATA_FILE="coverage_${COVERAGE_CONTEXT_STUB}" ;
-	COVERAGE_CONTEXT_ARGS="--context=${COVERAGE_CONTEXT_STUB} --data-file=${COVERAGE_DATA_FILE}" ;
+	COVERAGE_CONTEXT_ARGS="--context=${COVERAGE_CONTEXT_STUB}" ;
 	export COVERAGE_DATA_FILE
 	if [[ -n "${PYTHON}" ]] && [[ -x "${PYTHON}" ]] ; then  # e.g., check_command ${PYTHON}
 		PY_3_CMD="${PYTHON}"
@@ -253,7 +254,7 @@ if [[ ("${EXIT_CODE}" -eq 0) ]] ; then
 					# shellcheck disable=SC2086
 					${PY_3_CMD} -m coverage report -m --include=multicast/* --data-file=${COVERAGE_DATA_FILE} 2>/dev/null || : ;  # always continue
 					# shellcheck disable=SC2086
-					${PY_3_CMD} -m coverage xml -o test-reports/coverage_${TEST_CAT:-${TEST_GROUP}}.xml --include=multicast/* --data-file="${COVERAGE_DATA_FILE}" 2>/dev/null || : ;  # always continue
+					${PY_3_CMD} -m coverage xml -o test-reports/coverage_${COVERAGE_CONTEXT_STUB}.xml --include=multicast/* --data-file="${COVERAGE_DATA_FILE}" 2>/dev/null || : ;  # always continue
 				else
 					# shellcheck disable=SC2086
 					${PY_3_CMD} -m coverage combine --append ./coverage_* 2>/dev/null || : ;  # always continue
