@@ -104,6 +104,7 @@ jobs:
           merge-multiple: true
           github-token: ${{ env.GH_TOKEN }}
           run-id: ${{ steps.get_trigger_id.outputs.trigger_id }}
+          digest-mismatch: error
       - name: "move into place"
         id: load_build_info
         if: ${{ (steps.check.outputs.should_run == 'true') && (github.repository == 'reactive-firewall-org/multicast') && success() }}

@@ -135,6 +135,7 @@ runs:
         repository: reactive-firewall-org/multicast
         github-token: ${{ inputs.token }}
         run-id: ${{ inputs.build-run-id }}
+        digest-mismatch: error
     - name: "Enumerate Fetched Files"
       id: output_artifact_files
       if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
