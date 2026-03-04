@@ -87,7 +87,7 @@ ifeq "$(COVERAGE)" ""
 	#COV_CORE_SOURCE = $(dir $(abspath $(lastword $(MAKEFILE_LIST))))/
 	COV_CORE_CONFIG = $(dir $(abspath $(lastword $(MAKEFILE_LIST))))/.coveragerc
 	COV_CORE_DATAFILE = .coverage
-	COVERAGE_ARGS := --cov=. --cov-append --cov-report=xml
+	COVERAGE_ARGS := --cov=. --cov-append --cov-context=with_pytest --cov-report=xml
 else
 	COVERAGE_ARGS :=
 endif
@@ -196,7 +196,7 @@ branding::
 	$(QUIET)$(ECHO) ""
 
 init: branding
-	$(QUIET)$(PYTHON) -m pip $(PIP_PREFIX_FLAGS) install $(PIP_COMMON_FLAGS) $(PIP_ENV_FLAGS) "pip>=26.0.1" "setuptools>=81.0" "wheel>=0.46.3" "build>=1.2.1" || DO_FAIL="exit 69" ;  # 69: [pip] Service unavailable - does not exist.
+	$(QUIET)$(PYTHON) -m pip $(PIP_PREFIX_FLAGS) install $(PIP_COMMON_FLAGS) $(PIP_ENV_FLAGS) "pip>=26.0.1" "setuptools>=82.0" "wheel>=0.46.3" "build>=1.2.1" || DO_FAIL="exit 69" ;  # 69: [pip] Service unavailable - does not exist.
 	$(QUIET)$(DO_FAIL) 2>$(ERROR_LOG_PATH) >>/dev/null ;
 	$(QUIET)$(PYTHON) -m pip $(PIP_PREFIX_FLAGS) install $(PIP_COMMON_FLAGS) $(PIP_ENV_FLAGS) -r requirements.txt 2>$(ERROR_LOG_PATH) || DO_FAIL="exit 69" ;  # 69: [pip] Service unavailable - does not exist.
 	$(QUIET)$(DO_FAIL) 2>$(ERROR_LOG_PATH) >>/dev/null ;

@@ -299,7 +299,7 @@ Dynamic Imports:
 	While the multicast alias is the same as the multicast module name, this pattern should
 	serve to reinforce the Multicast module's namespace, especially when dealing with dynamic
 	imports and to maintain consistency across different parts of the code.
-	Roughly speaking, the following diagram describes the interdependentcies:
+	Roughly speaking, the following diagram describes the interdependencies:
 	```mermaid
 		graph TD;
 			Client-Code-->multicast/__init__.py;

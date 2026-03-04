@@ -226,7 +226,7 @@ runs:
         printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::validate-title"
         title_input=${CHECK_TITLE_INPUT}
-        printf "::debug:: %s\n" "Will use name $title_input" ;
+        printf "::debug:: %s\n" "Will use title $title_input" ;
         sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$title_input" ;)
         printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::create-new-check"
@@ -257,7 +257,7 @@ runs:
         printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::validate-title"
         title_input=${CHECK_TITLE_INPUT}
-        printf "::debug:: %s\n" "Will use name $title_input" ;
+        printf "::debug:: %s\n" "Will use title $title_input" ;
         sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$title_input" ;)
         printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::update-new-check"
@@ -305,6 +305,8 @@ runs:
         GH_TOKEN: ${{ inputs.token }}
         CHECK_NAME_INPUT: '${{ inputs.name }}'
         CHECK_TITLE_INPUT: '${{ inputs.title || inputs.name }}'
+        RAW_CHECK_SUMMARY_INPUT: ${{ inputs.summary }}  # use raw value, but expand before shell
+        RAW_CHECK_TEXT_INPUT: ${{ inputs.text }}  # use raw value, but expand before shell
       run: |
         printf "%s\n" "::group::validate-name"
         name_input=${CHECK_NAME_INPUT}
@@ -312,8 +314,16 @@ runs:
         printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::validate-title"
         title_input=${CHECK_TITLE_INPUT}
-        printf "::debug:: %s\n" "Will use name $title_input" ;
+        printf "::debug:: %s\n" "Will use title $title_input" ;
         sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$title_input" ;)
+        printf "%s\n" "::endgroup::"
+        printf "%s\n" "::group::validate-summary"
+        summary_input="${RAW_CHECK_SUMMARY_INPUT}" || summary_input="" ;
+        sanitized_input_summary_field=$(printf "%s%s" 'output[summary]=' "$summary_input" ;)
+        printf "%s\n" "::endgroup::"
+        printf "%s\n" "::group::validate-description"
+        text_input="${RAW_CHECK_TEXT_INPUT}" || text_input="" ;
+        sanitized_input_text_field=$(printf "%s%s" 'output[text]=' "$text_input" ;)
         printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::update-check"
         # GitHub CLI api
@@ -324,7 +334,7 @@ runs:
         -f "status=${{ inputs.status }}" \
         -f "details_url=${{ steps.output_check_details_url.outputs.details_url }}" \
         -f "$sanitized_input_title_field" \
-        -f 'output[summary]=${{ inputs.summary }}' -f 'output[text]=${{ inputs.text }}'
+        -f "$sanitized_input_summary_field" -f "$sanitized_input_text_field"
         printf "%s\n" "::endgroup::"
     - name: "Update Check"
       id: complete_check
@@ -334,6 +344,8 @@ runs:
         GH_TOKEN: ${{ inputs.token }}
         CHECK_NAME_INPUT: '${{ inputs.name }}'
         CHECK_TITLE_INPUT: '${{ inputs.title || inputs.name }}'
+        RAW_CHECK_SUMMARY_INPUT: ${{ inputs.summary }}  # use raw value, but expand before shell
+        RAW_CHECK_TEXT_INPUT: ${{ inputs.text }}  # use raw value, but expand before shell
       run: |
         printf "%s\n" "::group::validate-name"
         name_input=${CHECK_NAME_INPUT}
@@ -341,7 +353,7 @@ runs:
         printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::validate-title"
         title_input=${CHECK_TITLE_INPUT}
-        printf "::debug:: %s\n" "Will use name $title_input" ;
+        printf "::debug:: %s\n" "Will use title $title_input" ;
         sanitized_input_title_field=$(printf "%s%s" 'output[title]=' "$title_input" ;)
         printf "%s\n" "::endgroup::"
         printf "%s\n" "::group::complete-check"
@@ -354,7 +366,7 @@ runs:
         -f "completed_at=${{ steps.output_date.outputs.check_date }}Z" \
         -f "details_url=${{ steps.output_check_details_url.outputs.details_url }}" \
         -f "$sanitized_input_title_field" \
-        -f 'output[summary]=${{ inputs.summary }}' -f 'output[text]=${{ inputs.text }}'
+        -f 'output[summary]='"${RAW_CHECK_SUMMARY_INPUT}" -f 'output[text]='"${RAW_CHECK_TEXT_INPUT}"
         printf "%s\n" "::endgroup::"
     - name: "Report outcome of checks API"
       id: output_check_outcome

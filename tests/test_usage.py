@@ -46,6 +46,7 @@ Tests of integration by usage.
 __module__ = "tests"
 
 try:
+	# Handle imports with CWE-758 mitigation: See details documented in tests.context.
 	try:
 		import context
 	except Exception as _root_cause:  # pragma: no branch
@@ -659,7 +660,7 @@ class BasicIntegrationTestSuite(context.BasicUsageTestSuite):
 		self.assertTrue(theResult, str("Could Not swap multicast for multicast.__main__"))
 
 	def test_prints_version_WHEN_called_GIVEN_version_argument(self):
-		"""Test for result from --version argument: python -m multicast.* --version """
+		"""Test for result from --version argument: python -m multicast.* --version"""
 		theResult = False
 		if (self._thepython is not None):
 			try:

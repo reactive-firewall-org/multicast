@@ -104,11 +104,8 @@ try:
 				REDBG (str): ANSI code for red background.
 				ENDC (str): ANSI code to reset text formatting.
 
-				logging_color (dict): A dictionary mapping logging levels to their
-										corresponding ANSI color codes.
-				logging_level (dict): A dictionary mapping logging levels to their
-										corresponding logging module constants.
 			"""
+
 			# Define ANSI color codes
 			BLACK = """\033[30m"""
 			RED = """\033[31m"""
@@ -128,6 +125,9 @@ try:
 			'error': ANSIColors.RED,
 			'critical': str(str(ANSIColors.BLACK) + str(ANSIColors.REDBG)),
 		}
+		"""logging_color (dict): A dictionary mapping logging levels to their
+									corresponding ANSI color codes.
+		"""
 
 		logging_level = {
 			'debug': logging.DEBUG,
@@ -136,6 +136,9 @@ try:
 			'error': logging.ERROR,
 			'critical': logging.CRITICAL,
 		}
+		"""logging_level (dict): A dictionary mapping logging levels to their
+									corresponding logging module constants.
+		"""
 
 		class ColoredStreamHandler(logging.StreamHandler):
 			"""
@@ -390,6 +393,7 @@ MINIMUM_ACCEPTANCE_TESTS = {
 		test_hear_server.McastServerTestSuite,
 		test_hear_server.HearUDPHandlerTestSuite,
 		test_hear_server_activate.McastServerActivateTestSuite,
+		test_hear_server_activate.HearServerInitTestSuite,  # added in v2.1.0
 		test_hear_data_processing.RecvDataProcessingTestSuite,
 		test_hear_data_processing.HearHandleNoneDataTestSuite,
 		test_hear_cleanup.HearCleanupTestSuite,
