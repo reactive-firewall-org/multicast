@@ -127,7 +127,7 @@ runs:
     - id: fetch_artifact_files
       name: "Fetch Build Files"
       if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
-      uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
       with:
         path: ${{ inputs.path }}/dist
         pattern: multicast-build-${{ steps.output_sha.outputs.sha }}
@@ -135,6 +135,7 @@ runs:
         repository: reactive-firewall-org/multicast
         github-token: ${{ inputs.token }}
         run-id: ${{ inputs.build-run-id }}
+        digest-mismatch: error
     - name: "Enumerate Fetched Files"
       id: output_artifact_files
       if: ${{ (github.repository == 'reactive-firewall-org/multicast') && success() }}
