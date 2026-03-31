@@ -224,7 +224,7 @@ jobs:
         make -f Makefile test || exit 1
     - name: Upload Python ${{ matrix.python-version }} test coverage to Codecov
       id: coverage-unittests-codecov-upload
-      uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+      uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         job_code: ${{ needs.check_mats.outputs.build_id }}-${{ github.run_number }}
@@ -241,7 +241,7 @@ jobs:
         fail_ci_if_error: false
     - name: Upload Python ${{ matrix.python-version }} second flag coverage to Codecov
       id: coverage-project-codecov-upload
-      uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+      uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         job_code: ${{ needs.check_mats.outputs.build_id }}-${{ github.run_number }}
@@ -482,7 +482,7 @@ jobs:
         make -f Makefile test-mat-doctests || exit 1
     - name: Upload Python ${{ matrix.python-version }} doctest coverage to Codecov
       id: doctests-codecov-upload
-      uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+      uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         job_code: ${{ needs.check_mats.outputs.build_id }}-${{ github.run_number }}
@@ -931,7 +931,7 @@ jobs:
       shell: bash
     - name: Upload Python ${{ matrix.python-version }} integration coverage to Codecov
       id: integration-codecov-upload
-      uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+      uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         job_code: ${{ needs.check_mats.outputs.build_id }}-${{ github.run_number }}
@@ -967,7 +967,7 @@ jobs:
     - name: Upload Python ${{ matrix.python-version }} integration test results to Codecov
       if: ${{ !cancelled() && (env.TESTS_USE_PYTEST == '1') }}
       id: integration-codecov-results-upload
-      uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+      uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
       with:
         report_type: 'test_results'
         token: ${{ secrets.CODECOV_TOKEN }}
