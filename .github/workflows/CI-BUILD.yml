@@ -70,7 +70,7 @@ jobs:
           printf "python-version=%s\n" "${{ steps.build-python.outputs.python-version }}" >> "$GITHUB_OUTPUT"
           printf "PYTHON_VERSION=%s\n" "${{ steps.build-python.outputs.python-version }}" >> "$GITHUB_ENV"
           printf "%s\n" "::endgroup::"
-      - uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      - uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
@@ -256,7 +256,7 @@ jobs:
       build-artifact-attestation-id: ${{ steps.multicast-build-attest.outputs.attestation-id }}
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: ${{ github.workspace }}/dist
           pattern: multicast-build-${{ github.sha }}
@@ -339,7 +339,7 @@ jobs:
           printf "%s\n" "build_id=${{ github.run_id }}" >> "$GITHUB_OUTPUT"
           cat <"$GITHUB_OUTPUT" >> "BUILD-info.txt"
       - name: Download All Artifacts
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: ${{ github.workspace }}/dist
           pattern: multicast-build-${{ github.sha }}
@@ -415,7 +415,7 @@ jobs:
       - name: "Download Status Summary Artifact"
         id: download-build-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: BUILD-COMMENT-BODY-${{ github.sha }}
           github-token: ${{ github.token }}

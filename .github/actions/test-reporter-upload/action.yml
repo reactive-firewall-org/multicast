@@ -304,7 +304,7 @@ runs:
     - name: Upload ${{ steps.output_os.outputs.os }} Python ${{ steps.output_python.outputs.python-version }} coverage to Codecov
       id: coverage-codecov-upload
       if: ${{ success() && (steps.output_can_upload.outputs.can_upload == 'true') && (steps.output_upload_tools.outputs.can_upload_to_codecov == 'true') }}
-      uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+      uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
       with:
         token: ${{ inputs.codecov-token }}
         job_code: ${{ inputs.job_code || '' }}
