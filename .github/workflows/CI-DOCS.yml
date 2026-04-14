@@ -183,7 +183,7 @@ jobs:
           fi
       - name: Upload Docs Artifact with Python ${{ matrix.python-version }} on ${{ matrix.os }}
         id: upload-documentation
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: Multicast-Documentation-${{ needs.check_mats.outputs.build_sha }}-${{ matrix.os }}-${{ matrix.python-version }}
           path: ./Multicast-Documentation
@@ -239,7 +239,7 @@ jobs:
       - name: "Upload DOCs summary"
         id: upload-docs-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           path: ./DOCUMENTATION-Summary-Artifact.txt
           name: DOCUMENTATION-COMMENT-BODY-${{ needs.check_mats.outputs.build_sha }}
@@ -250,7 +250,7 @@ jobs:
       - name: "Upload DOCs Bundle"
         id: upload-docs-bundle
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           path: Multicast-Documentation
           name: Multicast-Documentation-${{ needs.check_mats.outputs.build_sha }}-ALL
