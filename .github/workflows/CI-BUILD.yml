@@ -70,7 +70,7 @@ jobs:
           printf "python-version=%s\n" "${{ steps.build-python.outputs.python-version }}" >> "$GITHUB_OUTPUT"
           printf "PYTHON_VERSION=%s\n" "${{ steps.build-python.outputs.python-version }}" >> "$GITHUB_ENV"
           printf "%s\n" "::endgroup::"
-      - uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
@@ -123,7 +123,7 @@ jobs:
       - name: Upload build artifact
         id: upload
         if: ${{ !cancelled() && (steps.buildfiles.outputs.files != '') && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           path: dist
           name: multicast-build-${{ github.sha }}
@@ -347,7 +347,7 @@ jobs:
       - name: Upload build summary
         id: upload-build-info
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           path: "BUILD-info.txt"
           name: multicast-info-${{ github.sha }}
@@ -394,7 +394,7 @@ jobs:
       - name: Upload build summary
         id: upload-build-summary
         if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           path: ./Build-Summary-Artifact.txt
           name: BUILD-COMMENT-BODY-${{ github.sha }}
