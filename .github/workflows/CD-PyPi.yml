@@ -37,7 +37,7 @@ jobs:
       build_status: ${{ steps.build.outcome }}
     steps:
       - name: ":truck: Checkout Repository"
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
       - id: build-python
@@ -65,7 +65,7 @@ jobs:
         run: make -j1 -f Makefile build
       - name: ":package: Publish package distributions to PyPI"
         if: ${{ success() }}
-        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           print-hash: true
           attestations: true
