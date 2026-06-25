@@ -246,7 +246,6 @@ jobs:
       id-token: write
       contents: read
       attestations: write
-      artifact-metadata: write
     needs: [BUILD]
     runs-on: ubuntu-latest
     environment: ${{ needs.BUILD.outputs.build_environment }}
