@@ -8,37 +8,110 @@
 *.{cmd,[cC][mM][dD]} text eol=crlf
 *.{bat,[bB][aA][tT]} text eol=crlf
 
-# Force bash scripts to always use LF line endings so that if a repo is accessed
+# Force various scripts to always use LF line endings so that if a repo is accessed
 # in Unix via a file share from Windows, the scripts will work.
-*.{ash,[aA][sS][hH]} text eol=lf diff=bash merge=bash working-tree-encoding=UTF-8
-*.{bash,[bB][aA][sS][hH]} text eol=lf diff=bash merge=bash working-tree-encoding=UTF-8
-*.{csh,[cC][sS][hH]} text eol=lf diff=bash merge=bash working-tree-encoding=UTF-8
-*.{dash,[dD][aA][sS][hH]} text eol=lf diff=bash merge=bash working-tree-encoding=UTF-8
 *.{sh,[sS][hH]} text eol=lf diff=bash merge=bash working-tree-encoding=UTF-8
+*.{ash,[aA][sS][hH]} text eol=lf diff=bash merge=bash working-tree-encoding=UTF-8 linguist-language=Shell
+*.{bash,[bB][aA][sS][hH]} text eol=lf diff=bash merge=bash working-tree-encoding=UTF-8 linguist-language=Shell
+*.{csh,[cC][sS][hH]} text eol=lf diff=bash merge=bash working-tree-encoding=UTF-8 linguist-language=C
+*.{dash,[dD][aA][sS][hH]} text eol=lf diff=bash merge=bash working-tree-encoding=UTF-8
 *.{zsh,[zZ][sS][hH]} text eol=lf diff=bash merge=bash working-tree-encoding=UTF-8
 
-*.{cfg,[cC][fF][gG]},*.{conf,[cC][oO][nN][fF]} text eol=lf diff=config working-tree-encoding=UTF-8
-*.{toml,[tT][oO][mM][lL]} text eol=lf working-tree-encoding=UTF-8
-*.{ini,[iI][nN][iI]} text eol=lf working-tree-encoding=UTF-8
-*.{yml,[yY][mM][lL]},*.{yaml,[yY][aA][mM][lL]} text eol=lf working-tree-encoding=UTF-8
-*.{txt,[tT][xX][tT]} text eol=lf diff=markdown working-tree-encoding=UTF-8
-*.{rst,[rR][sS][tT]} text eol=lf working-tree-encoding=UTF-8
-*.{md,[mM][dD]},*.{markdown,[mM][aA][rR][kK][dD][oO][wW][nN]} text eol=lf diff=markdown merge=markdown working-tree-encoding=UTF-8
 
+###############################
+# Git Large File System (LFS) #
+###############################
+
+# Archives
+#*.7z filter=lfs diff=lfs merge=lfs -text
+#*.br filter=lfs diff=lfs merge=lfs -text
+#*.gz filter=lfs diff=lfs merge=lfs -text
+#*.tar filter=lfs diff=lfs merge=lfs -text
+#*.zip filter=lfs diff=lfs merge=lfs -text
+
+# Documents
+#*.pdf filter=lfs diff=lfs merge=lfs -text
+*.{md,[mM][dD],[mM][aA][rR][kK][dD][oO][wW][nN]} text eol=lf diff=markdown merge=markdown working-tree-encoding=UTF-8
+
+
+# Images
+#*.gif filter=lfs diff=lfs merge=lfs -text linguist-language=UX
+#*.ico filter=lfs diff=lfs merge=lfs -text linguist-language=UX
+#*.jpg filter=lfs diff=lfs merge=lfs -text linguist-language=UX
+#*.jpeg filter=lfs diff=lfs merge=lfs -text linguist-language=UX
+#*.tiff filter=lfs diff=lfs merge=lfs -text linguist-language=UX
+#*.tif filter=lfs diff=lfs merge=lfs -text linguist-language=UX
+#*.{png,[pP][nN][gG]} filter=lfs diff=lfs merge=lfs -text linguist-language=UX
+#*.{psd,[pP][sS][dD]} filter=lfs diff=lfs merge=lfs -text linguist-language=UX
+#*.webp filter=lfs diff=lfs merge=lfs -text linguist-language=UX
+#*.{heic,[hH][eE][iI][cC]} filter=lfs diff=lfs merge=lfs -text linguist-language=UX
+*.{svg,[sS][vV][gG]} text eol=lf diff=html merge=html working-tree-encoding=UTF-8 linguist-language=UX
+#*.{tdif,[tT][dD][iI][fF]} filter=lfs diff=lfs merge=lfs -text linguist-language=UX
+
+# Fonts
+#*.woff2 filter=lfs diff=lfs merge=lfs -text
+#*.ttf filter=lfs diff=lfs merge=lfs -text
+#*.otf filter=lfs diff=lfs merge=lfs -text
+
+# Other
+#*.exe filter=lfs diff=lfs merge=lfs -text
+#*.app filter=lfs diff=lfs merge=lfs -text
+
+# Sounds
+#*.{aif,[aA][iI][fF]} filter=lfs diff=lfs merge=lfs -text
+#*.{wav,[wW][aA][vV]} filter=lfs diff=lfs merge=lfs -text
+
+# see https://gist.github.com/tekin/12500956bd56784728e490d8cef9cb81#file-gitattributes
+# see https://github.com/git/git/blob/master/userdiff.c
+# Configure custom hunk header patterns for some built-in languages and file formats
+*.c text eol=lf diff=cpp merge=cpp working-tree-encoding=UTF-8 linguist-language=C
+*.h text eol=lf diff=cpp merge=cpp working-tree-encoding=UTF-8 linguist-language=C
+*.c++ text eol=lf diff=cpp merge=cpp working-tree-encoding=UTF-8
+*.h++ text eol=lf diff=cpp merge=cpp working-tree-encoding=UTF-8
+*.cpp text eol=lf diff=cpp merge=cpp working-tree-encoding=UTF-8
+*.hpp text eol=lf diff=cpp merge=cpp working-tree-encoding=UTF-16
+*.cc text eol=lf diff=cpp merge=cpp working-tree-encoding=UTF-16
+*.hh text eol=lf diff=cpp merge=cpp working-tree-encoding=UTF-16
+*.m text eol=lf diff=objc merge=objc working-tree-encoding=UTF-8
+*.mm text eol=lf diff=objc merge=objc working-tree-encoding=UTF-16
+*.cs diff=csharp merge=csharp
+*.css text eol=lf diff=css merge=css working-tree-encoding=UTF-8
+*.html diff=html
+*.xhtml diff=html linguist-language=xml
+*.ex diff=elixir
+*.exs diff=elixir
+*.go text eol=lf diff=golang merge=golang working-tree-encoding=UTF-8
+*.php text eol=lf diff=php working-tree-encoding=UTF-8
+*.pl text eol=lf diff=perl working-tree-encoding=UTF-8
 *.py text eol=lf diff=python merge=python working-tree-encoding=UTF-8
-*.pyc export-ignore diff=python -text
-*.pyi export-ignore text eol=lf diff=python merge=python working-tree-encoding=UTF-8
+*.pyc export-ignore diff=python -merge -filter -text linguist-generated=true
+*.pyi export-ignore diff=python merge=python -filter -text working-tree-encoding=UTF-8 linguist-language=C
+*.{make,[mM][aA][kK][eE]} text eol=lf diff=makefile working-tree-encoding=UTF-8 linguist-language=Makelang
+*.rb diff=ruby
+*.rake diff=ruby
+*.rs text eol=lf diff=rust merge=rust
+*.lisp diff=lisp
+*.clisp text eol=lf diff=lisp merge=lisp working-tree-encoding=UTF-8
+*.el diff=lisp
+*.{yml,yaml} text eol=lf diff=ini working-tree-encoding=UTF-8 linguist-language=YAML
 
-# May diverge in future
-# multicast/*.py text eol=lf diff=python merge=python working-tree-encoding=UTF-8
-# tests/*.py text eol=lf diff=python merge=python working-tree-encoding=UTF-8
-# docs/*.py text eol=lf diff=python merge=python working-tree-encoding=UTF-8
-# tests/check_* text eol=lf diff=bash merge=bash working-tree-encoding=UTF-8
+# see https://gist.github.com/ruediger/5647207#file-attributes
+*.f diff=fortran merge=fortran
+*.tex diff=tex
+*.bib diff=bibtex
 
-*.jpg -text
-*.png -text
-*.{svg,[sS][vV][gG]} text eol=lf diff=html merge=html working-tree-encoding=UTF-8
+# TODO: see https://gist.github.com/ruediger/5647207?permalink_comment_id=5175698#gistcomment-5175698
 
-# More rules
-.DS_Store export-ignore -text
-Makefile text eol=lf diff=makefile merge=makefile working-tree-encoding=UTF-8
+# more rules
+.DS_Store export-ignore -text linguist-generated=true
+*.icns -text -filter -merge
+"Icon\r" -text -merge linguist-language=UX
+*~ export-ignore -filter linguist-generated=true
+*.pbxproj text eol=lf diff=config
+*.xcworkspacedata text eol=lf diff=html merge=html linguist-language=XML
+*.xcscheme text eol=lf diff=xml merge=xml linguist-language=XML
+*.plist text diff=xml merge=xml linguist-language=XML
+*.bplist text -merge linguist-generated=true
+*.xib text diff=xml merge=xml linguist-language=XML
+*.{orderFile,[oO][rR][dD][eE][rR][fF][iI][lL][eE]} text eol=lf -filter working-tree-encoding=UTF-8
+Makefile text eol=lf diff=makefile merge=makefile working-tree-encoding=UTF-8 linguist-language=Makelang

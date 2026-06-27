@@ -304,7 +304,7 @@ runs:
     - name: Upload ${{ steps.output_os.outputs.os }} Python ${{ steps.output_python.outputs.python-version }} coverage to Codecov
       id: coverage-codecov-upload
       if: ${{ success() && (steps.output_can_upload.outputs.can_upload == 'true') && (steps.output_upload_tools.outputs.can_upload_to_codecov == 'true') }}
-      uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+      uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
       with:
         token: ${{ inputs.codecov-token }}
         job_code: ${{ inputs.job_code || '' }}
@@ -321,7 +321,7 @@ runs:
     - name: Upload ${{ steps.output_os.outputs.os }} Python ${{ steps.output_python.outputs.python-version }} Artifact
       id: coverage-reports-upload
       if: ${{ !cancelled() && (steps.output_can_upload.outputs.can_upload == 'true') }}
-      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: Test-Report-${{ steps.output_os.outputs.os }}-${{ steps.output_python.outputs.python-version }}-${{ steps.output_sha.outputs.sha }}
         path: ./test-reports/

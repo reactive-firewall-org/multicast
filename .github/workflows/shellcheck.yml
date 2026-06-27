@@ -19,11 +19,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
       - name: Shellcheck Scan
-        uses: reactive-firewall/shellcheck-scan@ececa8940e6bfbf5bf1426dd9292b9b25367c14a # v0
+        uses: reactive-firewall/shellcheck-scan@9e323955cc8c1eb727a1ee0a50a9aca29f81d8c9 # v2
         with:  # optional arguments
           match: 'tests/check_* **/*.sh'
           publish-artifacts: true

@@ -249,7 +249,7 @@ SCRIPT_FILE="tests/check_pip"
 # Set pip-audit options
 AUDIT_OPTIONS="--progress-spinner off --desc on --requirement"
 # List of Allowed Licenses delimited by semicolon ;
-ALLOW_LICENSES="Public Domain;CC0 1.0 Universal;Public Domain Dedication; Zero-Clause BSD;Apache Software License;Apache-2.0;MIT License;BSD License;Python Software Foundation License;The Unlicense (Unlicense);Mozilla Public License 2.0 (MPL 2.0);"
+ALLOW_LICENSES="Public Domain;CC0 1.0 Universal;Public Domain Dedication; Zero-Clause BSD;BSD-2-Clause;Apache Software License;Apache-2.0;MIT License;BSD License;Python Software Foundation License;The Unlicense (Unlicense);Mozilla Public License 2.0 (MPL 2.0);MIT;"
 # Set pip-licenses options
 LICENSE_OPTIONS="--from=mixed"
 # Set pip options
@@ -269,7 +269,7 @@ fi ;
 # typing_extensions is licensed under Python Software Foundation License, but reports "UNKNOWN"
 # pytest-enabler is licensed under MIT, but reports "UNKNOWN"
 # pycodestyle is licensed under MIT, but reports just "MIT" (which does not match "MIT License")
-LICENSE_OPTIONS="${LICENSE_OPTIONS} urllib3 pip setuptools wheel build hypothesis certifi roman-numerals-py Sphinx typing_extensions pytest-enabler pycodestyle"
+LICENSE_OPTIONS="${LICENSE_OPTIONS} urllib3 pip setuptools wheel build hypothesis certifi roman-numerals-py Sphinx typing_extensions pytest-enabler"
 # Enable auto-fix if '--fix' argument is provided
 if [[ "$1" == "--fix" ]]; then
 	AUDIT_OPTIONS="--fix --strict ${AUDIT_OPTIONS}"
