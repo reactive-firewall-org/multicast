@@ -12,11 +12,10 @@
 ---
 name: "CodeQL"
 on:  # yamllint disable-line rule:truthy
-  push:
-    branches: ["master", "stable"]
   pull_request:
-    # The branches below must be a subset of the branches above
     branches: ["master", "stable"]
+  push:
+    paths: [".github/workflows/codeql-analysis.yml"]
   schedule:
     - cron: '17 5 * * 1'
 
@@ -47,9 +46,41 @@ jobs:
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       with:
         persist-credentials: false
+        submodules: ${{ matrix.language == 'actions' || false }}
+        repository: reactive-firewall-org/multicast
+
+    - id: build-python
+      if: ${{ matrix.language == 'python' || false }}
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      with:
+        python-version: "${{ vars.PYTHON_DEFAULT }}"
+    - id: output_python
+      name: "bootstrap Python"
+      if: ${{ matrix.language == 'python' || false }}
+      shell: bash
+      run: |
+        printf "%s\n" "::group::bootstrap-python-env"
+        printf "python-path=%s\n" "${{ steps.build-python.outputs.python-path }}" >> "$GITHUB_OUTPUT"
+        printf "PYTHON=%s\n" "${{ steps.build-python.outputs.python-path }}" >> "$GITHUB_ENV"
+        printf "python-version=%s\n" "${{ steps.build-python.outputs.python-version }}" >> "$GITHUB_OUTPUT"
+        printf "PYTHON_VERSION=%s\n" "${{ steps.build-python.outputs.python-version }}" >> "$GITHUB_ENV"
+        printf "%s\n" "::endgroup::"
+    - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      if: ${{ matrix.language == 'python' || false }}
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Pre-Clean
+      id: clean
+      if: ${{ matrix.language == 'python' || false }}
+      shell: bash
+      run: make -j1 -f Makefile purge 2>/dev/null || true
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
+      if: ${{ allways() }}
       uses: github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e  # v4.36.2
       with:
         languages: ${{ matrix.language }}
@@ -60,8 +91,8 @@ jobs:
 
     # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
     # If this step fails, then you should remove it and run the build manually (see below)
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@8aad20d150bbac5944a9f9d289da16a4b0d87c1e  # v4.36.2
+    # - name: Autobuild
+    #  uses: github/codeql-action/autobuild@8aad20d150bbac5944a9f9d289da16a4b0d87c1e  # v4.36.2
 
     # ℹ️ Command-line programs to run using the OS shell.
     # 📚 https://git.io/JvXDl
@@ -70,9 +101,25 @@ jobs:
     #    and modify them (or add more) to build your code if your project
     #    uses a compiled language
 
-    # - run: |
-    #    make bootstrap
-    #    make release
+    - name: "License"
+      id: show-build-license
+      shell: bash
+      if: ${{ (matrix.language == 'python' || false) && (github.repository == 'reactive-firewall-org/multicast') }}
+      run: |
+        if [[ -r LICENSE.md ]] ; then
+          printf "\n\n"
+          cat <LICENSE.md ;
+          printf "\n\n"
+        else
+          printf "%s\n" "::Error title=UNLICENSED:: This is an UNLICENSED Build" >&2
+          exit 1
+        fi
+    - name: Test Build
+      if: ${{ matrix.language == 'python' || false }}
+      id: build
+      shell: bash
+      run: make -j1 -f Makefile build
 
-    - name: Perform CodeQL Analysis
+    - id: code-cq-analysis
+      name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e  # v4.36.2
