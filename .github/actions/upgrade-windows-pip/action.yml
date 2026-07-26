@@ -9,6 +9,6 @@ branding:
 runs:
   using: composite
   steps:
-    - run: python -m pip install --upgrade pip
+    - run: python -m pip install --upgrade pip  # Noncompliant
       shell: bash
       if: ${{ !cancelled() && runner.os == 'Windows' }}
