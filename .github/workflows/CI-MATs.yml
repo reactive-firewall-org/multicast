@@ -63,9 +63,9 @@ jobs:
       - id: check
         run: |
           if [[ "${{ github.event.workflow_run.conclusion }}" == "success" ]]; then
-            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            printf "should_run=true\n" >> "$GITHUB_OUTPUT" ;
           else
-            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            printf "should_run=false\n" >> "$GITHUB_OUTPUT" ;
             exit 1 ;
           fi
       - id: get_trigger_id
@@ -73,9 +73,9 @@ jobs:
         run: |
           ID_VALUE=$(gh api "${{ github.event.workflow_run.url }}" --jq '.id')
           if [[ -n "$ID_VALUE" ]]; then
-            echo "trigger_id=$ID_VALUE" >> "$GITHUB_OUTPUT"
+            printf "trigger_id=%s\n" "$ID_VALUE" >> "$GITHUB_OUTPUT" ;
           else
-            echo "trigger_id=null" >> "$GITHUB_OUTPUT"  # Default fallback
+            printf "trigger_id=null\n" >> "$GITHUB_OUTPUT" ;  # Default fallback
           fi
       - name: "Fetch Build Info"
         if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') && success() }}
@@ -87,7 +87,7 @@ jobs:
           merge-multiple: true
           github-token: ${{ env.GH_TOKEN }}
           run-id: ${{ steps.get_trigger_id.outputs.trigger_id }}
-          digest-mismatch: error
+          digest-mismatch: error  # Otherwise could lead to running untrusted code - CWE-829
       - name: "move into place"
         id: load_build_info
         if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') && success() }}
@@ -104,10 +104,11 @@ jobs:
           printf "mats_url=%s\n" 'https://github.com/reactive-firewall-org/multicast/actions/runs/${{ github.run_id }}' >> "$GITHUB_OUTPUT"
           printf "mats_id=%s\n" ${{ github.run_id }} >> "$GITHUB_OUTPUT"
       - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: ${{ (github.repository == 'reactive-firewall-org/multicast') && (steps.check.outputs.should_run == 'true') && success() }}
         with:
           persist-credentials: false
+          allow-unsafe-pr-checkout: false
           ref: ${{ steps.load_build_info.outputs.build_sha }}
           fetch-depth: 0
           repository: reactive-firewall-org/multicast
@@ -178,9 +179,10 @@ jobs:
       LANG: "en_US.utf-8"
     steps:
       - name: pre-checkout repository for actions
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          allow-unsafe-pr-checkout: false
           ref: ${{ needs.check_build.outputs.sha }}
           sparse-checkout: '.github/actions/checkout-and-rebuild'
       - name: Checkout repository for MATs with ${{ matrix.python-version }}
@@ -301,9 +303,10 @@ jobs:
           retention-days: 2
           overwrite: true
       - name: checkout repository actions for check
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          allow-unsafe-pr-checkout: false
           ref: ${{ needs.check_build.outputs.sha }}
           sparse-checkout: '.github/actions/check-control'
       - name: "Complete MATs GitHub Check"
