@@ -1,0 +1,238 @@
+#! /bin/bash
+# Disclaimer of Warranties.
+# A. YOU EXPRESSLY ACKNOWLEDGE AND AGREE THAT, TO THE EXTENT PERMITTED BY
+#    APPLICABLE LAW, USE OF THIS SHELL SCRIPT AND ANY SERVICES PERFORMED
+#    BY OR ACCESSED THROUGH THIS SHELL SCRIPT IS AT YOUR SOLE RISK AND
+#    THAT THE ENTIRE RISK AS TO SATISFACTORY QUALITY, PERFORMANCE, ACCURACY AND
+#    EFFORT IS WITH YOU.
+#
+# B. TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THIS SHELL SCRIPT
+#    AND SERVICES ARE PROVIDED "AS IS" AND “AS AVAILABLE”, WITH ALL FAULTS AND
+#    WITHOUT WARRANTY OF ANY KIND, AND THE AUTHOR OF THIS SHELL SCRIPT'S LICENSORS
+#    (COLLECTIVELY REFERRED TO AS "THE AUTHOR" FOR THE PURPOSES OF THIS DISCLAIMER)
+#    HEREBY DISCLAIM ALL WARRANTIES AND CONDITIONS WITH RESPECT TO THIS SHELL SCRIPT
+#    SOFTWARE AND SERVICES, EITHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT
+#    NOT LIMITED TO, THE IMPLIED WARRANTIES AND/OR CONDITIONS OF
+#    MERCHANTABILITY, SATISFACTORY QUALITY, FITNESS FOR A PARTICULAR PURPOSE,
+#    ACCURACY, QUIET ENJOYMENT, AND NON-INFRINGEMENT OF THIRD PARTY RIGHTS.
+#
+# C. THE AUTHOR DOES NOT WARRANT AGAINST INTERFERENCE WITH YOUR ENJOYMENT OF THE
+#    THE AUTHOR's SOFTWARE AND SERVICES, THAT THE FUNCTIONS CONTAINED IN, OR
+#    SERVICES PERFORMED OR PROVIDED BY, THIS SHELL SCRIPT WILL MEET YOUR
+#    REQUIREMENTS, THAT THE OPERATION OF THIS SHELL SCRIPT OR SERVICES WILL
+#    BE UNINTERRUPTED OR ERROR-FREE, THAT ANY SERVICES WILL CONTINUE TO BE MADE
+#    AVAILABLE, THAT THIS SHELL SCRIPT OR SERVICES WILL BE COMPATIBLE OR
+#    WORK WITH ANY THIRD PARTY SOFTWARE, APPLICATIONS OR THIRD PARTY SERVICES,
+#    OR THAT DEFECTS IN THIS SHELL SCRIPT OR SERVICES WILL BE CORRECTED.
+#    INSTALLATION OF THIS THE AUTHOR SOFTWARE MAY AFFECT THE USABILITY OF THIRD
+#    PARTY SOFTWARE, APPLICATIONS OR THIRD PARTY SERVICES.
+#
+# D. YOU FURTHER ACKNOWLEDGE THAT THIS SHELL SCRIPT AND SERVICES ARE NOT
+#    INTENDED OR SUITABLE FOR USE IN SITUATIONS OR ENVIRONMENTS WHERE THE FAILURE
+#    OR TIME DELAYS OF, OR ERRORS OR INACCURACIES IN, THE CONTENT, DATA OR
+#    INFORMATION PROVIDED BY THIS SHELL SCRIPT OR SERVICES COULD LEAD TO
+#    DEATH, PERSONAL INJURY, OR SEVERE PHYSICAL OR ENVIRONMENTAL DAMAGE,
+#    INCLUDING WITHOUT LIMITATION THE OPERATION OF NUCLEAR FACILITIES, AIRCRAFT
+#    NAVIGATION OR COMMUNICATION SYSTEMS, AIR TRAFFIC CONTROL, LIFE SUPPORT OR
+#    WEAPONS SYSTEMS.
+#
+# E. NO ORAL OR WRITTEN INFORMATION OR ADVICE GIVEN BY THE AUTHOR
+#    SHALL CREATE A WARRANTY. SHOULD THIS SHELL SCRIPT OR SERVICES PROVE DEFECTIVE,
+#    YOU ASSUME THE ENTIRE COST OF ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
+#
+#    Limitation of Liability.
+# F. TO THE EXTENT NOT PROHIBITED BY APPLICABLE LAW, IN NO EVENT SHALL THE AUTHOR
+#    BE LIABLE FOR PERSONAL INJURY, OR ANY INCIDENTAL, SPECIAL, INDIRECT OR
+#    CONSEQUENTIAL DAMAGES WHATSOEVER, INCLUDING, WITHOUT LIMITATION, DAMAGES
+#    FOR LOSS OF PROFITS, CORRUPTION OR LOSS OF DATA, FAILURE TO TRANSMIT OR
+#    RECEIVE ANY DATA OR INFORMATION, BUSINESS INTERRUPTION OR ANY OTHER
+#    COMMERCIAL DAMAGES OR LOSSES, ARISING OUT OF OR RELATED TO YOUR USE OR
+#    INABILITY TO USE THIS SHELL SCRIPT OR SERVICES OR ANY THIRD PARTY
+#    SOFTWARE OR APPLICATIONS IN CONJUNCTION WITH THIS SHELL SCRIPT OR
+#    SERVICES, HOWEVER CAUSED, REGARDLESS OF THE THEORY OF LIABILITY (CONTRACT,
+#    TORT OR OTHERWISE) AND EVEN IF THE AUTHOR HAS BEEN ADVISED OF THE
+#    POSSIBILITY OF SUCH DAMAGES. SOME JURISDICTIONS DO NOT ALLOW THE EXCLUSION
+#    OR LIMITATION OF LIABILITY FOR PERSONAL INJURY, OR OF INCIDENTAL OR
+#    CONSEQUENTIAL DAMAGES, SO THIS LIMITATION MAY NOT APPLY TO YOU. In no event
+#    shall THE AUTHOR's total liability to you for all damages (other than as may
+#    be required by applicable law in cases involving personal injury) exceed
+#    the amount of five dollars ($5.00). The foregoing limitations will apply
+#    even if the above stated remedy fails of its essential purpose.
+################################################################################
+
+# Unit tests for the resolve-sha.sh shell script
+#
+# This test suite verifies the SHA resolution logic works correctly.
+# Run from repository root: bash tests/check_gha_sha_tool
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Test counters
+TESTS_PASSED=0
+TESTS_FAILED=0
+TESTS_SKIPPED=0
+
+# Setup temporary test environment
+setup_test_env() {
+  local test_name="$1"
+  # Create temporary files for GITHUB_OUTPUT and GITHUB_ENV
+  export GITHUB_OUTPUT=$(mktemp)
+  export GITHUB_ENV=$(mktemp)
+
+  # Initialize empty
+  > "$GITHUB_OUTPUT"
+  > "$GITHUB_ENV"
+}
+
+# Cleanup test environment
+cleanup_test_env() {
+  rm -f "$GITHUB_OUTPUT" "$GITHUB_ENV" 2>/dev/null || true
+}
+
+# Test helper: run resolve-sha.sh and check result
+test_resolve_sha() {
+  local test_name="$1"
+  local input="$2"
+  local should_pass="${3:-true}"
+  local expected_sha="${4:-}"
+
+  setup_test_env "$test_name"
+
+  printf "Testing: %s ... " "$test_name"
+
+  # Run the script with the input
+  CI_INPUT_TARGET_SHA="$input" bash .github/tools/resolve-sha.sh 2>/dev/null
+  local exit_code=$?
+
+  # Check if test passed or failed as expected
+  if [[ "$should_pass" == "true" ]]; then
+    if [[ $exit_code -eq 0 ]]; then
+      # Verify SHA format if we have an expected SHA
+      if [[ -n "$expected_sha" ]]; then
+        local resolved_sha=""
+        if [[ -f "$GITHUB_ENV" ]]; then
+          resolved_sha=$(grep '^BUILD_SHA=' "$GITHUB_ENV" 2>/dev/null | cut -d'=' -f2 || echo "")
+        fi
+
+        if [[ "$resolved_sha" == "$expected_sha" ]]; then
+          printf "${GREEN}PASS${NC}\n"
+          ((TESTS_PASSED++))
+        else
+          printf "${RED}FAIL${NC} (expected SHA: $expected_sha, got: $resolved_sha)\n"
+          ((TESTS_FAILED++))
+        fi
+      else
+        # Just check that a SHA was produced
+        local resolved_sha=$(grep '^BUILD_SHA=' "$GITHUB_ENV" 2>/dev/null | cut -d'=' -f2 || echo "")
+        if [[ "$resolved_sha" =~ ^[0-9a-f]{40}$ ]]; then
+          printf "${GREEN}PASS${NC}\n"
+          ((TESTS_PASSED++))
+        else
+          printf "${RED}FAIL${NC} (invalid SHA format: $resolved_sha)\n"
+          ((TESTS_FAILED++))
+        fi
+      fi
+    else
+      printf "${RED}FAIL${NC} (unexpected success)\n"
+      ((TESTS_FAILED++))
+    fi
+  else
+    if [[ $exit_code -ne 0 ]]; then
+      printf "${GREEN}PASS${NC}\n"
+      ((TESTS_PASSED++))
+    else
+      printf "${RED}FAIL${NC} (should have failed but succeeded)\n"
+      ((TESTS_FAILED++))
+    fi
+  fi
+
+  cleanup_test_env "$test_name"
+}
+
+# Main test suite
+main() {
+  printf "\n${YELLOW}=== SHA Resolution Unit Tests ===${NC}\n\n"
+
+  # Check if we're in a git repository
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    printf "${RED}ERROR: Not in a git repository${NC}\n"
+    exit 1
+  fi
+
+  printf "${YELLOW}Valid Input Tests:${NC}\n"
+
+  # Test 1: Direct 40-char SHA
+  local valid_sha=$(git rev-parse HEAD)
+  test_resolve_sha "Direct 40-char SHA" "$valid_sha" "true" "$valid_sha"
+
+  # Test 2: Branch name (e.g., master)
+  if git rev-parse --verify master >/dev/null 2>&1; then
+    local master_sha=$(git rev-parse master)
+    test_resolve_sha "Branch name resolution (master)" "master" "true" "$master_sha"
+  else
+    printf "Testing: Branch name resolution (master) ... ${YELLOW}SKIP${NC} (master not found)\n"
+    ((TESTS_SKIPPED++))
+  fi
+
+  # Test 3: Full ref path
+  local head_sha=$(git rev-parse HEAD)
+  test_resolve_sha "Full ref path (refs/heads/...)" "refs/heads/$(git rev-parse --abbrev-ref HEAD)" "true" "$head_sha"
+
+  # Test 4: Current branch by name
+  local current_branch=$(git rev-parse --abbrev-ref HEAD)
+  local current_sha=$(git rev-parse HEAD)
+  test_resolve_sha "Current branch by name" "$current_branch" "true" "$current_sha"
+
+  printf "\n${YELLOW}Invalid Input Tests (should fail):${NC}\n"
+
+  # Test 5: Option injection (starts with -)
+  test_resolve_sha "Option injection prevention" "-e malicious" "false"
+
+  # Test 6: Non-existent branch
+  test_resolve_sha "Non-existent branch" "nonexistent-branch-xyz-12345" "false"
+
+  # Test 7: Invalid SHA format
+  test_resolve_sha "Invalid SHA format (too short)" "abc123" "false"
+
+  # Test 8: Invalid SHA format (non-hex)
+  test_resolve_sha "Invalid SHA format (non-hex)" "g0000000000000000000000000000000000000000" "false"
+
+  # Test 9: Empty input
+  test_resolve_sha "Empty input" "" "false"
+
+  # Test 10: Whitespace normalization
+  local sha_with_spaces="  $(git rev-parse HEAD)  "
+  test_resolve_sha "Whitespace normalization" "$sha_with_spaces" "true" "$(git rev-parse HEAD)"
+
+  # Test 11: Quote stripping
+  local sha_with_quotes="'$(git rev-parse HEAD)'"
+  test_resolve_sha "Single quote stripping" "$sha_with_quotes" "true" "$(git rev-parse HEAD)"
+
+  # Test 12: Double quote stripping
+  local sha_with_double_quotes="\"$(git rev-parse HEAD)\""
+  test_resolve_sha "Double quote stripping" "$sha_with_double_quotes" "true" "$(git rev-parse HEAD)"
+
+  # Print summary
+  printf "\n${YELLOW}=== Test Summary ===${NC}\n"
+  printf "Passed:  ${GREEN}%d${NC}\n" "$TESTS_PASSED"
+  printf "Failed:  ${RED}%d${NC}\n" "$TESTS_FAILED"
+  printf "Skipped: ${YELLOW}%d${NC}\n" "$TESTS_SKIPPED"
+  printf "\n"
+
+  # Exit with appropriate code
+  if [[ $TESTS_FAILED -eq 0 ]]; then
+    printf "${GREEN}All tests passed!${NC}\n"
+    return 0
+  else
+    printf "${RED}Some tests failed!${NC}\n"
+    return 1
+  fi
+}
+
+main "$@"

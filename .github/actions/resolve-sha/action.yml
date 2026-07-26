@@ -1,0 +1,49 @@
+---
+name: 'Resolve Commit SHA'
+description: |
+  Validates and resolves a git commit SHA from various input formats
+  (direct SHA, branch name, tag name, or full ref path)
+author: 'Mr. Walls'
+branding:
+  icon: 'git-commit'
+  color: 'blue'
+inputs:
+  sha:
+    description: |
+      The commit SHA to resolve. Can be:
+      - A 40-character commit SHA (accepted directly)
+      - A branch name (e.g., "main", "develop")
+      - A tag name (e.g., "v1.0.0")
+      - A full ref path (e.g., "refs/heads/main", "refs/tags/v1.0.0")
+    required: true
+    default: ${{ github.server_url == 'https://github.com' && github.sha || 'HEAD' }}
+  debug:
+    description: |
+      Enable debug output for this action.
+    type: boolean
+    required: false
+    default: false
+outputs:
+  sha:
+    description: "The resolved 40-character commit SHA"
+    value: ${{ steps.resolve_sha.outputs.sha }}
+runs:
+  using: composite
+  steps:
+    - id: resolve_sha
+      name: "Resolve Commit SHA"
+      if: ${{ !cancelled() }}
+      shell: bash
+      env:
+        CI_INPUT_TARGET_SHA: '${{ inputs.sha }}'
+        DEBUG_RESOLVE_SHA: '${{ inputs.debug }}'
+      run: |
+        if [ -d "${{ github.action_path }}/../../tools" ] ; then
+          if [ -f "${{ github.action_path }}/../../tools/resolve-sha.sh" ] ; then
+            bash "${{ github.action_path }}/../../tools/resolve-sha.sh" || exit 1 ;
+          else
+            exit 125 ;  # abort on missing tool
+          fi
+        else
+          exit 126 ;  # abort on strange environments
+        fi
