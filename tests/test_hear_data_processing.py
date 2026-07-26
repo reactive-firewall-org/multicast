@@ -98,8 +98,8 @@ class RecvDataProcessingTestSuite(context.BasicUsageTestSuite):
 			theResult = (int(p.exitcode) == int(0))
 		except Exception as _cause:
 			context.debugtestError(_cause)
-			self.fail(fail_fixture)
 			theResult = False
+			self.fail(fail_fixture)
 		self.assertTrue(theResult, fail_fixture)
 
 	def test_multicast_sender_with_no_data_before_follow_by_stop(self) -> None:
@@ -158,8 +158,8 @@ class RecvDataProcessingTestSuite(context.BasicUsageTestSuite):
 			raise unittest.SkipTest() from baton
 		except Exception as _cause:
 			context.debugtestError(_cause)
-			self.fail(fail_fixture)
 			theResult = False
+			self.fail(fail_fixture)
 		self.assertTrue(theResult, fail_fixture)
 
 

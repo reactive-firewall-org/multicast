@@ -161,8 +161,8 @@ class TestHearKeyboardInterrupt(BasicUsageTestSuite):
 				process.kill()
 		except Exception as _cause:
 			context.debugtestError(_cause)
-			self.fail(fail_fixture)
 			theResult = False
+			self.fail(fail_fixture)
 		self.assertTrue(theResult, fail_fixture)
 
 
