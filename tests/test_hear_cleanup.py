@@ -159,8 +159,8 @@ class HearCleanupTestSuite(context.BasicUsageTestSuite):
 			theResult = (int(p.exitcode) <= int(self.EXPECTED_STOP_EXIT_CODE))
 		except Exception as _cause:
 			context.debugtestError(_cause)
-			self.fail(fail_fixture)
 			theResult = False
+			self.fail(fail_fixture)
 		self.assertTrue(theResult, fail_fixture)
 
 	@staticmethod

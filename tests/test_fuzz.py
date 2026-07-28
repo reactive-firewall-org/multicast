@@ -303,8 +303,8 @@ class HypothesisTestSuite(BasicUsageTestSuite):
 			raise unittest.SkipTest(fail_fixture) from baton
 		except Exception as _cause:
 			context.debugtestError(_cause)
-			self.fail(fail_fixture)
 			theResult = False
+			self.fail(fail_fixture)
 		self.assertTrue(theResult, fail_fixture)
 
 

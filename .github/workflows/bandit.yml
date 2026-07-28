@@ -29,9 +29,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          allow-unsafe-pr-checkout: false
       - name: Bandit Scan
         uses: reactive-firewall/python-bandit-scan@f5cf2ce05269c19fafe24b0c91e8087c6c187385 # v2.4
         with:  # optional arguments

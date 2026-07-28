@@ -141,8 +141,8 @@ class MulticastTestSuite(context.BasicUsageTestSuite):
 			theResult = True
 		except Exception as _cause:
 			context.debugtestError(_cause)
-			self.fail(fail_fixture)
 			theResult = False
+			self.fail(fail_fixture)
 		self.assertTrue(theResult, fail_fixture)
 
 	def test_say_is_stable_WHEN_calling_multicast_GIVEN_say_tool(self):
@@ -186,8 +186,8 @@ class MulticastTestSuite(context.BasicUsageTestSuite):
 			theResult = (int(tst_err_rslt_b) < int(tst_err_rslt_a))
 		except Exception as _cause:
 			context.debugtestError(_cause)
-			self.fail(fail_fixture)
 			theResult = False
+			self.fail(fail_fixture)
 		self.assertTrue(theResult, fail_fixture)
 
 	def test_recv_aborts_WHEN_calling_multicast_GIVEN_invalid_args(self):
@@ -218,8 +218,8 @@ class MulticastTestSuite(context.BasicUsageTestSuite):
 			theResult = (int(tst_err_rslt_d) == int(tst_err_rslt_c))
 		except Exception as _cause:
 			context.debugtestError(_cause)
-			self.fail(fail_fixture)
 			theResult = False
+			self.fail(fail_fixture)
 		self.assertTrue(theResult, fail_fixture)
 
 	def test_hear_aborts_WHEN_calling_multicast_GIVEN_invalid_args(self):
@@ -250,8 +250,8 @@ class MulticastTestSuite(context.BasicUsageTestSuite):
 			theResult = (int(tst_err_rslt_f) == int(tst_err_rslt_e))
 		except Exception as _cause:
 			context.debugtestError(_cause)
-			self.fail(fail_fixture)
 			theResult = False
+			self.fail(fail_fixture)
 		self.assertTrue(theResult, fail_fixture)
 
 	def test_hear_ignores_WHEN_calling_multicast_GIVEN_invalid_args(self):
@@ -272,8 +272,8 @@ class MulticastTestSuite(context.BasicUsageTestSuite):
 			theResult = (int(tst_err_rslt_f[0]) == int(0))
 		except Exception as _cause:
 			context.debugtestError(_cause)
-			self.fail(fail_fixture)
 			theResult = False
+			self.fail(fail_fixture)
 		self.assertTrue(theResult, fail_fixture)
 
 	def test_hear_is_stable_WHEN_calling_multicast_GIVEN_invalid_tool(self):
@@ -288,8 +288,8 @@ class MulticastTestSuite(context.BasicUsageTestSuite):
 			theResult = True
 		except Exception as _cause:
 			context.debugtestError(_cause)
-			self.fail(fail_fixture)
 			theResult = False
+			self.fail(fail_fixture)
 		self.assertTrue(theResult, fail_fixture)
 
 	def test_noop_stable_WHEN_calling_multicast_GIVEN_noop_args(self):
@@ -306,8 +306,8 @@ class MulticastTestSuite(context.BasicUsageTestSuite):
 			theResult = True
 		except Exception as _cause:
 			context.debugtestError(_cause)
-			self.fail(fail_fixture)
 			theResult = False
+			self.fail(fail_fixture)
 		self.assertTrue(theResult, fail_fixture)
 
 	def test_help_works_WHEN_calling_multicast_GIVEN_help_tool(self):
@@ -321,8 +321,8 @@ class MulticastTestSuite(context.BasicUsageTestSuite):
 			theResult = True
 		except Exception as _cause:
 			context.debugtestError(_cause)
-			self.fail(fail_fixture)
 			theResult = False
+			self.fail(fail_fixture)
 		self.assertTrue(theResult, fail_fixture)
 
 	def test_hear_works_WHEN_say_works(self):
@@ -375,8 +375,8 @@ class MulticastTestSuite(context.BasicUsageTestSuite):
 			raise unittest.SkipTest(sub_fail_fixture) from baton
 		except Exception as _cause:
 			context.debugtestError(_cause)
-			self.fail(fail_fixture)
 			theResult = False
+			self.fail(fail_fixture)
 		self.assertTrue(theResult, fail_fixture)
 
 	def test_hear_works_WHEN_fuzzed_and_say_works(self):
@@ -462,8 +462,8 @@ class MulticastTestSuite(context.BasicUsageTestSuite):
 					self.assertTrue(theResult)  # Assuming there's a success indicator
 		except Exception as _cause:
 			context.debugtestError(_cause)
-			self.fail(fail_fixture)
 			theResult = False
+			self.fail(fail_fixture)
 		self.assertTrue(theResult, fail_fixture)
 
 	def test_recv_Errors_WHEN_say_not_used(self):
@@ -504,8 +504,8 @@ class MulticastTestSuite(context.BasicUsageTestSuite):
 			raise unittest.SkipTest(sub_fail_fixture) from baton
 		except Exception as _cause:
 			context.debugtestError(_cause)
-			self.fail(fail_fixture)
 			theResult = False
+			self.fail(fail_fixture)
 		self.assertTrue(theResult, fail_fixture)
 
 
@@ -600,8 +600,8 @@ class BasicIntegrationTestSuite(context.BasicUsageTestSuite):
 		except Exception as _cause:
 			context.debugtestError(_cause)
 			del _cause  # skipcq - cleanup any error leaks early
-			self.fail(fail_fixture)
 			theResult = False
+			self.fail(fail_fixture)
 		self.assertTrue(theResult, str("Could Not find usage from multicast --help"))
 
 	def test_prints_usage_WHEN_called_GIVEN_cmd_and_help_argument(self):
@@ -629,8 +629,8 @@ class BasicIntegrationTestSuite(context.BasicUsageTestSuite):
 		except Exception as _cause:
 			context.debugtestError(_cause)
 			del _cause  # skipcq - cleanup any error leaks early
-			self.fail(fail_fixture)
 			theResult = False
+			self.fail(fail_fixture)
 		self.assertTrue(theResult, str("Could Not find usage from multicast CMD --help"))
 
 	def test_equivilant_response_WHEN_absolute_vs_implicit(self):
@@ -727,8 +727,8 @@ class BasicIntegrationTestSuite(context.BasicUsageTestSuite):
 		except Exception as _cause:
 			context.debugtestError(_cause)
 			del _cause  # skipcq - cleanup any error leaks early
-			self.fail(fail_fixture)
 			theResult = False
+			self.fail(fail_fixture)
 		self.assertTrue(theResult, str("Could Not find usage from multicast --help"))
 
 	def test_Usage_Error_WHEN_the_help_sub_command_is_called(self):
@@ -773,8 +773,8 @@ class BasicIntegrationTestSuite(context.BasicUsageTestSuite):
 		except Exception as _cause:
 			context.debugtestError(_cause)
 			del _cause  # skipcq - cleanup any error leaks early
-			self.fail(fail_fixture)
 			theResult = False
+			self.fail(fail_fixture)
 		self.assertTrue(theResult, str("Could Not find usage from multicast --help"))
 
 	def test_profile_WHEN_the_noop_command_is_called(self):

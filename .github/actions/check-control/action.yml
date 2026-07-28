@@ -192,11 +192,40 @@ runs:
         printf "check_date=%s\n" $(TZ=UTC date -Iseconds | cut -d+ -f1-1) >> "$GITHUB_OUTPUT"
     - id: output_check_details_url
       if: ${{ !cancelled() && (github.repository == 'reactive-firewall-org/multicast') }}
+      env:
+        CI_INPUT_TARGET_URL: '${{ inputs.details-url }}'
+        SAFEURL: 'https://github.com/'
       shell: bash
       run: |
-        if [[ "${{ inputs.details-url }}" != "DEFAULT" ]] ; then
-          printf "details_url=%s\n" '${{ inputs.details-url }}' >> "$GITHUB_OUTPUT"
-          printf "::debug:: %s\n" "Check detail url was provided: ${{ inputs.details-url }}" ;
+        set -euo pipefail
+        raw_input="${CI_INPUT_TARGET_URL}"
+        # Reject NUL or newline immediately
+        if printf '%s' "$raw_input" | grep -q '[^[:print:]]'; then
+          printf "::error title='Invalid':: %s\n" "Error: input contains disallowed control characters" >&2
+          exit 1
+        fi
+        # Strip one level of surrounding quotes and trim whitespace
+        normalize() {
+          local s="$1"
+          s="${s#"${s%%[![:space:]]*}"}"
+          s="${s%"${s##*[![:space:]]}"}"
+          if [[ (${s:0:1} == "'" && ${s: -1} == "'") || (${s:0:1} == '"' && ${s: -1} == '"') ]]; then
+            s="${s:1:-1}"
+          fi
+          if [[ "$s" == *$'\n'* ]] || [[ "$s" == *$'\r'* ]]; then
+            printf "::error title='Invalid Detail Link'::%s\n" "Input contains newline or CR" >&2
+            return 125
+          fi
+          if [[ "$s" == *$'::'* ]] || [[ "$s" == *$'##'* ]]; then
+            printf "::error title='Invalid Detail Link'::%s\n" "Input contains anomalies" >&2
+            return 125
+          fi
+          printf '%s' "$s"
+        }
+        input_url="$(normalize "$raw_input")"
+        if [[ "${input_url:0:7}" != "DEFAULT" ]] && [[ "${input_url:0:19}" == "${SAFEURL}" ]] ; then
+          printf "details_url=%s\n" "${input_url}" >> "$GITHUB_OUTPUT"
+          printf "::debug:: %s\n" "Check detail url was provided: ${input_url}" ;
         else
           if [[ "${{ inputs.workflow-run-id }}" != "" ]] ; then
             printf "details_url=%s\n" 'https://github.com/reactive-firewall-org/multicast/actions/runs/${{ github.run_id }}' >> "$GITHUB_OUTPUT"

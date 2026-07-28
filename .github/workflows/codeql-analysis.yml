@@ -12,11 +12,10 @@
 ---
 name: "CodeQL"
 on:  # yamllint disable-line rule:truthy
-  push:
-    branches: ["master", "stable"]
   pull_request:
-    # The branches below must be a subset of the branches above
     branches: ["master", "stable"]
+  push:
+    paths: [".github/workflows/codeql-analysis.yml"]
   schedule:
     - cron: '17 5 * * 1'
 
@@ -44,13 +43,45 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         persist-credentials: false
+        submodules: ${{ matrix.language == 'actions' || false }}
+        repository: reactive-firewall-org/multicast
+
+    - id: build-python
+      if: ${{ !cancelled() && (matrix.language == 'python' || false) }}
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      with:
+        python-version: "${{ vars.PYTHON_DEFAULT }}"
+    - id: output_python
+      name: "bootstrap Python"
+      if: ${{ !cancelled() && (matrix.language == 'python' || false) }}
+      shell: bash
+      run: |
+        printf "%s\n" "::group::bootstrap-python-env"
+        printf "python-path=%s\n" "${{ steps.build-python.outputs.python-path }}" >> "$GITHUB_OUTPUT"
+        printf "PYTHON=%s\n" "${{ steps.build-python.outputs.python-path }}" >> "$GITHUB_ENV"
+        printf "python-version=%s\n" "${{ steps.build-python.outputs.python-version }}" >> "$GITHUB_OUTPUT"
+        printf "PYTHON_VERSION=%s\n" "${{ steps.build-python.outputs.python-version }}" >> "$GITHUB_ENV"
+        printf "%s\n" "::endgroup::"
+    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      if: ${{ !cancelled() && (matrix.language == 'python' || false) }}
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Pre-Clean
+      id: clean
+      if: ${{ !cancelled() && (matrix.language == 'python' || false) }}
+      shell: bash
+      run: make -j1 -f Makefile purge 2>/dev/null || true
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@9e907b5e64f6b83e7804b09294d44122997950d6  # v4.32.3
+      if: ${{ !cancelled() }}
+      uses: github/codeql-action/init@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a  # v4.36.3
       with:
         languages: ${{ matrix.language }}
         # If you wish to specify custom queries, you can do so here or in a config file.
@@ -60,8 +91,8 @@ jobs:
 
     # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
     # If this step fails, then you should remove it and run the build manually (see below)
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@9e907b5e64f6b83e7804b09294d44122997950d6  # v4.32.3
+    # - name: Autobuild
+    #  uses: github/codeql-action/autobuild@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a  # v4.36.3
 
     # ℹ️ Command-line programs to run using the OS shell.
     # 📚 https://git.io/JvXDl
@@ -70,9 +101,26 @@ jobs:
     #    and modify them (or add more) to build your code if your project
     #    uses a compiled language
 
-    # - run: |
-    #    make bootstrap
-    #    make release
+    - name: "License"
+      id: show-build-license
+      shell: bash
+      if: ${{ (matrix.language == 'python' || false) && (github.repository == 'reactive-firewall-org/multicast') }}
+      run: |
+        if [[ -r LICENSE.md ]] ; then
+          printf "\n\n"
+          cat <LICENSE.md ;
+          printf "\n\n"
+        else
+          printf "%s\n" "::Error title=UNLICENSED:: This is an UNLICENSED Build" >&2
+          exit 1
+        fi
+    - name: Test Build
+      if: ${{ !cancelled() && (matrix.language == 'python' || false) }}
+      id: build
+      shell: bash
+      run: make -j1 -f Makefile build
 
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@9e907b5e64f6b83e7804b09294d44122997950d6  # v4.32.3
+    - id: code-cq-analysis
+      if: ${{ !cancelled() }}
+      name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a  # v4.36.3
